@@ -31,6 +31,8 @@ export function Feed() {
   const [sheet, setSheet] = useState<SheetPick | null>(null);
   // Poll whose vote was just cast on the way back from Google sign-in.
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
+  // Poll the viewer just posted (arrives from /create with ?created=1).
+  const [createdId, setCreatedId] = useState<string | null>(null);
   // Polls already voted on when the feed loaded (they sit at the end).
   const [votedBefore, setVotedBefore] = useState<Set<string>>(new Set());
   // Which way the last move went, so the next card comes in from that side.
@@ -61,9 +63,11 @@ export function Feed() {
         const sharedPoll = at >= 0 ? list.splice(at, 1)[0] : await fetchPoll(shared).catch(() => null);
         if (sharedPoll) list.unshift(sharedPoll);
       }
-      if (shared && url.searchParams.has("voted")) {
-        setCelebrateId(shared);
-        url.searchParams.delete("voted"); // no confetti replay on reload
+      if (shared && (url.searchParams.has("voted") || url.searchParams.has("created"))) {
+        if (url.searchParams.has("voted")) setCelebrateId(shared);
+        if (url.searchParams.has("created")) setCreatedId(shared);
+        url.searchParams.delete("voted"); // no replay on reload
+        url.searchParams.delete("created");
         window.history.replaceState(window.history.state, "", url);
       }
       if (token !== loadToken.current) return;
@@ -303,6 +307,7 @@ export function Feed() {
                 tag={tagFor(poll, index)}
                 canVote={canVote}
                 celebrate={poll.id === celebrateId}
+                justCreated={poll.id === createdId}
                 onVoted={onVoted}
                 onNeedSignIn={onNeedSignIn}
                 onNext={() => go(1)}

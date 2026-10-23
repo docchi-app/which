@@ -1,0 +1,376 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { continueWithGoogle, currentUser, saveReturnTo } from "@/lib/auth";
+import {
+  checkUsername,
+  createPoll,
+  CreatePollError,
+  DAILY_POLL_LIMIT,
+  getCreateStatus,
+  type CreateStatus,
+  type UsernameProblem,
+} from "@/lib/create";
+import { isSupabaseConfigured } from "@/lib/supabase";
+import { ANSWER_COLORS } from "./PollCard";
+import { ArrowIcon, PlusIcon } from "./icons";
+
+const QUESTION_MAX = 140;
+const ANSWER_MAX = 40;
+const DURATIONS = [1, 3, 7] as const;
+type Days = (typeof DURATIONS)[number];
+
+type Draft = { question: string; answers: string[]; days: Days; username: string };
+const EMPTY_DRAFT: Draft = { question: "", answers: ["", ""], days: 3, username: "" };
+const DRAFT_KEY = "docchi.draft";
+
+// Result of checking one username with the server.
+type NameCheck = { name: string; problem: UsernameProblem; suggestions: string[] };
+
+const ERRORS: Record<string, string> = {
+  sign_in: "Your sign-in expired. Sign in again to post.",
+  banned: "This account can't post polls.",
+  daily_limit: `That's ${DAILY_POLL_LIMIT} polls today. Come back tomorrow!`,
+  question_length: "Questions need 3 to 140 characters.",
+  answer_length: `Answers can be up to ${ANSWER_MAX} characters.`,
+  answer_count: "Add 2 to 4 answers.",
+  duplicate_answers: "Two answers are the same. Make each one different.",
+  duration: "Pick when the poll closes.",
+  blocked_words: "Let's keep it friendly: some of those words aren't allowed.",
+  demo: "Demo mode: polls can't be posted until Supabase is connected.",
+};
+
+const NAME_HINT: Record<Exclude<UsernameProblem, "ok">, string> = {
+  format: "3 to 20 letters, numbers or _",
+  reserved: "That one's reserved. How about:",
+  blocked: "Let's pick something friendlier. How about:",
+  taken: "Taken! These are free:",
+};
+
+function loadDraft(): Draft {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    return raw ? { ...EMPTY_DRAFT, ...(JSON.parse(raw) as Partial<Draft>) } : EMPTY_DRAFT;
+  } catch {
+    return EMPTY_DRAFT;
+  }
+}
+
+const cleanName = (s: string) => s.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
+
+export function CreatePoll() {
+  const router = useRouter();
+  const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
+  const [status, setStatus] = useState<CreateStatus | null>(null);
+  const [checked, setChecked] = useState<NameCheck | null>(null);
+  const [posting, setPosting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const restored = useRef(false);
+
+  // Restore an unfinished draft (e.g. after signing in), then load who's posting.
+  useEffect(() => {
+    const saved = loadDraft();
+    restored.current = true;
+    (async () => {
+      const user = await currentUser();
+      const seed = (user?.user_metadata.full_name as string | undefined) ?? user?.email?.split("@")[0] ?? null;
+      try {
+        const s = await getCreateStatus(seed);
+        setStatus(s);
+        // Prefill a free username so posting stays one tap.
+        setDraft({ ...saved, username: saved.username || s.suggestions[0] || "" });
+      } catch (e) {
+        console.error(e);
+        setDraft(saved);
+        setError("Couldn't load. Check your connection and try again.");
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!restored.current) return;
+    try {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      // Draft just won't survive a reload.
+    }
+  }, [draft]);
+
+  const needsName = !!status?.signedIn && status.username === null;
+
+  // Check the username with the server as they type (debounced).
+  useEffect(() => {
+    const name = draft.username;
+    if (!needsName || name.length < 3 || checked?.name === name) return;
+    const timer = window.setTimeout(async () => {
+      try {
+        setChecked({ name, ...(await checkUsername(name)) });
+      } catch {
+        // Offline: the server checks again on Post.
+      }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [draft.username, needsName, checked]);
+
+  // null while waiting for the server.
+  const nameCheck: Omit<NameCheck, "name"> | null = !needsName
+    ? { problem: "ok", suggestions: [] }
+    : draft.username.length < 3
+      ? { problem: "format", suggestions: [] }
+      : checked?.name === draft.username
+        ? checked
+        : null;
+
+  const set = (patch: Partial<Draft>) => {
+    setError(null);
+    setDraft((d) => ({ ...d, ...patch }));
+  };
+  const setAnswer = (i: number, v: string) => set({ answers: draft.answers.map((a, j) => (j === i ? v : a)) });
+
+  const question = draft.question.trim();
+  const answers = draft.answers.map((a) => a.trim()).filter(Boolean);
+  const dupes = new Set(answers.map((a) => a.toLowerCase())).size !== answers.length;
+  const nameOk = nameCheck?.problem === "ok";
+  const missing =
+    question.length < 3
+      ? "Ask a question"
+      : answers.length < 2
+        ? "Add at least 2 answers"
+        : dupes
+          ? "Two answers are the same"
+          : !nameOk
+            ? "Pick a username"
+            : status && status.pollsLeft <= 0
+              ? `That's ${DAILY_POLL_LIMIT} polls today. Come back tomorrow!`
+              : null;
+
+  async function post() {
+    if (missing || posting) return;
+    setPosting(true);
+    setError(null);
+    try {
+      const id = await createPoll({
+        question,
+        answers,
+        days: draft.days,
+        username: needsName ? draft.username : null,
+      });
+      sessionStorage.removeItem(DRAFT_KEY);
+      router.push(`/?poll=${id}&created=1`);
+    } catch (e) {
+      setPosting(false);
+      if (e instanceof CreatePollError) {
+        if (e.code.startsWith("username_")) {
+          // Someone grabbed it a moment ago: show fresh suggestions in place.
+          const r = await checkUsername(draft.username).catch(() => null);
+          if (r) setChecked({ name: draft.username, ...r });
+          return;
+        }
+        setError(ERRORS[e.code] ?? "Couldn't post. Try again?");
+      } else {
+        console.error(e);
+        setError("Couldn't post. Try again?");
+      }
+    }
+  }
+
+  async function signIn() {
+    saveReturnTo("/create");
+    try {
+      await continueWithGoogle();
+    } catch {
+      setError("Google sign-in isn't available right now. Try again in a bit.");
+    }
+  }
+
+  const author = needsName ? draft.username || "you" : (status?.username ?? "you");
+  const daysLabel = `${draft.days} day${draft.days === 1 ? "" : "s"}`;
+
+  return (
+    <div className="create-screen">
+      <header className="create-header">
+        <Link href="/" aria-label="Close" className="icon-btn icon-btn-white press">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </Link>
+        <h1 className="create-title">New poll</h1>
+        <span className="create-spacer" />
+      </header>
+
+      <form
+        className="create-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          post();
+        }}
+      >
+        <div className="field">
+          <label htmlFor="question" className="field-label">
+            Ask anything
+          </label>
+          <textarea
+            id="question"
+            className="question-input"
+            rows={2}
+            maxLength={QUESTION_MAX}
+            placeholder="Tea or coffee to start the day?"
+            value={draft.question}
+            onChange={(e) => set({ question: e.target.value.replace(/\n/g, " ") })}
+          />
+          <span className={`counter${draft.question.length > 120 ? " counter-warn" : ""}`}>
+            {draft.question.length} / {QUESTION_MAX}
+          </span>
+        </div>
+
+        <fieldset className="field">
+          <legend className="field-label">Answers</legend>
+          {draft.answers.map((a, i) => (
+            <div key={i} className="answer-row">
+              <span className="answer-letter" aria-hidden="true" style={{ background: ANSWER_COLORS[i] }}>
+                {"ABCD"[i]}
+              </span>
+              <input
+                className="answer-input"
+                aria-label={`Answer ${i + 1}`}
+                maxLength={ANSWER_MAX}
+                placeholder="Type an answer"
+                value={a}
+                onChange={(e) => setAnswer(i, e.target.value)}
+              />
+              {draft.answers.length > 2 && (
+                <button
+                  type="button"
+                  className="remove-answer"
+                  aria-label={`Remove answer ${i + 1}`}
+                  onClick={() => set({ answers: draft.answers.filter((_, j) => j !== i) })}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          ))}
+          {draft.answers.length < 4 && (
+            <button type="button" className="add-answer" onClick={() => set({ answers: [...draft.answers, ""] })}>
+              <PlusIcon size={18} strokeWidth={2.6} />
+              Add answer ({4 - draft.answers.length} left)
+            </button>
+          )}
+        </fieldset>
+
+        <fieldset className="field">
+          <legend className="field-label">Closes after</legend>
+          <div className="durations">
+            {DURATIONS.map((d) => (
+              <button
+                key={d}
+                type="button"
+                className="duration press"
+                aria-pressed={draft.days === d}
+                onClick={() => set({ days: d })}
+              >
+                {d} day{d === 1 ? "" : "s"}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        {needsName && (
+          <div className="field">
+            <label htmlFor="username" className="field-label">
+              Post as
+            </label>
+            <div className="name-input-wrap">
+              <span aria-hidden="true">@</span>
+              <input
+                id="username"
+                className="name-input"
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                value={draft.username}
+                onChange={(e) => set({ username: cleanName(e.target.value) })}
+                aria-describedby="username-status"
+              />
+            </div>
+            <div id="username-status" className="name-status" aria-live="polite">
+              {!nameCheck && <span className="muted">Checking…</span>}
+              {nameCheck?.problem === "ok" && (
+                <span className="name-ok">@{draft.username} is yours. This is how you&apos;ll show up on polls and the leaderboard.</span>
+              )}
+              {nameCheck && nameCheck.problem !== "ok" && (
+                <>
+                  <span className="name-bad">{NAME_HINT[nameCheck.problem]}</span>
+                  {nameCheck.suggestions.length > 0 && (
+                    <span className="name-chips">
+                      {nameCheck.suggestions.map((s) => (
+                        <button key={s} type="button" className="name-chip press" onClick={() => set({ username: s })}>
+                          @{s}
+                        </button>
+                      ))}
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="field">
+          <span className="field-label muted">Live preview</span>
+          <div className="preview-card">
+            <span className="preview-q">{question || "Your question shows up here"}</span>
+            <div className="preview-answers">
+              {draft.answers.map((a, i) => (
+                <span key={i} className="preview-chip" style={{ background: ANSWER_COLORS[i] }}>
+                  {a.trim() || `Answer ${"ABCD"[i]}`}
+                </span>
+              ))}
+            </div>
+            <span className="preview-by">
+              by @{author} · closes in {daysLabel}
+            </span>
+          </div>
+        </div>
+      </form>
+
+      <div className="create-footer">
+        {error && (
+          <p className="poll-error" role="alert">
+            {error}
+          </p>
+        )}
+        {isSupabaseConfigured && status && !status.signedIn ? (
+          <button type="button" className="post-btn post-btn-dark press" onClick={signIn}>
+            Sign in with Google to post
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="post-btn press"
+            onClick={post}
+            disabled={!!missing || posting || !status}
+            aria-describedby="post-hint"
+          >
+            {posting ? "Posting…" : "Post poll"}
+            {!posting && <ArrowIcon size={20} strokeWidth={2.6} />}
+          </button>
+        )}
+        <p id="post-hint" className="create-note">
+          {missing && status?.signedIn !== false ? (
+            missing
+          ) : (
+            <>
+              Keep it fun and kind. Up to {DAILY_POLL_LIMIT} polls a day
+              {status?.signedIn ? ` · ${status.pollsLeft} left today` : ""}.
+            </>
+          )}
+        </p>
+      </div>
+    </div>
+  );
+}

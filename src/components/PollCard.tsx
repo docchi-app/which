@@ -30,12 +30,14 @@ type Props = {
   canVote: boolean | null;
   /** Play the vote celebration on mount (returning from sign-in). */
   celebrate?: boolean;
+  /** The viewer just posted this poll: nudge them to share it. */
+  justCreated?: boolean;
   onVoted: (pollId: string, result: VoteResult) => void;
   onNeedSignIn: (pollId: string, optionId: string) => void;
   onNext: () => void;
 };
 
-export function PollCard({ poll, tag, canVote, celebrate = false, onVoted, onNeedSignIn, onNext }: Props) {
+export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = false, onVoted, onNeedSignIn, onNext }: Props) {
   // The pick being saved. The card switches to results the moment you tap;
   // the bars fill in when the server answers.
   const [lockingId, setLockingId] = useState<string | null>(null);
@@ -85,6 +87,17 @@ export function PollCard({ poll, tag, canVote, celebrate = false, onVoted, onNee
 
   return (
     <article className="poll-card" aria-labelledby={`q-${poll.id}`}>
+      {justCreated && (
+        <div className="created-banner" role="status">
+          <span>
+            <strong>Your poll is live!</strong> Share it so friends can vote.
+          </span>
+          <button type="button" className="btn btn-coral press" onClick={share}>
+            <ShareIcon size={18} />
+            Share
+          </button>
+        </div>
+      )}
       <div className="poll-meta">
         <span className="chip chip-sun">
           <span className="live-dot" aria-hidden="true" />

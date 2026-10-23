@@ -28,7 +28,12 @@ The first slice of the build order:
 - **Design tokens:** colours, fonts (Bricolage Grotesque and DM Sans), outlines, hard shadows and
   corner radii are CSS variables in `src/app/globals.css`.
 - **PWA basics:** web app manifest, app icon, theme colour.
-- Leaders and Create are placeholder pages for now. Profile shows who's signed in, with sign-out.
+- **Create poll:** question (up to 140 characters), 2 to 4 answers (up to 40 each), closes after
+  1, 3 or 7 days, with a live preview. Anyone signed in can post up to 5 polls in 24 hours. The
+  first poll also picks a username: a free one is prefilled from the Google name, it's checked as
+  you type, and a taken name comes with free suggestions to tap. Unfinished drafts survive a
+  reload or a trip through sign-in. After posting you land on your poll with a nudge to share it.
+- Leaders is a placeholder page for now. Profile shows who's signed in, with sign-out.
 
 **Voting needs a Google account.** Anyone can browse; voting requires sign-in (one tap with
 Google). Guest accounts from the first release can still browse. When a guest signs in with Google,
@@ -62,7 +67,8 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
 1. Open **SQL Editor → New query**, paste all of
    `supabase/migrations/20261023000000_init.sql`, and click **Run**.
 2. Do the same with each later file in `supabase/migrations/`
-   (`20261024000000_google_sign_in.sql`, `20261025000000_feed_paging.sql`, …), in date order,
+   (`20261024000000_google_sign_in.sql`, `20261025000000_feed_paging.sql`,
+   `20261026000000_create_poll.sql`, …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -157,6 +163,9 @@ per Supabase auth user, created automatically by a database trigger.
 |------|---------------------|
 | One vote per person | `votes` primary key `(poll_id, user_id)` |
 | Only signed-in accounts vote | `cast_vote()` refuses signed-out and guest (anonymous) sessions |
+| Poll rules (length, 2–4 distinct answers, 1/3/7 days, 5 per 24h) | `create_poll()` checks them all again |
+| Usernames are unique, 3–20 of `a-z 0-9 _`, not reserved or rude | `username_problem()`, used by `check_username()` and `create_poll()` |
+| Word filter | `blocked_terms` table (whole words, English + Hindi); add rows to extend it |
 | Counters stay correct | `cast_vote()` saves the vote and bumps both counters in one transaction |
 | Results hidden until you vote | Clients can't read `poll_options.vote_count` directly. `get_feed()` only returns counts once you've voted or the poll has closed |
 | No direct writes from the browser | Inserts and updates are revoked for `anon` and `authenticated`. Writes go through database functions |
