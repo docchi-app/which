@@ -84,3 +84,25 @@ export function takePendingVote(): PendingVote | null {
     return null;
   }
 }
+
+// Where to go after sign-in when there's no pending vote (e.g. back to /create).
+
+const RETURN_KEY = "docchi.returnTo";
+
+export function saveReturnTo(path: string) {
+  try {
+    sessionStorage.setItem(RETURN_KEY, path);
+  } catch {
+    // Storage blocked: sign-in just lands on the feed.
+  }
+}
+
+export function takeReturnTo(): string | null {
+  try {
+    const path = sessionStorage.getItem(RETURN_KEY);
+    sessionStorage.removeItem(RETURN_KEY);
+    return path?.startsWith("/") && !path.startsWith("//") ? path : null;
+  } catch {
+    return null;
+  }
+}

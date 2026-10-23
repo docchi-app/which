@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithGoogle, takePendingVote } from "@/lib/auth";
+import { signInWithGoogle, takePendingVote, takeReturnTo } from "@/lib/auth";
 import { castVote } from "@/lib/polls";
 import { getSupabase } from "@/lib/supabase";
 import { LogoMark } from "./Logo";
@@ -55,7 +55,7 @@ export function AuthCallback() {
       }
 
       const pending = takePendingVote();
-      if (!pending) return router.replace("/");
+      if (!pending) return router.replace(takeReturnTo() ?? "/");
       try {
         await castVote(pending.pollId, pending.optionId);
         router.replace(`/?poll=${pending.pollId}&voted=1`);
