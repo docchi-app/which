@@ -21,6 +21,7 @@ type FeedRow = {
   closes_at: string;
   my_option_id: string | null;
   options: PollOption[];
+  cursor?: string | null;
 };
 
 type VoteRow = { my_option_id: string; vote_count: number; options: PollOption[]; question?: string };
@@ -46,35 +47,39 @@ const toPoll = (r: FeedRow): Poll => ({
   closesAt: r.closes_at,
   myOptionId: r.my_option_id,
   options: r.options,
+  cursor: r.cursor ?? undefined,
 });
 
-/** One page of the feed: open polls, ones you haven't voted on first. */
-export async function fetchFeed(tab: FeedTab, skip = 0, limit = FEED_PAGE_SIZE): Promise<Poll[]> {
+/**
+ * One page of the feed: open polls you haven't voted on. For the next page,
+ * pass the last poll's `cursor` as `after`.
+ */
+export async function fetchFeed(tab: FeedTab, after?: string, limit = FEED_PAGE_SIZE): Promise<Poll[]> {
   const supabase = getSupabase();
-  if (!supabase) return skip || tab === "circle" ? [] : demoFeed(tab).slice(0, limit);
+  if (!supabase) return after || tab === "circle" ? [] : demoFeed(tab).slice(0, limit);
 
-  // `skip` only when paging, so the first page also works before the
-  // 20261025 migration has been run.
-  const args = skip ? { tab, max_rows: limit, skip } : { tab, max_rows: limit };
+  const args = after ? { tab, max_rows: limit, after } : { tab, max_rows: limit };
   const { data, error } = await supabase.rpc("get_feed", args);
   if (error) throw error;
   return (data as FeedRow[]).map(toPoll);
 }
 
 /** Polls you made ("mine") or voted on ("voted"), newest first. */
-export async function fetchMyPolls(which: "mine" | "voted", skip = 0): Promise<Poll[]> {
+export async function fetchMyPolls(which: "mine" | "voted", after?: string): Promise<Poll[]> {
   const supabase = getSupabase();
   if (!supabase) return [];
-  const { data, error } = await supabase.rpc("my_polls", { which, max_rows: FEED_PAGE_SIZE, skip });
+  const args = after ? { which, max_rows: FEED_PAGE_SIZE, after } : { which, max_rows: FEED_PAGE_SIZE };
+  const { data, error } = await supabase.rpc("my_polls", args);
   if (error) throw error;
   return (data as FeedRow[]).map(toPoll);
 }
 
 /** Someone's public polls, newest first. */
-export async function fetchProfilePolls(name: string, skip = 0): Promise<Poll[]> {
+export async function fetchProfilePolls(name: string, after?: string): Promise<Poll[]> {
   const supabase = getSupabase();
   if (!supabase) return [];
-  const { data, error } = await supabase.rpc("profile_polls", { name, max_rows: FEED_PAGE_SIZE, skip });
+  const args = after ? { name, max_rows: FEED_PAGE_SIZE, after } : { name, max_rows: FEED_PAGE_SIZE };
+  const { data, error } = await supabase.rpc("profile_polls", args);
   if (error) throw error;
   return (data as FeedRow[]).map(toPoll);
 }

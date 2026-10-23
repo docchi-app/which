@@ -70,8 +70,8 @@ The first slice of the build order:
   picked this too" and who picked what. Anyone else who opens the link sees a locked "This poll is
   for @x's circle" card with Ask to join, and can't vote; link previews show only who it's from.
 - **Private polls:** a poll can be for **Everyone** (in the feed) or **Only with the link**. A
-  link-only poll shows in the feed and on the profile only for its creator and for people who have
-  voted on it; anyone else can open it only from its link. Chosen on the + screen, changeable later.
+  link-only poll never shows in the feed; it's on the creator's profile and in **Voted** for people
+  who voted on it, and anyone else can open it only from its link. Chosen on the + screen, changeable later.
 - **Deleting:** the creator can delete a poll. It disappears everywhere (a shared link shows "That
   poll isn't available anymore"), but the row stays in the database for moderation review.
 - Leaders is a placeholder page for now.
@@ -112,7 +112,7 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261026000000_create_poll.sql`, `20261027000000_shares.sql`,
    `20261028000000_poll_formats.sql`, `20261029000000_profile_privacy.sql`,
    `20261030000000_circles.sql`, `20261031000000_usernames.sql`, `20261101000000_circle_polls.sql`,
-   …), in date order,
+   `20261102000000_scale.sql`, …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -222,14 +222,14 @@ per Supabase auth user, created automatically by a database trigger.
 | Only signed-in accounts vote | `cast_vote()` refuses signed-out and guest (anonymous) sessions |
 | Poll rules (length, 2–4 distinct answers, 1/3/7 days, 5 per 24h) | `create_poll()` checks them all again |
 | Usernames are unique, 3–20 of `a-z 0-9 _`, not reserved or rude | `username_problem()`, used by `check_username()` and `create_poll()` |
-| A mystery question stays hidden until you vote | `poll_rows()` returns `null` for it; `cast_vote()` reveals it |
+| A mystery question stays hidden until you vote | `poll_cards()` returns `null` for it; `cast_vote()` reveals it |
 | One hot take or mystery poll per person per day | `create_poll()` |
-| Link-only polls stay out of other people's feeds | `poll_rows()` ('feed' scope): public, or yours, or you voted |
+| Link-only polls stay out of feeds | `get_feed()` only picks public polls (Circle tab: circle polls you can see) |
 | Only the creator can change visibility or delete | `set_poll_visibility()`, `delete_poll()` (soft delete: `deleted_at`) |
 | Every Google account has a real username; circles refuse `guest_…` accounts | `handle_new_user()`, `pick_username()`, `request_circle()` |
 | Circle requests need the owner's OK; groups only hold accepted members | `request_circle()`, `respond_request()`, `set_group_member()` |
 | Blocking cuts both ways and stops new requests | `block_user()`, checked by `request_circle()`, `get_profile()`, `search_people()` |
-| Circle polls: only the circle (or its chosen groups) sees, votes on and sees picks | `can_view_poll()`, used by `poll_rows()`, `cast_vote()`, `circle_picks()` |
+| Circle polls: only the circle (or its chosen groups) sees, votes on and sees picks | `can_view_poll()`, used by `get_feed()`, `poll_cards()`, `cast_vote()`, `circle_picks()` |
 | No reading polls around the rules | direct `select` on `polls` / `poll_options` is revoked; everything goes through the functions |
 | Shares count once per person per poll | `shares` primary key + `record_share()`; signed-out shares aren't counted |
 | Word filter | `blocked_terms` table (whole words, English + Hindi); add rows to extend it |
@@ -239,11 +239,21 @@ per Supabase auth user, created automatically by a database trigger.
 | Banned users and closed polls | Checked inside `cast_vote()` |
 | Comments disappear after 24h | `expires_at`, filtered by row level security. Rows stay in the database so moderators can review them |
 
-**The feed** (`get_feed`) shows open polls only, 30 per page ("load more" fetches the next page a
-few cards before the end). Polls you haven't voted on come first, with today's Poll of the Day on
-top; ones you've voted on go to the end. **Trending** ranks by votes with a time decay (Hacker News
-style), computed when the feed loads; once traffic grows it should move to a score refreshed every
-few minutes. **New** is newest first. A shared link (`/?poll=<id>`) puts that poll first, even
+**The feed** (`get_feed`) shows open polls you haven't voted on, 30 per page ("load more" fetches
+the next page a few cards before the end); the ones you've voted on are in Profile → Voted.
+Today's Poll of the Day leads Trending. **Trending** ranks by `polls.hot_score`, votes with a time
+decay (Hacker News style). **New** is newest first.
+
+**Keeping it fast as tables grow.** Every list picks its ~30 poll ids straight from an index
+(`polls_hot_idx`, `polls_new_idx`, `polls_creator_idx`, `votes (user_id, created_at)`), then
+`poll_cards()` builds just those cards, so a page costs the same at 50 polls or 5 million. Pages
+continue from a cursor (each row's `cursor`, passed back as `after`) instead of an offset, so
+deep pages stay fast and nothing repeats. `hot_score` is refreshed every 5 minutes by
+`refresh_hot_scores()`: by **pg_cron** if it's enabled (Supabase: **Database → Extensions →
+pg_cron**, then run the scale migration's last block again, or
+`select cron.schedule('docchi-hot-scores', '*/5 * * * *', 'select public.refresh_hot_scores()');`),
+otherwise by the first feed load that finds it stale. New polls get a score on insert, so they
+show up straight away. Username search uses a trigram index (`pg_trgm`). A shared link (`/?poll=<id>`) puts that poll first, even
 after it has closed (`get_poll`).
 
 **Poll of the Day** is the system poll whose `featured_on` is today's date in India time

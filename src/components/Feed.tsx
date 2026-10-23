@@ -103,9 +103,12 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   // Load the next page a few cards before the end.
   useEffect(() => {
     if (!polls || !hasMore || loadingMore.current || index < polls.length - 3) return;
-    loadingMore.current = true;
     const token = loadToken.current;
-    fetchFeed(tab, polls.length)
+    // The shared poll sits on top without a cursor; page from the last list poll.
+    const after = [...polls].reverse().find((p) => p.cursor)?.cursor;
+    if (!after) return;
+    loadingMore.current = true;
+    fetchFeed(tab, after)
       .then((more) => {
         if (token !== loadToken.current) return;
         setPolls((list) => {
@@ -140,7 +143,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
     async () => {
       if (!polls || freshPolls) return;
       try {
-        const [newest] = await fetchFeed("new", 0, 1);
+        const [newest] = await fetchFeed("new", undefined, 1);
         const newestLoaded = polls.reduce((m, p) => (p.createdAt > m ? p.createdAt : m), "");
         if (newest && newest.createdAt > newestLoaded && !polls.some((p) => p.id === newest.id)) setFreshPolls(true);
       } catch {
