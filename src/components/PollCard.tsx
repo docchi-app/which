@@ -8,6 +8,7 @@ import { useLiveInterval } from "@/lib/useLiveInterval";
 import { formatCount, percentages, timeLeft } from "@/lib/format";
 import type { Poll, VoteResult } from "@/lib/types";
 import { ArrowIcon, CommentIcon, ShareIcon } from "./icons";
+import { CirclePicks, LockedCircle } from "./CircleBits";
 
 const LIVE_REFRESH_MS = 5000;
 
@@ -137,6 +138,29 @@ export function PollCard({
   const mineIndex = poll.options.findIndex((o) => o.id === mineId);
   const votesLabel = `${formatCount(poll.voteCount)} ${poll.voteCount === 1 ? "vote" : "votes"}`;
   const spice = isTake && showResults ? spiciness(pcts) : null;
+  const isCircle = poll.visibility === "circle";
+
+  if (poll.locked) {
+    return (
+      <article className="poll-card poll-locked" aria-labelledby={`q-${poll.id}`}>
+        <div className="poll-meta">
+          <span className="chip chip-small chip-circle">Circle</span>
+          <span className="poll-by">
+            by{" "}
+            <Link href={`/u/${poll.creator}`} className="creator-link">
+              @{poll.creator}
+            </Link>
+          </span>
+        </div>
+        <LockedCircle poll={poll} canVote={canVote} />
+        <div className="poll-actions">
+          <button type="button" className="skip-btn" onClick={onNext} aria-label="Skip to next poll">
+            Skip
+          </button>
+        </div>
+      </article>
+    );
+  }
 
   const withYou = !showResults
     ? "Locking in your pick…"
@@ -165,7 +189,12 @@ export function PollCard({
           {tag}
         </span>
         <span className="poll-by">
-          {poll.visibility === "link" && <span className="chip chip-small chip-link">Link only</span>}{" "}
+          {poll.visibility === "link" && <span className="chip chip-small chip-link">Link only</span>}
+          {isCircle && !(tag.includes("Circle") && !poll.isMine) && (
+            <span className="chip chip-small chip-circle" title={poll.audience ?? undefined}>
+              {poll.isMine && poll.audience && poll.audience !== "Whole circle" ? poll.audience : "Circle"}
+            </span>
+          )}{" "}
           by{" "}
           {poll.isSystem ? (
             <strong>@{poll.creator}</strong>
@@ -235,6 +264,9 @@ export function PollCard({
           <p className="poll-foot-note">
             {votesLabel} · {isTake ? "tap to see how spicy this is" : "tap to reveal results"}
           </p>
+          {isCircle && !poll.isMine && (
+            <p className="circle-note">Your pick is visible to @{poll.creator}&apos;s circle.</p>
+          )}
         </>
       ) : (
         <>
@@ -262,6 +294,7 @@ export function PollCard({
                 ))}
             </div>
           )}
+          {isCircle && showResults && (voted || poll.isMine) && <CirclePicks poll={poll} />}
           {spice && (
             <div className="spice-meter">
               <strong>Spice meter</strong>

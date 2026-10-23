@@ -14,7 +14,8 @@ import {
   type UsernameProblem,
 } from "@/lib/create";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import type { PollKind } from "@/lib/types";
+import type { PollKind, Visibility } from "@/lib/types";
+import { getMyCircle, type MyCircle } from "@/lib/circle";
 import { ANSWER_COLORS } from "./PollCard";
 import { ArrowIcon, PlusIcon } from "./icons";
 
@@ -30,7 +31,9 @@ type Draft = {
   answers: string[];
   days: Days;
   username: string;
-  visibility: "public" | "link";
+  visibility: Visibility;
+  /** Circle polls: only these groups (empty = whole circle). */
+  groups: string[];
 };
 const EMPTY_DRAFT: Draft = {
   kind: "classic",
@@ -40,6 +43,7 @@ const EMPTY_DRAFT: Draft = {
   days: 3,
   username: "",
   visibility: "public",
+  groups: [],
 };
 const TEASER_MAX = 60;
 
@@ -63,6 +67,7 @@ const ERRORS: Record<string, string> = {
   duplicate_answers: "Two answers are the same. Make each one different.",
   duration: "Pick when the poll closes.",
   blocked_words: "Let's keep it friendly: some of those words aren't allowed.",
+  empty_circle: "Nobody's in your circle (or those groups) yet. Share your circle link from your profile.",
   special_limit: "One hot take or mystery poll a day. Post a classic, or come back tomorrow!",
   teaser_length: "Mystery polls need a teaser of 3 to 60 characters.",
   demo: "Demo mode: polls can't be posted until Supabase is connected.",
@@ -94,6 +99,10 @@ export function CreatePoll() {
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const restored = useRef(false);
+  // Typing before the screen finishes loading must not be overwritten.
+  const edited = useRef(false);
+  // Your circle and its groups, for "My circle".
+  const [circle, setCircle] = useState<MyCircle | null>(null);
 
   // Restore an unfinished draft (e.g. after signing in), then load who's posting.
   useEffect(() => {
@@ -106,10 +115,13 @@ export function CreatePoll() {
         const s = await getCreateStatus(seed);
         setStatus(s);
         // Prefill a free username so posting stays one tap.
-        setDraft({ ...saved, username: saved.username || s.suggestions[0] || "" });
+        setDraft((d) => {
+          const base = edited.current ? d : saved;
+          return { ...base, username: base.username || s.suggestions[0] || "" };
+        });
       } catch (e) {
         console.error(e);
-        setDraft(saved);
+        if (!edited.current) setDraft(saved);
         setError("Couldn't load. Check your connection and try again.");
       }
     })();
@@ -125,6 +137,21 @@ export function CreatePoll() {
   }, [draft]);
 
   const needsName = !!status?.signedIn && status.username === null;
+
+  useEffect(() => {
+    if (!status?.signedIn || !isSupabaseConfigured) return;
+    getMyCircle()
+      .then(setCircle)
+      .catch(() => {});
+  }, [status?.signedIn]);
+
+  const circleSize = circle?.members.length ?? 0;
+  // People who'd see a circle poll with the current group choice.
+  const audienceSize = !circle
+    ? 0
+    : draft.groups.length === 0
+      ? circleSize
+      : circle.members.filter((m) => m.groups.some((g) => draft.groups.includes(g))).length;
 
   // Check the username with the server as they type (debounced).
   useEffect(() => {
@@ -150,6 +177,7 @@ export function CreatePoll() {
         : null;
 
   const set = (patch: Partial<Draft>) => {
+    edited.current = true;
     setError(null);
     setDraft((d) => ({ ...d, ...patch }));
   };
@@ -164,6 +192,7 @@ export function CreatePoll() {
   const dupes = new Set(answers.map((a) => a.toLowerCase())).size !== answers.length;
   const nameOk = nameCheck?.problem === "ok";
   const specialUsed = kind !== "classic" && status?.specialLeft === 0;
+  const circleEmpty = draft.visibility === "circle" && circle !== null && audienceSize === 0;
   const missing = specialUsed
     ? "You've posted today's hot take or mystery poll. Classic polls are still open!"
     : isMystery && teaser.length < 3
@@ -180,7 +209,9 @@ export function CreatePoll() {
             ? "Two answers are the same"
             : !nameOk
               ? "Pick a username"
-              : status && status.pollsLeft <= 0
+              : circleEmpty
+                ? "Nobody's in your circle (or those groups) yet"
+                : status && status.pollsLeft <= 0
                 ? `That's ${DAILY_POLL_LIMIT} polls today. Come back tomorrow!`
                 : null;
 
@@ -197,6 +228,7 @@ export function CreatePoll() {
         kind,
         teaser: isMystery ? teaser : null,
         visibility: draft.visibility,
+        groups: draft.groups,
       });
       sessionStorage.removeItem(DRAFT_KEY);
       router.push(`/?poll=${id}&created=1`);
@@ -372,7 +404,8 @@ export function CreatePoll() {
             {(
               [
                 ["public", "Everyone"],
-                ["link", "Only with the link"],
+                ["circle", "My circle"],
+                ["link", "Only with link"],
               ] as const
             ).map(([v, label]) => (
               <button
@@ -386,10 +419,42 @@ export function CreatePoll() {
               </button>
             ))}
           </div>
+          {draft.visibility === "circle" && circle && circleSize > 0 && (
+            <div className="audience-chips" role="group" aria-label="Which part of your circle">
+              <button
+                type="button"
+                className="member-group"
+                aria-pressed={draft.groups.length === 0}
+                onClick={() => set({ groups: [] })}
+              >
+                Whole circle ({circleSize})
+              </button>
+              {circle.groups.map((g) => {
+                const on = draft.groups.includes(g.id);
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    className="member-group"
+                    aria-pressed={on}
+                    onClick={() =>
+                      set({ groups: on ? draft.groups.filter((x) => x !== g.id) : [...draft.groups, g.id] })
+                    }
+                  >
+                    {g.name} ({g.count})
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <span className="format-blurb">
             {draft.visibility === "public"
               ? "Shows up in everyone's feed."
-              : "Stays out of the feed. Only people you send the link to can vote. You can change this later on your profile."}
+              : draft.visibility === "circle"
+                ? circle && circleSize === 0
+                  ? "Your circle is empty. Share your circle link (Profile → Circle) so friends can ask to join."
+                  : `Only ${audienceSize} ${audienceSize === 1 ? "person" : "people"} in your circle can see and vote. They'll see who picked what.`
+                : "Stays out of the feed. Only people you send the link to can vote. You can change this later on your profile."}
           </span>
         </fieldset>
 
@@ -457,6 +522,7 @@ export function CreatePoll() {
             <span className="preview-by">
               by @{author} · closes in {daysLabel}
               {draft.visibility === "link" && " · link only"}
+              {draft.visibility === "circle" && " · circle only"}
             </span>
           </div>
         </div>
