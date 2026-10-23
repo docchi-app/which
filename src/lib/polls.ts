@@ -35,13 +35,13 @@ const toPoll = (r: FeedRow): Poll => ({
 });
 
 /** One page of the feed: open polls, ones you haven't voted on first. */
-export async function fetchFeed(tab: FeedTab, skip = 0): Promise<Poll[]> {
+export async function fetchFeed(tab: FeedTab, skip = 0, limit = FEED_PAGE_SIZE): Promise<Poll[]> {
   const supabase = getSupabase();
-  if (!supabase) return skip ? [] : demoFeed(tab);
+  if (!supabase) return skip ? [] : demoFeed(tab).slice(0, limit);
 
   // `skip` only when paging, so the first page also works before the
   // 20261025 migration has been run.
-  const args = skip ? { tab, max_rows: FEED_PAGE_SIZE, skip } : { tab, max_rows: FEED_PAGE_SIZE };
+  const args = skip ? { tab, max_rows: limit, skip } : { tab, max_rows: limit };
   const { data, error } = await supabase.rpc("get_feed", args);
   if (error) throw error;
   return (data as FeedRow[]).map(toPoll);
@@ -50,7 +50,10 @@ export async function fetchFeed(tab: FeedTab, skip = 0): Promise<Poll[]> {
 /** A single poll (for shared links), even if it has closed. */
 export async function fetchPoll(id: string): Promise<Poll | null> {
   const supabase = getSupabase();
-  if (!supabase) return demoFeed("trending").find((p) => p.id === id) ?? null;
+  if (!supabase) {
+    demoTrickle(id);
+    return demoFeed("trending").find((p) => p.id === id) ?? null;
+  }
 
   const { data, error } = await supabase.rpc("get_poll", { poll: id });
   if (error) throw error;
@@ -130,4 +133,14 @@ async function demoVote(pollId: string, optionId: string): Promise<VoteResult> {
     poll.options = poll.options.map((o) => (o.id === optionId ? { ...o, votes: (o.votes ?? 0) + 1 } : o));
   }
   return { myOptionId: demoVotes.get(pollId)!, voteCount: poll.voteCount, options: poll.options };
+}
+
+/** Demo mode: now and then someone else votes, so live updates can be seen. */
+function demoTrickle(pollId: string) {
+  const poll = DEMO.find((p) => p.id === pollId);
+  if (!poll || Math.random() < 0.4) return;
+  const k = Math.floor(Math.random() * poll.options.length);
+  const added = 1 + Math.floor(Math.random() * 3);
+  poll.voteCount += added;
+  poll.options = poll.options.map((o, i) => (i === k ? { ...o, votes: (o.votes ?? 0) + added } : o));
 }

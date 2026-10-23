@@ -28,6 +28,11 @@ The first slice of the build order:
 - **Design tokens:** colours, fonts (Bricolage Grotesque and DM Sans), outlines, hard shadows and
   corner radii are CSS variables in `src/app/globals.css`.
 - **PWA basics:** web app manifest, app icon, theme colour.
+- **Live updates:** while a poll is on screen, its numbers refresh every 5 seconds and the bars
+  slide to the new values (before you vote, only the total moves). Every 45 seconds the feed checks
+  for newly posted polls and shows a "Fresh polls ↑" pill; tapping it reloads the feed. Nothing
+  runs while the tab is hidden. This is simple polling; Supabase Realtime can replace it once
+  traffic grows.
 - **Create poll:** question (up to 140 characters), 2 to 4 answers (up to 40 each), closes after
   1, 3 or 7 days, with a live preview. Anyone signed in can post up to 5 polls in 24 hours. The
   first poll also picks a username: a free one is prefilled from the Google name, it's checked as

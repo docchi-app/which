@@ -5,6 +5,7 @@ import Link from "next/link";
 import { canVote as userCanVote, onUserChange, savePendingVote, takePendingVote } from "@/lib/auth";
 import { FEED_PAGE_SIZE, fetchFeed, fetchPoll } from "@/lib/polls";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { useLiveInterval } from "@/lib/useLiveInterval";
 import type { FeedTab, Poll, VoteResult } from "@/lib/types";
 import { LogoMark, Wordmark } from "./Logo";
 import { ANSWER_COLORS, PollCard } from "./PollCard";
@@ -16,6 +17,9 @@ const TABS: { id: FeedTab; label: string }[] = [
   { id: "trending", label: "Trending" },
   { id: "new", label: "New" },
 ];
+
+// How often to look for polls posted since the feed loaded.
+const NEW_POLLS_CHECK_MS = 45_000;
 
 // A drag this far (px), or a flick this fast (px/ms), moves to the next card.
 const SWIPE_DISTANCE = 90;
@@ -37,6 +41,8 @@ export function Feed() {
   const [votedBefore, setVotedBefore] = useState<Set<string>>(new Set());
   // Which way the last move went, so the next card comes in from that side.
   const [dir, setDir] = useState<"next" | "prev">("next");
+  // Polls posted since this feed loaded ("New polls" pill).
+  const [freshPolls, setFreshPolls] = useState(false);
 
   const stackRef = useRef<HTMLElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -52,6 +58,7 @@ export function Feed() {
     const token = ++loadToken.current;
     setPolls(null);
     setFailed(false);
+    setFreshPolls(false);
     setIndex(0);
     try {
       const list = await fetchFeed(which);
@@ -114,6 +121,26 @@ export function Feed() {
       ) ?? null,
     );
   }, []);
+
+  const onRefresh = useCallback((fresh: Poll) => {
+    setPolls((list) => list?.map((p) => (p.id === fresh.id ? fresh : p)) ?? null);
+  }, []);
+
+  // Is there a poll newer than anything in the loaded feed?
+  useLiveInterval(
+    async () => {
+      if (!polls || freshPolls) return;
+      try {
+        const [newest] = await fetchFeed("new", 0, 1);
+        const newestLoaded = polls.reduce((m, p) => (p.createdAt > m ? p.createdAt : m), "");
+        if (newest && newest.createdAt > newestLoaded && !polls.some((p) => p.id === newest.id)) setFreshPolls(true);
+      } catch {
+        // Try again next time.
+      }
+    },
+    NEW_POLLS_CHECK_MS,
+    !!polls,
+  );
 
   const onNeedSignIn = useCallback(
     (pollId: string, optionId: string) => {
@@ -277,6 +304,12 @@ export function Feed() {
             {t.label}
           </button>
         ))}
+        {freshPolls && (
+          <button type="button" className="fresh-pill press" onClick={() => load(tab)}>
+            <span className="live-dot" aria-hidden="true" />
+            Fresh polls ↑
+          </button>
+        )}
       </div>
 
       <main className="stack" ref={stackRef}>
@@ -309,6 +342,7 @@ export function Feed() {
                 celebrate={poll.id === celebrateId}
                 justCreated={poll.id === createdId}
                 onVoted={onVoted}
+                onRefresh={onRefresh}
                 onNeedSignIn={onNeedSignIn}
                 onNext={() => go(1)}
               />
