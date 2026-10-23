@@ -39,6 +39,8 @@ export type Poll = {
   closesAt: string;
   myOptionId: string | null;
   options: PollOption[];
+  /** Where the next page starts, for polls that came from a list. */
+  cursor?: string;
 };
 
 export type VoteResult = {
