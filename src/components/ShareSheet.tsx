@@ -1,0 +1,131 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { pollUrl, recordShare, shareText, type ShareChannel } from "@/lib/share";
+import type { Poll } from "@/lib/types";
+import { ShareIcon } from "./icons";
+
+type Props = { poll: Poll; onClose: () => void };
+
+/** "Challenge a friend": WhatsApp, X, the phone's share menu, or copy the link. */
+export function ShareSheet({ poll, onClose }: Props) {
+  const firstRef = useRef<HTMLButtonElement>(null);
+  const [copied, setCopied] = useState(false);
+  const [canNativeShare] = useState(() => typeof navigator !== "undefined" && "share" in navigator);
+  const voted = poll.myOptionId !== null;
+  const text = shareText(poll.question, voted);
+
+  useEffect(() => {
+    firstRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  function open(channel: ShareChannel, href: string) {
+    recordShare(poll.id, channel);
+    window.open(href, "_blank", "noopener,noreferrer");
+  }
+
+  async function native() {
+    try {
+      await navigator.share({ title: poll.question, text, url: pollUrl(poll.id, "native") });
+      recordShare(poll.id, "native");
+    } catch {
+      // Share menu dismissed.
+    }
+  }
+
+  async function copy() {
+    const url = pollUrl(poll.id, "copy");
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.prompt("Copy this link", url);
+    }
+    recordShare(poll.id, "copy");
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  }
+
+  return (
+    <div className="sheet-layer">
+      <div className="sheet-backdrop" aria-hidden="true" onClick={onClose} />
+      <section role="dialog" aria-modal="true" aria-labelledby="share-title" className="sheet share-sheet">
+        <div className="sheet-handle" aria-hidden="true" />
+        <h2 id="share-title" className="sheet-title">
+          {voted ? "Challenge a friend" : "Share this poll"}
+        </h2>
+        <p className="sheet-text">Friends see the question, not the result. They vote to find out.</p>
+
+        {/* The same card WhatsApp and X will show. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="share-preview" src={`/p/${poll.id}/opengraph-image`} alt="" width={1200} height={630} />
+
+        <div className="share-grid">
+          <button
+            ref={firstRef}
+            type="button"
+            className="share-btn share-btn-whatsapp press"
+            onClick={() => open("whatsapp", `https://wa.me/?text=${encodeURIComponent(`${text} ${pollUrl(poll.id, "whatsapp")}`)}`)}
+          >
+            <WhatsAppIcon />
+            WhatsApp
+          </button>
+          <button
+            type="button"
+            className="share-btn press"
+            onClick={() =>
+              open(
+                "x",
+                `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(pollUrl(poll.id, "x"))}`,
+              )
+            }
+          >
+            <XIcon />
+            Post on X
+          </button>
+          {canNativeShare && (
+            <button type="button" className="share-btn press" onClick={native}>
+              <ShareIcon />
+              More apps
+            </button>
+          )}
+          <button type="button" className="share-btn press" onClick={copy} aria-live="polite">
+            <LinkIcon />
+            {copied ? "Copied!" : "Copy link"}
+          </button>
+        </div>
+
+        <button type="button" className="sheet-later" onClick={onClose}>
+          Done
+        </button>
+      </section>
+    </div>
+  );
+}
+
+function WhatsAppIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3.5 20.5l1.3-4.2A8.5 8.5 0 1 1 8 19.4z" />
+      <path d="M9 9.5c.3 2 2.5 4.3 5 5l1.2-1.3 2 1-.6 1.6c-3.5.3-7.6-3.6-7.8-7l1.5-.7 1 2z" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+      <path d="M4 4l16 16M20 4L4 20" />
+    </svg>
+  );
+}
+
+function LinkIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1" />
+    </svg>
+  );
+}

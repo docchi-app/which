@@ -1093,3 +1093,37 @@ button.ghost-action { cursor: pointer; }
   to { opacity: 1; transform: none; }
 }
 
+
+/* ─── Share sheet ────────────────────────────────────────────────────────── */
+
+.share-sheet { gap: 12px; }
+.share-preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1200 / 630;
+  border: var(--outline);
+  border-radius: 16px;
+  background: var(--line);
+  box-shadow: var(--shadow);
+}
+.share-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+.share-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 52px;
+  border: var(--outline);
+  border-radius: 16px;
+  background: var(--white);
+  box-shadow: var(--shadow);
+  font-size: 15px;
+  font-weight: 700;
+}
+.share-btn-whatsapp { background: var(--mint); }

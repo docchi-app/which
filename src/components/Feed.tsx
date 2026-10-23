@@ -10,6 +10,7 @@ import type { FeedTab, Poll, VoteResult } from "@/lib/types";
 import { LogoMark, Wordmark } from "./Logo";
 import { ANSWER_COLORS, PollCard } from "./PollCard";
 import { SignInSheet, type SheetPick } from "./SignInSheet";
+import { ShareSheet } from "./ShareSheet";
 import { BottomNav } from "./BottomNav";
 import { TrophyIcon } from "./icons";
 
@@ -25,7 +26,8 @@ const NEW_POLLS_CHECK_MS = 45_000;
 const SWIPE_DISTANCE = 90;
 const SWIPE_VELOCITY = 0.5;
 
-export function Feed() {
+/** `initialPollId` opens the feed on that poll (a shared /p/<id> link). */
+export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   const [tab, setTab] = useState<FeedTab>("trending");
   const [polls, setPolls] = useState<Poll[] | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -33,6 +35,7 @@ export function Feed() {
   const [failed, setFailed] = useState(false);
   const [canVote, setCanVote] = useState<boolean | null>(isSupabaseConfigured ? null : true);
   const [sheet, setSheet] = useState<SheetPick | null>(null);
+  const [sharing, setSharing] = useState<Poll | null>(null);
   // Poll whose vote was just cast on the way back from Google sign-in.
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
   // Poll the viewer just posted (arrives from /create with ?created=1).
@@ -64,7 +67,7 @@ export function Feed() {
       const list = await fetchFeed(which);
       // A shared link (?poll=…) puts that poll on top, even if it has closed.
       const url = new URL(window.location.href);
-      const shared = url.searchParams.get("poll");
+      const shared = initialPollId ?? url.searchParams.get("poll");
       if (shared) {
         const at = list.findIndex((p) => p.id === shared);
         const sharedPoll = at >= 0 ? list.splice(at, 1)[0] : await fetchPoll(shared).catch(() => null);
@@ -85,7 +88,7 @@ export function Feed() {
       console.error(e);
       if (token === loadToken.current) setFailed(true);
     }
-  }, []);
+  }, [initialPollId]);
 
   useEffect(() => {
     // Fetching on mount and on tab change is exactly what this effect is for.
@@ -172,7 +175,7 @@ export function Feed() {
   // Latest values for the native touch handlers below.
   const live = useRef({ go, canNext: false, canPrev: false, sheetOpen: false });
   useEffect(() => {
-    live.current = { go, canNext: !!polls && index < total, canPrev: index > 0, sheetOpen: !!sheet };
+    live.current = { go, canNext: !!polls && index < total, canPrev: index > 0, sheetOpen: !!sheet || !!sharing };
   });
 
   // A new card always starts from rest, wherever the last drag left the slot.
@@ -257,13 +260,13 @@ export function Feed() {
   // Keyboard: ↓ / j for next, ↑ / k for previous.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (sheet || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (sheet || sharing || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "ArrowDown" || e.key === "j") go(1);
       else if (e.key === "ArrowUp" || e.key === "k") go(-1);
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, sheet]);
+  }, [go, sheet, sharing]);
 
   const poll = polls?.[index];
 
@@ -344,6 +347,7 @@ export function Feed() {
                 onVoted={onVoted}
                 onRefresh={onRefresh}
                 onNeedSignIn={onNeedSignIn}
+                onShare={() => setSharing(poll)}
                 onNext={() => go(1)}
               />
             ) : (
@@ -376,6 +380,7 @@ export function Feed() {
       <BottomNav current="feed" />
 
       {sheet && <SignInSheet pick={sheet} onClose={closeSheet} />}
+      {sharing && <ShareSheet poll={sharing} onClose={() => setSharing(null)} />}
     </div>
   );
 }
