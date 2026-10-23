@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { continueWithGoogle, onUserChange, saveReturnTo, signOut, canVote } from "@/lib/auth";
+import { continueWithGoogle, onUserChange, saveReturnTo, canVote } from "@/lib/auth";
 import { checkUsername, type UsernameProblem } from "@/lib/create";
 import { formatCount, percentages, timeLeft } from "@/lib/format";
 import { deletePoll, fetchMyPolls, setPollVisibility } from "@/lib/polls";
@@ -10,8 +10,7 @@ import { compactCount, getMyProfile, PROFILE_CHANGED, updateUsername, type Profi
 import { isSupabaseConfigured } from "@/lib/supabase";
 import type { Poll, Visibility } from "@/lib/types";
 import { BottomNav } from "./BottomNav";
-import { GetTheApp } from "./GetTheApp";
-import { NotificationsCard } from "./NotificationsCard";
+import { NotificationPrompt } from "./Notifications";
 import { ANSWER_COLORS, VerifiedTick } from "./PollCard";
 import { ShareSheet } from "./ShareSheet";
 import { CirclePanel } from "./CirclePanel";
@@ -116,6 +115,9 @@ export function ProfileScreen() {
         <span className="banner-sun" />
         <span className="banner-tile" />
       </div>
+      <Link href="/settings" className="icon-btn icon-btn-white press settings-btn" aria-label="Settings">
+        <GearIcon />
+      </Link>
 
       {signedIn === false ? (
         <section className="poll-card soon profile-signin">
@@ -150,8 +152,7 @@ export function ProfileScreen() {
             </div>
           </dl>
 
-          {signedIn && <NotificationsCard />}
-          <GetTheApp />
+          {signedIn && <NotificationPrompt />}
 
           <div role="tablist" aria-label="Profile lists" className="tabs profile-tabs">
             {(
@@ -226,28 +227,8 @@ export function ProfileScreen() {
             </ul>
           )}
 
-          {signedIn && (
-            <button
-              type="button"
-              className="sheet-later profile-signout"
-              onClick={async () => {
-                await signOut();
-                setProfile(null);
-                setPolls(null);
-              }}
-            >
-              Sign out
-            </button>
-          )}
         </>
       )}
-
-      <nav className="legal-links" aria-label="Policies">
-        {profile?.isAdmin && <Link href="/admin">Admin</Link>}
-        <Link href="/guidelines">Community guidelines</Link>
-        <Link href="/terms">Terms</Link>
-        <Link href="/privacy">Privacy</Link>
-      </nav>
 
       <BottomNav current="profile" />
       {sharing && <ShareSheet poll={sharing} onClose={() => setSharing(null)} />}
@@ -504,5 +485,14 @@ export function ProfilePoll({
         </p>
       )}
     </li>
+  );
+}
+
+function GearIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="3.2" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+    </svg>
   );
 }

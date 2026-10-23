@@ -12,7 +12,7 @@ import {
 } from "@/lib/install";
 
 type Props = {
-  /** notifications: opened from the Notifications card · nudge: after a few votes · app: Profile's "Get the app". */
+  /** notifications: from the notifications prompt or settings · nudge: after a few votes · app: Settings → The app. */
   reason: "notifications" | "nudge" | "app";
   onClose: () => void;
 };
@@ -134,7 +134,7 @@ export function InstallSheet({ reason, onClose }: Props) {
               </span>
               <span>
                 Tap <strong>Add</strong>, then open <strong>Docchi</strong> from your Home Screen
-                {reason === "notifications" && <small>Then Profile → Turn on notifications.</small>}
+                {reason === "notifications" && <small>Then Profile → Turn on.</small>}
               </span>
             </li>
           </ol>
