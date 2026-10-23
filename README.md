@@ -93,6 +93,16 @@ npx supabase db push                                  # applies supabase/migrati
 # then run supabase/seed.sql in the SQL Editor
 ```
 
+**Starter pack (before the friends beta):** run `supabase/starter_pack.sql` once in the SQL
+Editor. It adds about 40 more system polls (about 55 in all):
+- a Poll of the Day for each of the next 14 days (unlocks at 00:00 India time, open 3 days);
+- one new poll each morning for 15 days (09:00 India time, open 7 days), so the New tab and the
+  "Fresh polls" pill stay alive;
+- 14 evergreen polls, live now and open for 30 days.
+
+It also keeps the original `seed.sql` polls open for 30 more days. It's safe to re-run, and dates
+count from the day you run it. To write your own, copy a row in the `pack` list.
+
 ### 3. Google sign-in
 
 **In Google Cloud** ([console.cloud.google.com](https://console.cloud.google.com)):
