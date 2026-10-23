@@ -1476,7 +1476,6 @@ button.ghost-action { cursor: pointer; }
 .mini-btn-danger { background: var(--alert); border-color: var(--alert); color: var(--white); }
 .mini-btn-danger-text { margin-left: auto; border-color: transparent; color: var(--alert); }
 .confirm-text { flex-basis: 100%; font-size: 13px; font-weight: 700; }
-.profile-signout { margin: 18px auto 0; }
 .profile-signin { margin-top: -40px; position: relative; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
@@ -1816,15 +1815,6 @@ button.ghost-action { cursor: pointer; }
 .legal ul { margin: 0; padding-left: 20px; }
 .legal li { margin: 6px 0; }
 .legal a { font-weight: 700; }
-.legal-links {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px 14px;
-  margin: 4px 0 0;
-  font-size: 13px;
-}
-.legal-links a { color: inherit; opacity: 0.7; }
 .sheet-legal { margin: 10px 0 0; font-size: 12px; text-align: center; opacity: 0.75; }
 .sheet-legal a { font-weight: 700; }
 
@@ -1937,44 +1927,46 @@ button.ghost-action { cursor: pointer; }
 .admin-table th[scope="row"], .admin-table thead th:first-child { text-align: left; }
 .admin-note { line-height: 1.5; }
 
-/* ─── Notifications (Profile) ────────────────────────────────────────────── */
+/* ─── Notifications ──────────────────────────────────────────────────────── */
 
-.notif-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 0 20px 16px;
-  padding: 14px;
-  border: var(--outline-bold);
-  border-radius: 20px;
-  background: var(--white);
-  box-shadow: var(--shadow);
-}
-.notif-top { display: flex; align-items: flex-start; gap: 12px; }
 .notif-bell {
   display: flex;
   flex: none;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   align-items: center;
   justify-content: center;
   border: var(--outline);
-  border-radius: 12px;
+  border-radius: 11px;
   background: var(--sun);
 }
-.notif-title { display: flex; align-items: center; gap: 8px; margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 800; }
-.notif-text { margin: 2px 0 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
-.notif-manage {
-  align-self: flex-start;
-  min-height: 36px;
-  padding: 0;
+.notif-text { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+/* Profile: one slim row while notifications are off. */
+.notif-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 20px 14px;
+  padding: 8px 6px 8px 10px;
+  border: var(--outline);
+  border-radius: 16px;
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+.notif-prompt-text { flex: 1; min-width: 0; font-size: 13px; line-height: 1.35; }
+.notif-prompt-text a { font-weight: 700; color: var(--ink); }
+.notif-prompt .mini-btn { flex: none; }
+.notif-prompt-x {
+  flex: none;
+  width: 32px;
+  height: 36px;
   border: 0;
   background: transparent;
-  font-size: 14px;
-  font-weight: 700;
-  text-decoration: underline;
+  color: var(--muted);
+  font-size: 15px;
   cursor: pointer;
 }
+.notif-prompt-done { padding: 10px 14px; background: var(--mint); }
 .notif-kinds { display: flex; flex-direction: column; gap: 4px; }
 .notif-kind {
   display: flex;
@@ -2076,4 +2068,53 @@ button.ghost-action { cursor: pointer; }
 .install-arrow-bottom svg { animation: nudge-down 1.1s ease-in-out infinite; }
 .install-arrow-top { top: calc(6px + env(safe-area-inset-top)); right: 10px; }
 .install-arrow-top svg { animation: nudge-up 1.1s ease-in-out infinite; }
-.install-row .notif-bell { overflow: hidden; background: var(--coral); }
+
+/* ─── Settings ───────────────────────────────────────────────────────────── */
+
+.settings-btn { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 16px; z-index: 2; }
+.settings-top { display: flex; align-items: center; gap: 12px; padding: calc(14px + env(safe-area-inset-top)) 20px 4px; }
+.settings-title { margin: 0; font-family: var(--font-display); font-size: 30px; font-weight: 800; letter-spacing: -0.03em; }
+.settings-group { display: flex; flex-direction: column; gap: 8px; margin: 18px 20px 0; }
+.settings-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.settings-card,
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  border: var(--outline-bold);
+  border-radius: 20px;
+  background: var(--white);
+  box-shadow: var(--shadow);
+}
+.settings-card { gap: 12px; padding: 14px; }
+.settings-list { overflow: hidden; }
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 1.5px dashed var(--line);
+  background: var(--white);
+  color: var(--ink);
+  font-size: 15px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.settings-list .settings-row:last-child { border-bottom: 0; }
+.settings-group > .settings-row { border: var(--outline-bold); border-radius: 20px; box-shadow: var(--shadow); }
+.settings-row > span { display: flex; flex-direction: column; }
+.settings-row-static { cursor: default; }
+.settings-row-danger { color: var(--alert); }
