@@ -154,7 +154,7 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261030000000_circles.sql`, `20261031000000_usernames.sql`, `20261101000000_circle_polls.sql`,
    `20261102000000_scale.sql`, `20261103000000_feed_voted_last.sql`,
    `20261104000000_safety_metrics.sql`, `20261105000000_push.sql`, `20261106000000_push_fixes.sql`, `20261107000000_leaders_schedule.sql`,
-   `20261108000000_comments.sql`, …), in date order,
+   `20261108000000_comments.sql`, `20261109000000_rate_limits.sql`, …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -326,6 +326,7 @@ per Supabase auth user, created automatically by a database trigger.
 | No direct writes from the browser | Inserts and updates are revoked for `anon` and `authenticated`. Writes go through database functions |
 | Banned users and closed polls | Checked inside `cast_vote()` |
 | Comments disappear after 24h | `expires_at`, filtered in `get_comments()`. Rows stay in the database so moderators can review them (the purge removes them after 180 days) |
+| Rate limits (app requests only; the SQL Editor isn't limited) | Triggers: votes 120 per 10 min and 1,500 a day; circle requests 20 per 10 min (and 50 a day); shares 60 an hour; blocks 30 an hour; groups 20 an hour; group members 300 an hour. Polls, comments, reports and usernames have their own limits. Over a limit → `docchi:slow_down` |
 | Comments only for people who voted (or a closed poll, or its creator), and circle polls stay in the circle | `can_read_comments()` in `get_comments()` / `post_comment()`; the comments table isn't readable by clients |
 | Reports: signed-in only, 20 a day, one per person per poll; 3 reporters hide a poll | `report()` |
 | Only admins see reports and metrics, or remove / ban | `require_admin()` in every `admin_…()` function; `reports`, `visits`, `mod_actions` aren't readable by clients |
@@ -338,6 +339,11 @@ per Supabase auth user, created automatically by a database trigger.
 cards before the end). On Trending and New, polls you haven't voted on come first, with today's
 Poll of the Day on top of Trending; ones you've voted on follow at the end. **Trending** ranks by `polls.hot_score`, votes with a time
 decay (Hacker News style). **New** is newest first.
+
+**Comments stay fast too:** `comments_live_idx` (poll, newest first, not hidden) means a card's
+comment count reads only the index, and `get_comments` takes the newest 120 from it before the
+block filter. With 1M comments (20 polls with 5,000 live each), opening a busy poll's comments went
+from 17 ms to 3.5 ms and Trending from 20 ms to 8.5 ms.
 
 **Keeping it fast as tables grow.** Every list picks its ~30 poll ids straight from an index
 (`polls_hot_idx`, `polls_new_idx`, `polls_creator_idx`, `votes (user_id, created_at)`), then
@@ -378,4 +384,4 @@ docs/               product validation and design handoff
 
 ## Next in the build order
 
-1. CAPTCHA (Cloudflare Turnstile) on sign-in, and rate limits on circle requests and shares
+1. CAPTCHA (Cloudflare Turnstile) on sign-in

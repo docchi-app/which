@@ -121,6 +121,7 @@ export const CIRCLE_ERRORS: Record<string, string> = {
   group_limit: "You can have up to 10 groups.",
   not_in_circle: "Only people in your circle can be in a group.",
   blocked_words: "Let's pick a friendlier name.",
+  slow_down: "That's a lot in a short time. Try again in a few minutes.",
 };
 
 export const circleErrorText = (e: unknown) =>

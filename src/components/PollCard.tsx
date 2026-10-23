@@ -115,7 +115,11 @@ export function PollCard({
       if (e instanceof SignInRequired) onNeedSignIn(poll.id, optionId);
       else {
         console.error(e);
-        setError("That vote didn't go through. Try again?");
+        setError(
+          /slow_down/.test((e as Error)?.message ?? "")
+            ? "Whoa, speedy! Take a short break and try again in a few minutes."
+            : "That vote didn't go through. Try again?",
+        );
       }
     } finally {
       setLockingId(null);
