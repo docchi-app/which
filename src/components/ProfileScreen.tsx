@@ -12,8 +12,10 @@ import type { Poll } from "@/lib/types";
 import { BottomNav } from "./BottomNav";
 import { ANSWER_COLORS, VerifiedTick } from "./PollCard";
 import { ShareSheet } from "./ShareSheet";
+import { CirclePanel } from "./CirclePanel";
+import { getCircleBadge } from "@/lib/circle";
 
-type Tab = "mine" | "voted";
+type Tab = "mine" | "voted" | "circle";
 
 const NAME_PROBLEMS: Record<string, string> = {
   format: "3 to 20 letters, numbers or _",
@@ -33,6 +35,20 @@ export function ProfileScreen() {
   const [polls, setPolls] = useState<Poll[] | null>(null);
   const [sharing, setSharing] = useState<Poll | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [requests, setRequests] = useState(0);
+
+  const loadBadge = useCallback(() => {
+    getCircleBadge()
+      .then(setRequests)
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    // Open straight on the Circle tab from links like /profile?tab=circle.
+    const wanted = new URLSearchParams(window.location.search).get("tab");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (wanted === "circle" || wanted === "voted") setTab(wanted);
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -51,12 +67,13 @@ export function ProfileScreen() {
   useEffect(() => {
     if (!signedIn) return;
     loadProfile();
-  }, [signedIn, loadProfile]);
+    loadBadge();
+  }, [signedIn, loadProfile, loadBadge]);
 
   useEffect(() => {
-    if (!signedIn) return;
+    if (!signedIn || tab === "circle") return;
     let stale = false;
-    fetchMyPolls(tab)
+    fetchMyPolls(tab as "mine" | "voted")
       .then((list) => !stale && setPolls(list))
       .catch((e) => {
         console.error(e);
@@ -130,6 +147,7 @@ export function ProfileScreen() {
               [
                 ["mine", "My polls"],
                 ["voted", "Voted"],
+                ["circle", "Circle"],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -141,6 +159,11 @@ export function ProfileScreen() {
                 onClick={() => pickTab(id)}
               >
                 {label}
+                {id === "circle" && requests > 0 && (
+                  <span className="count-pill" aria-label={`${requests} requests`}>
+                    {requests}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -151,42 +174,46 @@ export function ProfileScreen() {
             </p>
           )}
 
-          <ul className="profile-list">
-            {!polls ? (
-              [0, 1, 2].map((n) => <li key={n} className="skeleton profile-skeleton" />)
-            ) : polls.length === 0 ? (
-              <li className="profile-empty">
-                {tab === "mine" ? (
-                  <>
-                    <strong>No polls yet.</strong> Ask something people can&apos;t resist.
-                    <Link href="/create" className="btn btn-coral press">
-                      Make a poll
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <strong>Nothing voted yet.</strong> Your picks will show up here.
-                    <Link href="/" className="btn btn-white press">
-                      Go vote
-                    </Link>
-                  </>
-                )}
-              </li>
-            ) : (
-              polls.map((p, i) => (
-                <ProfilePoll
-                  key={p.id}
-                  poll={p}
-                  index={i}
-                  onShare={() => setSharing(p)}
-                  onChange={(patch) => {
-                    updatePoll(p.id, patch);
-                    if (!patch) loadProfile();
-                  }}
-                />
-              ))
-            )}
-          </ul>
+          {tab === "circle" ? (
+            <CirclePanel username={profile?.username ?? null} onChanged={loadBadge} />
+          ) : (
+            <ul className="profile-list">
+              {!polls ? (
+                [0, 1, 2].map((n) => <li key={n} className="skeleton profile-skeleton" />)
+              ) : polls.length === 0 ? (
+                <li className="profile-empty">
+                  {tab === "mine" ? (
+                    <>
+                      <strong>No polls yet.</strong> Ask something people can&apos;t resist.
+                      <Link href="/create" className="btn btn-coral press">
+                        Make a poll
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <strong>Nothing voted yet.</strong> Your picks will show up here.
+                      <Link href="/" className="btn btn-white press">
+                        Go vote
+                      </Link>
+                    </>
+                  )}
+                </li>
+              ) : (
+                polls.map((p, i) => (
+                  <ProfilePoll
+                    key={p.id}
+                    poll={p}
+                    index={i}
+                    onShare={() => setSharing(p)}
+                    onChange={(patch) => {
+                      updatePoll(p.id, patch);
+                      if (!patch) loadProfile();
+                    }}
+                  />
+                ))
+              )}
+            </ul>
+          )}
 
           {signedIn && (
             <button
@@ -341,7 +368,7 @@ function ProfileHead({ profile, onRenamed }: { profile: Profile | null; onRename
 }
 
 /** One row in My polls / Voted, with share, visibility and delete for your own. */
-function ProfilePoll({
+export function ProfilePoll({
   poll,
   index,
   onShare,

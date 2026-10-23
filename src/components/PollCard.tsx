@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
+import Link from "next/link";
 import { SignInRequired } from "@/lib/auth";
 import { castVote, fetchPoll } from "@/lib/polls";
 import { useLiveInterval } from "@/lib/useLiveInterval";
@@ -165,7 +166,14 @@ export function PollCard({
         </span>
         <span className="poll-by">
           {poll.visibility === "link" && <span className="chip chip-small chip-link">Link only</span>}{" "}
-          by <strong>@{poll.creator}</strong>
+          by{" "}
+          {poll.isSystem ? (
+            <strong>@{poll.creator}</strong>
+          ) : (
+            <Link href={`/u/${poll.creator}`} className="creator-link">
+              @{poll.creator}
+            </Link>
+          )}
           {poll.isSystem && <VerifiedTick />} · {timeLeft(poll.closesAt, now)}
         </span>
       </div>
