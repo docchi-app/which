@@ -3,6 +3,8 @@ import { getSupabase } from "./supabase";
 export type Profile = {
   /** null while it's still a guest_… name. */
   username: string | null;
+  /** false until they confirm or change their starting username. */
+  usernameConfirmed: boolean;
   avatarUrl: string | null;
   joined: string;
   usernameChangedAt: string | null;
@@ -20,6 +22,7 @@ export async function getMyProfile(): Promise<Profile | null> {
   if (!data) return null;
   return {
     username: data.username,
+    usernameConfirmed: data.username_confirmed ?? true,
     avatarUrl: data.avatar_url,
     joined: data.joined,
     usernameChangedAt: data.username_changed_at,
@@ -44,3 +47,13 @@ export function compactCount(n: number): string {
   if (n < 1_000_000) return `${(n / 1000).toFixed(n < 100_000 ? 1 : 0).replace(/\.0$/, "")}k`;
   return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
 }
+
+/** Free usernames to offer, built from the Google name. */
+export async function getUsernameSuggestions(): Promise<string[]> {
+  const { data, error } = (await getSupabase()?.rpc("username_suggestions")) ?? {};
+  if (error) throw error;
+  return (data as string[] | null) ?? [];
+}
+
+/** Fired after the username changes, so screens showing it refresh. */
+export const PROFILE_CHANGED = "docchi:profile-changed";

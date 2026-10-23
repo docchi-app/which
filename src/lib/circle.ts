@@ -107,6 +107,7 @@ export async function getCircleBadge(): Promise<number> {
 
 export const CIRCLE_ERRORS: Record<string, string> = {
   sign_in: "Sign in first.",
+  need_username: "Pick a username first.",
   self: "That's you!",
   no_user: "Couldn't find that person.",
   blocked: "You can't do that with this person.",

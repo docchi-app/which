@@ -1677,3 +1677,8 @@ button.ghost-action { cursor: pointer; }
   gap: 8px;
   margin: 18px 20px 0;
 }
+
+/* "Pick your @name" sheet */
+.pick-name { display: flex; flex-direction: column; gap: 10px; }
+.name-input-big { height: 56px; font-size: 20px; border-width: 2.5px; border-radius: 18px; }
+.sheet-btn:disabled { opacity: 0.5; cursor: not-allowed; }

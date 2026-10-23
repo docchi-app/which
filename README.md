@@ -52,6 +52,11 @@ The first slice of the build order:
   availability check and suggestions; once a week), stat tiles (polls made, votes got, shares), and
   **My polls / Voted** tabs with mini result bars. Your own polls have Share, Make link-only / Show
   in feed, and Delete (with a confirm).
+- **Usernames:** every Google account gets a starting username made from its Google name (or
+  email). The first time someone opens the app signed in, a **"Pick your @name"** sheet asks them
+  to keep it or change it (live check, free suggestions). It can't be skipped. After that, names
+  can be changed on the profile once a week. Anonymous guests from the first release keep
+  `guest_…` names and can't use circles.
 - **Circle (Instagram Close Friends style, with requests):** everyone has a profile at
   `/u/<username>` with their public polls and an **Ask to join circle** button; that link is also
   their circle invite link. You accept or decline requests (a badge on the Profile tab shows how
@@ -101,7 +106,7 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    (`20261024000000_google_sign_in.sql`, `20261025000000_feed_paging.sql`,
    `20261026000000_create_poll.sql`, `20261027000000_shares.sql`,
    `20261028000000_poll_formats.sql`, `20261029000000_profile_privacy.sql`,
-   `20261030000000_circles.sql`, …), in date order,
+   `20261030000000_circles.sql`, `20261031000000_usernames.sql`, …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -215,6 +220,7 @@ per Supabase auth user, created automatically by a database trigger.
 | One hot take or mystery poll per person per day | `create_poll()` |
 | Link-only polls stay out of other people's feeds | `poll_rows()` ('feed' scope): public, or yours, or you voted |
 | Only the creator can change visibility or delete | `set_poll_visibility()`, `delete_poll()` (soft delete: `deleted_at`) |
+| Every Google account has a real username; circles refuse `guest_…` accounts | `handle_new_user()`, `pick_username()`, `request_circle()` |
 | Circle requests need the owner's OK; groups only hold accepted members | `request_circle()`, `respond_request()`, `set_group_member()` |
 | Blocking cuts both ways and stops new requests | `block_user()`, checked by `request_circle()`, `get_profile()`, `search_people()` |
 | No reading polls around the rules | direct `select` on `polls` / `poll_options` is revoked; everything goes through the functions |

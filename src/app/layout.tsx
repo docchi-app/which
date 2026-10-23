@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
 import { siteUrl } from "@/lib/server-poll";
+import { UsernameGate } from "@/components/UsernameGate";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -33,7 +34,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${bricolage.variable} ${dmSans.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <UsernameGate />
+      </body>
     </html>
   );
 }
