@@ -40,6 +40,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   const [sheet, setSheet] = useState<SheetPick | null>(null);
   const [sharing, setSharing] = useState<Poll | null>(null);
   const [installNudge, setInstallNudge] = useState(false);
+  const [commentsFor, setCommentsFor] = useState<string | null>(null);
   // Poll whose vote was just cast on the way back from Google sign-in.
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
   // Poll the viewer just posted (arrives from /create with ?created=1).
@@ -79,6 +80,12 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
         const sharedPoll = at >= 0 ? list.splice(at, 1)[0] : await fetchPoll(shared).catch(() => null);
         if (sharedPoll) list.unshift(sharedPoll);
         else setMissingShared(true);
+      }
+      // From a "new comments" notification: open that poll's comments.
+      if (shared && url.searchParams.has("comments")) {
+        setCommentsFor(shared);
+        url.searchParams.delete("comments");
+        window.history.replaceState(window.history.state, "", url);
       }
       if (shared && (url.searchParams.has("voted") || url.searchParams.has("created"))) {
         if (url.searchParams.has("voted")) setCelebrateId(shared);
@@ -373,6 +380,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
                 onShare={() => setSharing(poll)}
                 onNext={() => go(1)}
                 onReported={(id) => setPolls((list) => list?.filter((p) => p.id !== id) ?? null)}
+                openComments={poll.id === commentsFor}
               />
             ) : (
               tab === "circle" && polls.length === 0 ? (

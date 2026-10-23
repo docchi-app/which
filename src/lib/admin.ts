@@ -1,7 +1,7 @@
 import { getSupabase } from "./supabase";
 
 export type QueueItem = {
-  targetType: "poll" | "user";
+  targetType: "poll" | "user" | "comment";
   targetId: string;
   reports: number;
   reasons: Record<string, number>;
@@ -19,12 +19,14 @@ export type QueueItem = {
   isBanned: boolean;
   userPolls: number;
   userReports: number;
+  /** comment reports: the comment, and the poll it's on (question/options above) */
+  commentText: string | null;
 };
 
 export type LogItem = {
   id: string;
   action: "remove" | "restore" | "dismiss" | "ban" | "unban" | "schedule" | "reschedule" | "unschedule";
-  targetType: "poll" | "user";
+  targetType: "poll" | "user" | "comment";
   targetId: string;
   at: string;
   undone: boolean;
@@ -112,10 +114,11 @@ export async function fetchQueue(status: "open" | "done"): Promise<QueueItem[]> 
     isBanned: Boolean(r.is_banned),
     userPolls: (r.user_polls as number) ?? 0,
     userReports: (r.user_reports as number) ?? 0,
+    commentText: (r.comment_text as string | null) ?? null,
   }));
 }
 
-export async function moderate(targetType: "poll" | "user", targetId: string, action: AdminAction): Promise<void> {
+export async function moderate(targetType: "poll" | "user" | "comment", targetId: string, action: AdminAction): Promise<void> {
   await call("admin_act", { kind: targetType, target: targetId, act: action });
 }
 

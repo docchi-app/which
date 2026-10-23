@@ -122,6 +122,7 @@ function QueueCard({ item, onDone }: { item: QueueItem; onDone: () => void }) {
   const [confirmBan, setConfirmBan] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isPoll = item.targetType === "poll";
+  const isComment = item.targetType === "comment";
 
   async function run(action: AdminAction) {
     setBusy(true);
@@ -138,7 +139,9 @@ function QueueCard({ item, onDone }: { item: QueueItem; onDone: () => void }) {
   return (
     <li className="admin-card">
       <div className="admin-card-top">
-        <span className={`chip chip-small ${isPoll ? "chip-white" : "chip-link"}`}>{isPoll ? "Poll" : "Person"}</span>
+        <span className={`chip chip-small ${isPoll ? "chip-white" : isComment ? "chip-sun" : "chip-link"}`}>
+          {isPoll ? "Poll" : isComment ? "Comment" : "Person"}
+        </span>
         {item.hiddenReason === "reports" && <span className="chip chip-small admin-chip-hidden">Hidden by reports</span>}
         <span className="admin-count">
           {item.reports} {item.reports === 1 ? "report" : "reports"} · {ago(item.lastAt)}
@@ -154,6 +157,12 @@ function QueueCard({ item, onDone }: { item: QueueItem; onDone: () => void }) {
         ))}
       </div>
 
+      {isComment && (
+        <div className="admin-poll">
+          <p className="admin-q">“{item.commentText}”</p>
+          <p className="admin-meta">on “{item.question}”</p>
+        </div>
+      )}
       {isPoll && (
         <div className="admin-poll">
           <p className="admin-q">{item.question}</p>
@@ -201,13 +210,13 @@ function QueueCard({ item, onDone }: { item: QueueItem; onDone: () => void }) {
           </>
         ) : (
           <>
-            {isPoll && (
+            {(isPoll || isComment) && (
               <button type="button" className="mini-btn mini-btn-coral" disabled={busy} onClick={() => run("remove")}>
-                Remove poll
+                {isPoll ? "Remove poll" : "Remove comment"}
               </button>
             )}
             <button type="button" className="mini-btn" disabled={busy} onClick={() => run("dismiss")}>
-              {isPoll && item.hiddenReason === "reports" ? "Keep (show again)" : "Dismiss"}
+              {(isPoll || isComment) && item.hiddenReason === "reports" ? "Keep (show again)" : "Dismiss"}
             </button>
             {item.username && !item.isBanned && (
               <button type="button" className="mini-btn mini-btn-danger-text" disabled={busy} onClick={() => setConfirmBan(true)}>
@@ -251,7 +260,7 @@ function Done() {
   async function undo(it: LogItem) {
     setBusy(it.id);
     try {
-      if (it.action === "remove") await moderate("poll", it.targetId, "restore");
+      if (it.action === "remove") await moderate(it.targetType === "comment" ? "comment" : "poll", it.targetId, "restore");
       else if (it.action === "ban" && it.userId) await moderate("user", it.userId, "unban");
       load();
     } finally {
@@ -267,7 +276,7 @@ function Done() {
         <li key={it.id} className="admin-card admin-log">
           <span>
             <strong>@{it.admin ?? "admin"}</strong> {DID[it.action]}{" "}
-            {it.targetType === "poll" ? (it.question ? <>“{it.question}”</> : null) : <>@{it.username}</>}
+            {it.targetType === "user" ? <>@{it.username}</> : it.question ? <>{it.targetType === "comment" ? "comment " : ""}“{it.question}”</> : null}
             <span className="admin-meta"> · {ago(it.at)}</span>
             {it.undone && <span className="admin-meta"> · undone</span>}
           </span>
