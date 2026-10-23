@@ -2,10 +2,13 @@
 
 import { useState, type CSSProperties } from "react";
 import { SignInRequired } from "@/lib/auth";
-import { castVote } from "@/lib/polls";
+import { castVote, fetchPoll } from "@/lib/polls";
+import { useLiveInterval } from "@/lib/useLiveInterval";
 import { formatCount, percentages, timeLeft } from "@/lib/format";
 import type { Poll, VoteResult } from "@/lib/types";
 import { ArrowIcon, CommentIcon, ShareIcon } from "./icons";
+
+const LIVE_REFRESH_MS = 5000;
 
 export const ANSWER_COLORS = ["var(--coral)", "var(--sky)", "var(--sun)", "var(--mint)"];
 
@@ -33,11 +36,13 @@ type Props = {
   /** The viewer just posted this poll: nudge them to share it. */
   justCreated?: boolean;
   onVoted: (pollId: string, result: VoteResult) => void;
+  /** Fresher numbers for this poll arrived (live updates). */
+  onRefresh: (poll: Poll) => void;
   onNeedSignIn: (pollId: string, optionId: string) => void;
   onNext: () => void;
 };
 
-export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = false, onVoted, onNeedSignIn, onNext }: Props) {
+export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = false, onVoted, onRefresh, onNeedSignIn, onNext }: Props) {
   // The pick being saved. The card switches to results the moment you tap;
   // the bars fill in when the server answers.
   const [lockingId, setLockingId] = useState<string | null>(null);
@@ -79,6 +84,27 @@ export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = 
       // Share sheet dismissed; nothing to do.
     }
   }
+
+  // Live: while this card is on screen, fetch fresh numbers every few seconds.
+  // Results stay hidden until you vote, so before that only the total moves.
+  useLiveInterval(
+    async () => {
+      if (lockingId) return;
+      try {
+        const fresh = await fetchPoll(poll.id);
+        const changed =
+          fresh &&
+          (fresh.voteCount !== poll.voteCount ||
+            fresh.commentCount !== poll.commentCount ||
+            fresh.options.some((o, i) => o.votes !== poll.options[i]?.votes));
+        if (changed) onRefresh(fresh);
+      } catch {
+        // Offline for a moment: try again on the next tick.
+      }
+    },
+    LIVE_REFRESH_MS,
+    !closed,
+  );
 
   const pcts = percentages(poll.options.map((o) => o.votes ?? 0));
   const mineId = poll.myOptionId ?? lockingId;
@@ -195,6 +221,7 @@ export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = 
             })}
           </ul>
           <p className="poll-foot-note">
+            {!closed && showResults && <span className="live-dot live-dot-small" aria-hidden="true" />}
             {votesLabel} · {closed ? "final results" : showResults ? "live" : "counting…"}
           </p>
         </>
