@@ -48,7 +48,16 @@ The first slice of the build order:
   first poll also picks a username: a free one is prefilled from the Google name, it's checked as
   you type, and a taken name comes with free suggestions to tap. Unfinished drafts survive a
   reload or a trip through sign-in. After posting you land on your poll with a nudge to share it.
-- Leaders is a placeholder page for now. Profile shows who's signed in, with sign-out.
+- **Profile:** lilac banner, avatar (Google photo or initial), @username with Edit (live
+  availability check and suggestions; once a week), stat tiles (polls made, votes got, shares), and
+  **My polls / Voted** tabs with mini result bars. Your own polls have Share, Make link-only / Show
+  in feed, and Delete (with a confirm).
+- **Private polls:** a poll can be for **Everyone** (in the feed) or **Only with the link**. A
+  link-only poll shows in the feed and on the profile only for its creator and for people who have
+  voted on it; anyone else can open it only from its link. Chosen on the + screen, changeable later.
+- **Deleting:** the creator can delete a poll. It disappears everywhere (a shared link shows "That
+  poll isn't available anymore"), but the row stays in the database for moderation review.
+- Leaders is a placeholder page for now.
 
 **Voting needs a Google account.** Anyone can browse; voting requires sign-in (one tap with
 Google). Guest accounts from the first release can still browse. When a guest signs in with Google,
@@ -84,7 +93,7 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
 2. Do the same with each later file in `supabase/migrations/`
    (`20261024000000_google_sign_in.sql`, `20261025000000_feed_paging.sql`,
    `20261026000000_create_poll.sql`, `20261027000000_shares.sql`,
-   `20261028000000_poll_formats.sql`, …), in date order,
+   `20261028000000_poll_formats.sql`, `20261029000000_profile_privacy.sql`, …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -196,6 +205,9 @@ per Supabase auth user, created automatically by a database trigger.
 | Usernames are unique, 3–20 of `a-z 0-9 _`, not reserved or rude | `username_problem()`, used by `check_username()` and `create_poll()` |
 | A mystery question stays hidden until you vote | `poll_rows()` returns `null` for it; `cast_vote()` reveals it |
 | One hot take or mystery poll per person per day | `create_poll()` |
+| Link-only polls stay out of other people's feeds | `poll_rows()` ('feed' scope): public, or yours, or you voted |
+| Only the creator can change visibility or delete | `set_poll_visibility()`, `delete_poll()` (soft delete: `deleted_at`) |
+| No reading polls around the rules | direct `select` on `polls` / `poll_options` is revoked; everything goes through the functions |
 | Shares count once per person per poll | `shares` primary key + `record_share()`; signed-out shares aren't counted |
 | Word filter | `blocked_terms` table (whole words, English + Hindi); add rows to extend it |
 | Counters stay correct | `cast_vote()` saves the vote and bumps both counters in one transaction |
@@ -228,9 +240,8 @@ docs/               product validation and design handoff
 
 ## Next in the build order
 
-1. Create poll
-2. Choose a username (everyone starts as `guest_…`) as part of the profile screen
-3. Share previews (Open Graph image with live counts)
-4. Comments that expire after 24h
-5. Weekly leaderboard job
-6. Admin panel and moderation
+1. Terms and Community guidelines pages
+2. Tracking the success metrics
+3. Comments that expire after 24h
+4. Weekly leaderboard job
+5. Admin panel and moderation (reports, blocking, rate limits)

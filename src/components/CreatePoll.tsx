@@ -23,8 +23,24 @@ const ANSWER_MAX = 40;
 const DURATIONS = [1, 3, 7] as const;
 type Days = (typeof DURATIONS)[number];
 
-type Draft = { kind: PollKind; question: string; teaser: string; answers: string[]; days: Days; username: string };
-const EMPTY_DRAFT: Draft = { kind: "classic", question: "", teaser: "", answers: ["", ""], days: 3, username: "" };
+type Draft = {
+  kind: PollKind;
+  question: string;
+  teaser: string;
+  answers: string[];
+  days: Days;
+  username: string;
+  visibility: "public" | "link";
+};
+const EMPTY_DRAFT: Draft = {
+  kind: "classic",
+  question: "",
+  teaser: "",
+  answers: ["", ""],
+  days: 3,
+  username: "",
+  visibility: "public",
+};
 const TEASER_MAX = 60;
 
 const FORMATS: { kind: PollKind; label: string; blurb: string }[] = [
@@ -180,6 +196,7 @@ export function CreatePoll() {
         username: needsName ? draft.username : null,
         kind,
         teaser: isMystery ? teaser : null,
+        visibility: draft.visibility,
       });
       sessionStorage.removeItem(DRAFT_KEY);
       router.push(`/?poll=${id}&created=1`);
@@ -349,6 +366,33 @@ export function CreatePoll() {
           </div>
         </fieldset>
 
+        <fieldset className="field">
+          <legend className="field-label">Who can see it</legend>
+          <div className="durations">
+            {(
+              [
+                ["public", "Everyone"],
+                ["link", "Only with the link"],
+              ] as const
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                className="duration press"
+                aria-pressed={draft.visibility === v}
+                onClick={() => set({ visibility: v })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <span className="format-blurb">
+            {draft.visibility === "public"
+              ? "Shows up in everyone's feed."
+              : "Stays out of the feed. Only people you send the link to can vote. You can change this later on your profile."}
+          </span>
+        </fieldset>
+
         {needsName && (
           <div className="field">
             <label htmlFor="username" className="field-label">
@@ -412,6 +456,7 @@ export function CreatePoll() {
             </div>
             <span className="preview-by">
               by @{author} · closes in {daysLabel}
+              {draft.visibility === "link" && " · link only"}
             </span>
           </div>
         </div>

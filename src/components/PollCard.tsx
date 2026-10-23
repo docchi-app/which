@@ -164,6 +164,7 @@ export function PollCard({
           {tag}
         </span>
         <span className="poll-by">
+          {poll.visibility === "link" && <span className="chip chip-small chip-link">Link only</span>}{" "}
           by <strong>@{poll.creator}</strong>
           {poll.isSystem && <VerifiedTick />} · {timeLeft(poll.closesAt, now)}
         </span>

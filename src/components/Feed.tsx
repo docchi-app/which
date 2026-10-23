@@ -46,6 +46,8 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   const [dir, setDir] = useState<"next" | "prev">("next");
   // Polls posted since this feed loaded ("New polls" pill).
   const [freshPolls, setFreshPolls] = useState(false);
+  // A shared link whose poll is gone (deleted) or never existed.
+  const [missingShared, setMissingShared] = useState(false);
 
   const stackRef = useRef<HTMLElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -72,6 +74,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
         const at = list.findIndex((p) => p.id === shared);
         const sharedPoll = at >= 0 ? list.splice(at, 1)[0] : await fetchPoll(shared).catch(() => null);
         if (sharedPoll) list.unshift(sharedPoll);
+        else setMissingShared(true);
       }
       if (shared && (url.searchParams.has("voted") || url.searchParams.has("created"))) {
         if (url.searchParams.has("voted")) setCelebrateId(shared);
@@ -296,6 +299,12 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
 
       {!isSupabaseConfigured && (
         <p className="demo-banner">Demo mode: sample polls, votes aren&apos;t saved. Add Supabase keys to go live.</p>
+      )}
+
+      {missingShared && (
+        <p className="demo-banner" role="status">
+          That poll isn&apos;t available anymore. Its creator may have deleted it. Here&apos;s what&apos;s hot instead.
+        </p>
       )}
 
       <div role="tablist" aria-label="Feed" className="tabs">

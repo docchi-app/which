@@ -18,6 +18,11 @@ export type Poll = {
   question: string | null;
   /** What a mystery poll shows before you vote ("Pick a colour"). */
   teaser: string | null;
+  /** public: in the feed · link: only people with the link (plus its creator and voters). */
+  visibility: "public" | "link";
+  /** The viewer made this poll. */
+  isMine: boolean;
+  shareCount: number;
   creator: string;
   isSystem: boolean;
   featuredToday: boolean;
