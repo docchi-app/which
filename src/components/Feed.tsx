@@ -17,6 +17,7 @@ import { TrophyIcon } from "./icons";
 const TABS: { id: FeedTab; label: string }[] = [
   { id: "trending", label: "Trending" },
   { id: "new", label: "New" },
+  { id: "circle", label: "Circle" },
 ];
 
 // How often to look for polls posted since the feed loaded.
@@ -276,6 +277,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   const poll = polls?.[index];
 
   function tagFor(p: Poll, i: number) {
+    if (tab === "circle") return p.visibility === "circle" ? "Circle poll" : "From your circle";
     if (p.featuredToday) return "Poll of the Day";
     if (votedBefore.has(p.id)) return "You voted";
     if (p.kind === "hot_take") return "Hot take";
@@ -364,6 +366,21 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
                 onNext={() => go(1)}
               />
             ) : (
+              tab === "circle" && polls.length === 0 ? (
+                <section className="poll-card empty-card">
+                  <span className="chip chip-circle">Circle</span>
+                  <h1 className="poll-question">Nothing from your circles yet.</h1>
+                  <p className="poll-foot-note">
+                    Ask friends to let you into their circle, or share your circle link so they can join yours. Polls
+                    shared with your circles show up here.
+                  </p>
+                  <div className="empty-actions">
+                    <Link href="/profile?tab=circle" className="btn btn-coral press">
+                      Find people
+                    </Link>
+                  </div>
+                </section>
+              ) : (
               <section className="poll-card empty-card">
                 <span className="chip chip-mint">All caught up</span>
                 <h1 className="poll-question">That&apos;s every poll for now.</h1>
@@ -384,6 +401,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
                   </Link>
                 </div>
               </section>
+              )
             )}
           </div>
           {polls && index === 0 && polls.length > 1 && <p className="swipe-hint">Swipe up for the next one</p>}

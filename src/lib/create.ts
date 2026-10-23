@@ -1,5 +1,5 @@
 import { getSupabase } from "./supabase";
-import type { PollKind } from "./types";
+import type { PollKind, Visibility } from "./types";
 
 export type CreateStatus = {
   signedIn: boolean;
@@ -51,7 +51,9 @@ export async function createPoll(input: {
   username: string | null;
   kind: PollKind;
   teaser: string | null;
-  visibility: "public" | "link";
+  visibility: Visibility;
+  /** Circle polls: only these groups (empty = whole circle). */
+  groups?: string[];
 }): Promise<string> {
   const supabase = getSupabase();
   if (!supabase) throw new CreatePollError("demo");
@@ -63,7 +65,8 @@ export async function createPoll(input: {
     // Only for the new formats, so classic polls also work before the
     // 20261028 migration has been run.
     ...(input.kind === "classic" ? {} : { kind: input.kind, teaser: input.teaser }),
-    ...(input.visibility === "link" ? { visibility: "link" } : {}),
+    ...(input.visibility === "public" ? {} : { visibility: input.visibility }),
+    ...(input.visibility === "circle" && input.groups?.length ? { groups: input.groups } : {}),
   });
   if (error) {
     const code = /docchi:(\w+)/.exec(error.message)?.[1];

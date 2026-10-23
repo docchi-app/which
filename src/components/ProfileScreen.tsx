@@ -8,7 +8,7 @@ import { formatCount, percentages, timeLeft } from "@/lib/format";
 import { deletePoll, fetchMyPolls, setPollVisibility } from "@/lib/polls";
 import { compactCount, getMyProfile, PROFILE_CHANGED, updateUsername, type Profile } from "@/lib/profile";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import type { Poll } from "@/lib/types";
+import type { Poll, Visibility } from "@/lib/types";
 import { BottomNav } from "./BottomNav";
 import { ANSWER_COLORS, VerifiedTick } from "./PollCard";
 import { ShareSheet } from "./ShareSheet";
@@ -417,7 +417,6 @@ export function ProfilePoll({
     }
   }
 
-  const nextVisibility = poll.visibility === "public" ? "link" : "public";
 
   return (
     <li className="profile-poll" style={{ animationDelay: `${0.05 + index * 0.06}s` }}>
@@ -430,6 +429,9 @@ export function ProfilePoll({
           {poll.kind === "hot_take" && <span className="chip chip-small">Hot take</span>}
           {poll.kind === "mystery" && <span className="chip chip-small">Mystery</span>}
           {poll.visibility === "link" && <span className="chip chip-small chip-link">Link only</span>}
+          {poll.visibility === "circle" && (
+            <span className="chip chip-small chip-circle">{poll.isMine && poll.audience ? poll.audience : "Circle"}</span>
+          )}
           {!poll.isMine && (
             <span className="profile-poll-by">
               by @{poll.creator}
@@ -462,14 +464,21 @@ export function ProfilePoll({
               <button type="button" className="mini-btn" onClick={onShare}>
                 Share
               </button>
-              <button
-                type="button"
-                className="mini-btn"
-                disabled={busy}
-                onClick={() => run(() => setPollVisibility(poll.id, nextVisibility), { visibility: nextVisibility })}
-              >
-                {poll.visibility === "public" ? "Make link-only" : "Show in feed"}
-              </button>
+              <label className="mini-select">
+                <span className="sr-only">Who can see it</span>
+                <select
+                  value={poll.visibility}
+                  disabled={busy}
+                  onChange={(e) => {
+                    const v = e.target.value as Visibility;
+                    run(() => setPollVisibility(poll.id, v), { visibility: v, audience: v === "circle" ? "Whole circle" : null });
+                  }}
+                >
+                  <option value="public">Everyone</option>
+                  <option value="circle">My circle</option>
+                  <option value="link">Only with link</option>
+                </select>
+              </label>
               <button type="button" className="mini-btn mini-btn-danger-text" onClick={() => setConfirming(true)}>
                 Delete
               </button>

@@ -10,6 +10,7 @@ export const pollUrl = (pollId: string, channel: ShareChannel) =>
 /** Never gives away the result (or a mystery poll's question): friends vote to find out. */
 export function shareText(poll: Poll): string {
   const voted = poll.myOptionId !== null;
+  if (poll.visibility === "circle") return `A poll for my circle on Docchi:`;
   if (poll.kind === "mystery") return `Mystery poll: ${poll.teaser} Pick on gut, the question shows after:`;
   if (poll.kind === "hot_take") return `Hot take: "${poll.question}" Agree or disagree?`;
   return voted ? `I picked my side on "${poll.question}" Which one are you?` : `${poll.question} Pick a side:`;

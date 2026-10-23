@@ -1,13 +1,15 @@
 import { canVote, currentUser, SignInRequired } from "./auth";
 import { getSupabase } from "./supabase";
-import type { FeedTab, Poll, PollKind, PollOption, VoteResult } from "./types";
+import type { FeedTab, Poll, PollKind, PollOption, Visibility, VoteResult } from "./types";
 
 type FeedRow = {
   id: string;
   kind?: PollKind;
   question: string | null;
   teaser?: string | null;
-  visibility?: "public" | "link";
+  visibility?: Visibility;
+  locked?: boolean;
+  audience?: string | null;
   is_mine?: boolean;
   share_count?: number;
   creator: string | null;
@@ -31,6 +33,8 @@ const toPoll = (r: FeedRow): Poll => ({
   question: r.question,
   teaser: r.teaser ?? null,
   visibility: r.visibility ?? "public",
+  locked: r.locked ?? false,
+  audience: r.audience ?? null,
   isMine: r.is_mine ?? false,
   shareCount: r.share_count ?? 0,
   creator: r.creator ?? "someone",
@@ -47,7 +51,7 @@ const toPoll = (r: FeedRow): Poll => ({
 /** One page of the feed: open polls, ones you haven't voted on first. */
 export async function fetchFeed(tab: FeedTab, skip = 0, limit = FEED_PAGE_SIZE): Promise<Poll[]> {
   const supabase = getSupabase();
-  if (!supabase) return skip ? [] : demoFeed(tab).slice(0, limit);
+  if (!supabase) return skip || tab === "circle" ? [] : demoFeed(tab).slice(0, limit);
 
   // `skip` only when paging, so the first page also works before the
   // 20261025 migration has been run.
@@ -75,7 +79,7 @@ export async function fetchProfilePolls(name: string, skip = 0): Promise<Poll[]>
   return (data as FeedRow[]).map(toPoll);
 }
 
-export async function setPollVisibility(pollId: string, visibility: "public" | "link"): Promise<void> {
+export async function setPollVisibility(pollId: string, visibility: Visibility): Promise<void> {
   const { error } = (await getSupabase()?.rpc("set_poll_visibility", { poll: pollId, visibility })) ?? {};
   if (error) throw error;
 }
@@ -154,7 +158,7 @@ function demo(
   ageHours: number, closesInHours: number, comments: number, opts: [string, number][],
 ): Poll {
   return {
-    id, kind: "classic", question, teaser: null, visibility: "public", isMine: false, shareCount: 0, creator, isSystem: creator === "docchi", featuredToday: featured,
+    id, kind: "classic", question, teaser: null, visibility: "public", locked: false, audience: null, isMine: false, shareCount: 0, creator, isSystem: creator === "docchi", featuredToday: featured,
     voteCount: opts.reduce((n, [, v]) => n + v, 0),
     commentCount: comments,
     createdAt: hoursFromNow(ageHours),

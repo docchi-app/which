@@ -5,6 +5,8 @@ export type SharedPoll = {
   question: string | null;
   teaser: string | null;
   verified: boolean;
+  /** A circle poll: previews show only who it's from. */
+  circle: boolean;
   creator: string;
   voteCount: number;
   options: string[];
@@ -35,6 +37,7 @@ export async function getSharedPoll(id: string): Promise<SharedPoll | null> {
       question: string | null;
       teaser?: string | null;
       is_system: boolean;
+      visibility?: string;
       creator: string | null;
       vote_count: number;
       closes_at: string;
@@ -47,6 +50,7 @@ export async function getSharedPoll(id: string): Promise<SharedPoll | null> {
       question: row.question,
       teaser: row.teaser ?? null,
       verified: row.is_system,
+      circle: row.visibility === "circle",
       creator: row.creator ?? "someone",
       voteCount: row.vote_count,
       options: row.options.map((o) => o.text),

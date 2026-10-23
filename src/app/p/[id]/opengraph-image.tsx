@@ -29,11 +29,14 @@ export default async function Image({ params }: { params: Promise<{ id: string }
 
   const kind = poll?.kind ?? "classic";
   // A mystery poll shows its teaser; the question is the surprise.
-  const question =
-    (kind === "mystery" ? poll?.teaser : poll?.question) ?? "Which one? Tap a side, then see where everyone landed.";
-  const cardBg = kind === "hot_take" ? "#FF7A59" : kind === "mystery" ? "#B79CFF" : "#FFFFFF";
-  const badge = kind === "hot_take" ? "Hot take" : kind === "mystery" ? "Mystery poll" : null;
-  const cta = poll?.closed
+  const question = poll?.circle
+    ? `A poll for @${poll.creator}'s circle`
+    : ((kind === "mystery" ? poll?.teaser : poll?.question) ?? "Which one? Tap a side, then see where everyone landed.");
+  const cardBg = poll?.circle ? "#52D6A8" : kind === "hot_take" ? "#FF7A59" : kind === "mystery" ? "#B79CFF" : "#FFFFFF";
+  const badge = poll?.circle ? "Circle only" : kind === "hot_take" ? "Hot take" : kind === "mystery" ? "Mystery poll" : null;
+  const cta = poll?.circle
+    ? "Ask to join"
+    : poll?.closed
     ? "See the final result"
     : kind === "hot_take"
       ? "Agree or disagree?"
@@ -150,7 +153,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           >
             {question}
           </div>
-          {poll && (
+          {poll && !poll.circle && (
             <div style={{ display: "flex", flexWrap: "wrap", flexShrink: 0, gap: compact ? 10 : 14 }}>
               {poll.options.map((text, i) =>
                 kind === "hot_take" ? (
@@ -216,7 +219,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
             >
               {cta}
             </div>
-            {votes && (
+            {votes && !poll?.circle && (
               <div style={{ display: "flex", fontSize: 30, color: kind === "classic" ? "#5A5370" : INK }}>
                 {votes} · {kind === "mystery" ? "the question shows after you vote" : "results after you vote"}
               </div>

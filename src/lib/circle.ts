@@ -108,6 +108,8 @@ export async function getCircleBadge(): Promise<number> {
 export const CIRCLE_ERRORS: Record<string, string> = {
   sign_in: "Sign in first.",
   need_username: "Pick a username first.",
+  empty_circle: "Nobody's in your circle (or those groups) yet.",
+  circle_only: "This poll is only for their circle.",
   self: "That's you!",
   no_user: "Couldn't find that person.",
   blocked: "You can't do that with this person.",
@@ -123,3 +125,11 @@ export const CIRCLE_ERRORS: Record<string, string> = {
 
 export const circleErrorText = (e: unknown) =>
   (e instanceof CircleError && CIRCLE_ERRORS[e.code]) || "That didn't work. Try again?";
+
+export type CirclePick = Person & { optionId: string; isMe: boolean };
+
+/** Who in the circle picked what (circle polls, after you've voted). */
+export async function getCirclePicks(pollId: string): Promise<CirclePick[]> {
+  const rows = await call<(RawPerson & { option_id: string; is_me: boolean })[]>("circle_picks", { poll: pollId });
+  return rows.map((r) => ({ ...person(r), optionId: r.option_id, isMe: r.is_me }));
+}

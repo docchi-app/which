@@ -61,9 +61,14 @@ The first slice of the build order:
   `/u/<username>` with their public polls and an **Ask to join circle** button; that link is also
   their circle invite link. You accept or decline requests (a badge on the Profile tab shows how
   many are waiting), remove people, and sort your circle into **groups** such as Family or Office.
-  It's one-way: being in my circle lets you see my circle polls (next step), not the other way
-  round. Search people by username; block someone to cut both directions. Limits: 500 people and
+  It's one-way: being in my circle lets you see my circle polls, not the other way round. Search people by username; block someone to cut both directions. Limits: 500 people and
   10 groups per circle, 50 requests a day.
+- **Circle polls:** "Who can see it" on the + screen is **Everyone / My circle / Only with link**.
+  My circle goes to the whole circle or just the groups you tick (Family, Office…). Circle polls
+  stay out of Trending and New and show in the **Circle** tab (with public polls from the circles
+  you're in). Before voting: "Your pick is visible to @x's circle"; after voting: "@priya and 2 more
+  picked this too" and who picked what. Anyone else who opens the link sees a locked "This poll is
+  for @x's circle" card with Ask to join, and can't vote; link previews show only who it's from.
 - **Private polls:** a poll can be for **Everyone** (in the feed) or **Only with the link**. A
   link-only poll shows in the feed and on the profile only for its creator and for people who have
   voted on it; anyone else can open it only from its link. Chosen on the + screen, changeable later.
@@ -106,7 +111,8 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    (`20261024000000_google_sign_in.sql`, `20261025000000_feed_paging.sql`,
    `20261026000000_create_poll.sql`, `20261027000000_shares.sql`,
    `20261028000000_poll_formats.sql`, `20261029000000_profile_privacy.sql`,
-   `20261030000000_circles.sql`, `20261031000000_usernames.sql`, …), in date order,
+   `20261030000000_circles.sql`, `20261031000000_usernames.sql`, `20261101000000_circle_polls.sql`,
+   …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -223,6 +229,7 @@ per Supabase auth user, created automatically by a database trigger.
 | Every Google account has a real username; circles refuse `guest_…` accounts | `handle_new_user()`, `pick_username()`, `request_circle()` |
 | Circle requests need the owner's OK; groups only hold accepted members | `request_circle()`, `respond_request()`, `set_group_member()` |
 | Blocking cuts both ways and stops new requests | `block_user()`, checked by `request_circle()`, `get_profile()`, `search_people()` |
+| Circle polls: only the circle (or its chosen groups) sees, votes on and sees picks | `can_view_poll()`, used by `poll_rows()`, `cast_vote()`, `circle_picks()` |
 | No reading polls around the rules | direct `select` on `polls` / `poll_options` is revoked; everything goes through the functions |
 | Shares count once per person per poll | `shares` primary key + `record_share()`; signed-out shares aren't counted |
 | Word filter | `blocked_terms` table (whole words, English + Hindi); add rows to extend it |
@@ -256,10 +263,8 @@ docs/               product validation and design handoff
 
 ## Next in the build order
 
-1. Circle polls: "My circle" (whole circle or chosen groups) on the + screen, a Circle feed tab,
-   "3 of your circle picked…", and a "This poll is for @x's circle" screen for everyone else
-2. Terms and Community guidelines pages
-3. Tracking the success metrics
-4. Comments that expire after 24h
-5. Weekly leaderboard job
-6. Admin panel and moderation (reports, rate limits)
+1. Terms and Community guidelines pages
+2. Tracking the success metrics
+3. Comments that expire after 24h
+4. Weekly leaderboard job (public polls only)
+5. Admin panel and moderation (reports, rate limits)
