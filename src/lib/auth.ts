@@ -28,11 +28,14 @@ export async function continueWithGoogle(): Promise<void> {
   const supabase = getSupabase();
   if (!supabase) throw new Error("Supabase is not configured");
   const user = await currentUser();
-  const options = { redirectTo: callbackUrl() };
-  const { error } = user?.is_anonymous
-    ? await supabase.auth.linkIdentity({ provider: "google", options })
-    : await supabase.auth.signInWithOAuth({ provider: "google", options });
-  if (error) throw error;
+  if (user?.is_anonymous) {
+    const { error } = await supabase.auth.linkIdentity({ provider: "google", options: { redirectTo: callbackUrl() } });
+    if (!error) return;
+    // Linking can be switched off in Supabase ("Allow manual linking"). Don't
+    // leave the viewer stuck: sign in normally; the guest's old votes stay behind.
+    console.warn("Couldn't link Google to the guest account, signing in instead", error);
+  }
+  return signInWithGoogle();
 }
 
 /** Plain Google sign-in, used when that Google account already has a Docchi account. */
