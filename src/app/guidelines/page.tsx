@@ -30,8 +30,9 @@ export default function GuidelinesPage() {
 
       <h2>If you see something</h2>
       <p>
-        Tap <strong>⋯ → Report</strong> on the poll, or <strong>Report</strong> on the person&apos;s profile. Reports are
-        anonymous. A poll that several people report is hidden straight away until we review it. You can also block
+        Tap <strong>⋯ → Report</strong> on the poll, <strong>Report</strong> under a comment, or{" "}
+        <strong>Report</strong> on the person&apos;s profile. Reports are anonymous. A poll or comment that several
+        people report is hidden straight away until we review it. You can also block
         anyone from their profile.
       </p>
 

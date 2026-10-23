@@ -11,13 +11,16 @@ export const REPORT_REASONS = [
 ] as const;
 
 export type ReportReason = (typeof REPORT_REASONS)[number]["id"];
-export type ReportTarget = { kind: "poll"; pollId: string } | { kind: "user"; username: string };
+export type ReportTarget =
+  | { kind: "poll"; pollId: string }
+  | { kind: "user"; username: string }
+  | { kind: "comment"; commentId: string };
 
 const ERRORS: Record<string, string> = {
   sign_in: "Sign in with Google to report.",
   banned: "Your account can't send reports.",
   report_limit: "That's a lot of reports today. We're on it; try again tomorrow.",
-  own_poll: "You can't report your own poll or yourself.",
+  own_poll: "You can't report your own poll, comment or yourself.",
   not_found: "That's gone already.",
 };
 
@@ -26,7 +29,11 @@ export async function sendReport(target: ReportTarget, reason: ReportReason): Pr
   const supabase = getSupabase();
   if (!supabase) return false;
   const args =
-    target.kind === "poll" ? { kind: "poll", reason, poll: target.pollId } : { kind: "user", reason, name: target.username };
+    target.kind === "poll"
+      ? { kind: "poll", reason, poll: target.pollId }
+      : target.kind === "comment"
+        ? { kind: "comment", reason, comment: target.commentId }
+        : { kind: "user", reason, name: target.username };
   const { data, error } = await supabase.rpc("report", args);
   if (error) {
     const code = /docchi:(\w+)/.exec(error.message)?.[1];

@@ -78,6 +78,12 @@ The first slice of the build order:
   this week (podium for the top 3, then the list), **Hottest polls** by votes this week, last
   week's champ on top, your own rank pinned at the bottom, and a Last week view. Votes on your own
   poll, on Docchi's polls, from banned accounts or from accounts under a day old don't count.
+- **Comments:** tap the 💬 count on a card. You can read and write once you've voted (or the poll
+  has closed, or it's yours), so comments never spoil a vote or a mystery question. Each shows the
+  writer's pick in that answer's colour; 200 characters; gone after 24 hours. Delete your own, or
+  any on your poll; report one (3 reporters hide it until an admin looks). Word filter, 5 per poll
+  per 10 minutes and 30 an hour. Poll creators get a batched "3 new comments" push (Settings →
+  Notifications → Comments), which opens the comments.
 - **Report:** the ⋯ on a poll card, or Report on someone's profile, opens a sheet with a reason
   (hate, private info, sexual, violence, spam, illegal, other). Signed-in accounts only, up to 20
   a day, anonymous to everyone else. A poll that **3 different people** report hides itself until
@@ -147,7 +153,8 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261028000000_poll_formats.sql`, `20261029000000_profile_privacy.sql`,
    `20261030000000_circles.sql`, `20261031000000_usernames.sql`, `20261101000000_circle_polls.sql`,
    `20261102000000_scale.sql`, `20261103000000_feed_voted_last.sql`,
-   `20261104000000_safety_metrics.sql`, `20261105000000_push.sql`, `20261106000000_push_fixes.sql`, `20261107000000_leaders_schedule.sql`, …), in date order,
+   `20261104000000_safety_metrics.sql`, `20261105000000_push.sql`, `20261106000000_push_fixes.sql`, `20261107000000_leaders_schedule.sql`,
+   `20261108000000_comments.sql`, …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -318,7 +325,8 @@ per Supabase auth user, created automatically by a database trigger.
 | Results hidden until you vote | Clients can't read `poll_options.vote_count` directly. `get_feed()` only returns counts once you've voted or the poll has closed |
 | No direct writes from the browser | Inserts and updates are revoked for `anon` and `authenticated`. Writes go through database functions |
 | Banned users and closed polls | Checked inside `cast_vote()` |
-| Comments disappear after 24h | `expires_at`, filtered by row level security. Rows stay in the database so moderators can review them |
+| Comments disappear after 24h | `expires_at`, filtered in `get_comments()`. Rows stay in the database so moderators can review them (the purge removes them after 180 days) |
+| Comments only for people who voted (or a closed poll, or its creator), and circle polls stay in the circle | `can_read_comments()` in `get_comments()` / `post_comment()`; the comments table isn't readable by clients |
 | Reports: signed-in only, 20 a day, one per person per poll; 3 reporters hide a poll | `report()` |
 | Only admins see reports and metrics, or remove / ban | `require_admin()` in every `admin_…()` function; `reports`, `visits`, `mod_actions` aren't readable by clients |
 | Banned accounts can't vote, post or report, and their polls are hidden | `admin_act('ban')`, checked by `cast_vote()`, `create_poll()`, `report()` |

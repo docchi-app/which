@@ -22,7 +22,7 @@ export function ReportSheet({ target, canReport, onClose, onReported }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const what = target.kind === "poll" ? "this poll" : `@${target.username}`;
+  const what = target.kind === "poll" ? "this poll" : target.kind === "comment" ? "this comment" : `@${target.username}`;
 
   useEffect(() => {
     titleRef.current?.focus();

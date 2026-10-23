@@ -9,6 +9,7 @@ import { formatCount, percentages, timeLeft } from "@/lib/format";
 import type { Poll, VoteResult } from "@/lib/types";
 import { ArrowIcon, CommentIcon, ShareIcon } from "./icons";
 import { CirclePicks, LockedCircle } from "./CircleBits";
+import { CommentsSheet } from "./CommentsSheet";
 import { ReportSheet } from "./ReportSheet";
 
 const LIVE_REFRESH_MS = 5000;
@@ -48,6 +49,8 @@ type Props = {
   onNext: () => void;
   /** The viewer reported this poll. */
   onReported?: (pollId: string) => void;
+  /** Open the comments straight away (a "new comments" notification). */
+  openComments?: boolean;
 };
 
 /** Docchi's own polls carry a tick. */
@@ -80,6 +83,7 @@ export function PollCard({
   onShare,
   onNext,
   onReported,
+  openComments = false,
 }: Props) {
   // The pick being saved. The card switches to results the moment you tap;
   // the bars fill in when the server answers.
@@ -87,6 +91,7 @@ export function PollCard({
   const [justVoted, setJustVoted] = useState(celebrate);
   const [error, setError] = useState<string | null>(null);
   const [reporting, setReporting] = useState(false);
+  const [commenting, setCommenting] = useState(openComments);
   // Read the clock once per card; closing mid-view is handled by cast_vote.
   const [now] = useState(() => Date.now());
 
@@ -361,10 +366,15 @@ export function PollCard({
       )}
 
       <div className="poll-actions">
-        <span className="ghost-action" aria-label={`${poll.commentCount} comments`}>
+        <button
+          type="button"
+          className="ghost-action"
+          aria-label={`${poll.commentCount} ${poll.commentCount === 1 ? "comment" : "comments"}`}
+          onClick={() => setCommenting(true)}
+        >
           <CommentIcon />
           {poll.commentCount}
-        </span>
+        </button>
         <button type="button" className="ghost-action" onClick={onShare}>
           <ShareIcon />
           Share
@@ -384,6 +394,15 @@ export function PollCard({
           </button>
         )}
       </div>
+      {commenting && (
+        <CommentsSheet
+          pollId={poll.id}
+          colors={colors}
+          canVote={canVote}
+          onClose={() => setCommenting(false)}
+          onCount={(n) => n !== poll.commentCount && onRefresh({ ...poll, commentCount: n })}
+        />
+      )}
       {reporting && (
         <ReportSheet
           target={{ kind: "poll", pollId: poll.id }}

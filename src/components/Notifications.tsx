@@ -19,6 +19,7 @@ import { InstallSheet } from "./InstallSheet";
 
 const KINDS: { id: keyof PushKinds; label: string; hint: string }[] = [
   { id: "votes", label: "Votes on my polls", hint: "At 10, 25, 50, 100…" },
+  { id: "comments", label: "Comments on my polls", hint: "A few at a time, not every one" },
   { id: "circle", label: "Circle", hint: "Requests, yeses and circle polls" },
   { id: "results", label: "Results", hint: "When a poll you voted on closes" },
   { id: "daily", label: "Poll of the Day", hint: "Once a day, 9am" },
