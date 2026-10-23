@@ -1909,8 +1909,8 @@ button.ghost-action { cursor: pointer; }
 .admin-metrics { display: flex; flex-direction: column; gap: 14px; padding: 0 20px; }
 .admin-range { display: flex; gap: 8px; }
 .admin-range .mini-btn[aria-pressed="true"] { background: var(--ink); color: var(--cream); }
-.stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.stat {
+.metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.metric {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1919,12 +1919,12 @@ button.ghost-action { cursor: pointer; }
   border-radius: 16px;
   background: var(--white);
 }
-.stat-label { color: var(--muted); font-size: 12px; font-weight: 700; }
-.stat-value { font-family: var(--font-display); font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
-.stat-target { font-size: 12px; font-weight: 700; }
-.stat[data-ok="true"] { border-color: #11795a; }
-.stat[data-ok="true"] .stat-target { color: #11795a; }
-.stat[data-ok="false"] .stat-target { color: var(--alert); }
+.metric-label { color: var(--muted); font-size: 12px; font-weight: 700; }
+.metric-value { font-family: var(--font-display); font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+.metric-target { font-size: 12px; font-weight: 700; }
+.metric[data-ok="true"] { border-color: #11795a; }
+.metric[data-ok="true"] .metric-target { color: #11795a; }
+.metric[data-ok="false"] .metric-target { color: var(--alert); }
 .admin-table-wrap {
   overflow-x: auto;
   border: var(--outline);
@@ -1936,3 +1936,86 @@ button.ghost-action { cursor: pointer; }
 .admin-table thead th { color: var(--muted); font-size: 11px; font-weight: 700; }
 .admin-table th[scope="row"], .admin-table thead th:first-child { text-align: left; }
 .admin-note { line-height: 1.5; }
+
+/* ─── Notifications (Profile) ────────────────────────────────────────────── */
+
+.notif-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 20px 16px;
+  padding: 14px;
+  border: var(--outline-bold);
+  border-radius: 20px;
+  background: var(--white);
+  box-shadow: var(--shadow);
+}
+.notif-top { display: flex; align-items: flex-start; gap: 12px; }
+.notif-bell {
+  display: flex;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: var(--outline);
+  border-radius: 12px;
+  background: var(--sun);
+}
+.notif-title { display: flex; align-items: center; gap: 8px; margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 800; }
+.notif-text { margin: 2px 0 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.notif-manage {
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.notif-kinds { display: flex; flex-direction: column; gap: 4px; }
+.notif-kind {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 6px 0;
+  border-bottom: 1.5px dashed var(--line);
+  font-size: 15px;
+  cursor: pointer;
+}
+.notif-kind > span { display: flex; flex-direction: column; }
+.notif-hint { color: var(--muted); font-size: 12px; }
+.notif-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+.notif-note { margin: 0; font-size: 13px; font-weight: 700; }
+.switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 46px;
+  height: 28px;
+  margin: 0;
+  border: var(--outline);
+  border-radius: 999px;
+  background: var(--line);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--white);
+  transition: transform 0.15s var(--ease-pop);
+}
+.switch:checked { background: var(--mint); }
+.switch:checked::after { transform: translateX(18px); }
+.switch:disabled { opacity: 0.5; }
