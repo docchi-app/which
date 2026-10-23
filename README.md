@@ -112,7 +112,7 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261026000000_create_poll.sql`, `20261027000000_shares.sql`,
    `20261028000000_poll_formats.sql`, `20261029000000_profile_privacy.sql`,
    `20261030000000_circles.sql`, `20261031000000_usernames.sql`, `20261101000000_circle_polls.sql`,
-   `20261102000000_scale.sql`, …), in date order,
+   `20261102000000_scale.sql`, `20261103000000_feed_voted_last.sql`, …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -239,9 +239,9 @@ per Supabase auth user, created automatically by a database trigger.
 | Banned users and closed polls | Checked inside `cast_vote()` |
 | Comments disappear after 24h | `expires_at`, filtered by row level security. Rows stay in the database so moderators can review them |
 
-**The feed** (`get_feed`) shows open polls you haven't voted on, 30 per page ("load more" fetches
-the next page a few cards before the end); the ones you've voted on are in Profile → Voted.
-Today's Poll of the Day leads Trending. **Trending** ranks by `polls.hot_score`, votes with a time
+**The feed** (`get_feed`) shows open polls, 30 per page ("load more" fetches the next page a few
+cards before the end). On Trending and New, polls you haven't voted on come first, with today's
+Poll of the Day on top of Trending; ones you've voted on follow at the end. **Trending** ranks by `polls.hot_score`, votes with a time
 decay (Hacker News style). **New** is newest first.
 
 **Keeping it fast as tables grow.** Every list picks its ~30 poll ids straight from an index
