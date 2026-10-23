@@ -555,7 +555,7 @@ export function CreatePoll() {
             missing
           ) : (
             <>
-              Keep it fun and kind. Up to {DAILY_POLL_LIMIT} polls a day
+              Keep it fun and kind (<Link href="/guidelines">guidelines</Link>). Up to {DAILY_POLL_LIMIT} polls a day
               {status?.signedIn ? ` · ${status.pollsLeft} left today` : ""}.
             </>
           )}

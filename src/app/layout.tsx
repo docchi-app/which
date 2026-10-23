@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
 import { siteUrl } from "@/lib/server-poll";
 import { UsernameGate } from "@/components/UsernameGate";
+import { VisitTracker } from "@/components/VisitTracker";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         {children}
         <UsernameGate />
+        <VisitTracker />
       </body>
     </html>
   );

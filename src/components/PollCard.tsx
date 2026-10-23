@@ -9,6 +9,7 @@ import { formatCount, percentages, timeLeft } from "@/lib/format";
 import type { Poll, VoteResult } from "@/lib/types";
 import { ArrowIcon, CommentIcon, ShareIcon } from "./icons";
 import { CirclePicks, LockedCircle } from "./CircleBits";
+import { ReportSheet } from "./ReportSheet";
 
 const LIVE_REFRESH_MS = 5000;
 
@@ -45,6 +46,8 @@ type Props = {
   onNeedSignIn: (pollId: string, optionId: string) => void;
   onShare: () => void;
   onNext: () => void;
+  /** The viewer reported this poll. */
+  onReported?: (pollId: string) => void;
 };
 
 /** Docchi's own polls carry a tick. */
@@ -76,12 +79,14 @@ export function PollCard({
   onNeedSignIn,
   onShare,
   onNext,
+  onReported,
 }: Props) {
   // The pick being saved. The card switches to results the moment you tap;
   // the bars fill in when the server answers.
   const [lockingId, setLockingId] = useState<string | null>(null);
   const [justVoted, setJustVoted] = useState(celebrate);
   const [error, setError] = useState<string | null>(null);
+  const [reporting, setReporting] = useState(false);
   // Read the clock once per card; closing mid-view is handled by cast_vote.
   const [now] = useState(() => Date.now());
 
@@ -364,6 +369,11 @@ export function PollCard({
           <ShareIcon />
           Share
         </button>
+        {!poll.isMine && !poll.isSystem && (
+          <button type="button" className="more-btn" onClick={() => setReporting(true)} aria-label="Report this poll" title="Report">
+            <MoreIcon />
+          </button>
+        )}
         {showResults || lockingId ? (
           <button type="button" className="btn btn-coral press next-btn" onClick={onNext}>
             Next <ArrowIcon size={18} />
@@ -374,7 +384,25 @@ export function PollCard({
           </button>
         )}
       </div>
+      {reporting && (
+        <ReportSheet
+          target={{ kind: "poll", pollId: poll.id }}
+          canReport={canVote}
+          onClose={() => setReporting(false)}
+          onReported={() => onReported?.(poll.id)}
+        />
+      )}
     </article>
+  );
+}
+
+function MoreIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="5" cy="12" r="2.2" />
+      <circle cx="12" cy="12" r="2.2" />
+      <circle cx="19" cy="12" r="2.2" />
+    </svg>
   );
 }
 

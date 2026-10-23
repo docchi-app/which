@@ -75,6 +75,19 @@ The first slice of the build order:
 - **Deleting:** the creator can delete a poll. It disappears everywhere (a shared link shows "That
   poll isn't available anymore"), but the row stays in the database for moderation review.
 - Leaders is a placeholder page for now.
+- **Report:** the ⋯ on a poll card, or Report on someone's profile, opens a sheet with a reason
+  (hate, private info, sexual, violence, spam, illegal, other). Signed-in accounts only, up to 20
+  a day, anonymous to everyone else. A poll that **3 different people** report hides itself until
+  an admin looks at it.
+- **Admin (`/admin`):** for accounts with `profiles.is_admin`. **Reports** lists what's waiting
+  (auto-hidden polls first) with the full poll, who posted it and their report history:
+  Remove poll, Keep / Dismiss, or Ban (they can't vote, post or report, and all their polls are
+  hidden). **Done** lists recent actions with Undo. **Metrics** shows visitors, votes, % of
+  visitors who vote, votes per session, share rate and D1/D7 retention against the launch targets,
+  plus a table by day.
+- **Terms, Privacy and Community guidelines** at `/terms`, `/privacy`, `/guidelines`, linked from
+  the sign-in sheet, the + screen and the bottom of Profile. Set `NEXT_PUBLIC_CONTACT_EMAIL` to
+  show a contact address on them.
 
 **Voting needs a Google account.** Anyone can browse; voting requires sign-in (one tap with
 Google). Guest accounts from the first release can still browse. When a guest signs in with Google,
@@ -112,7 +125,8 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261026000000_create_poll.sql`, `20261027000000_shares.sql`,
    `20261028000000_poll_formats.sql`, `20261029000000_profile_privacy.sql`,
    `20261030000000_circles.sql`, `20261031000000_usernames.sql`, `20261101000000_circle_polls.sql`,
-   `20261102000000_scale.sql`, `20261103000000_feed_voted_last.sql`, …), in date order,
+   `20261102000000_scale.sql`, `20261103000000_feed_voted_last.sql`,
+   `20261104000000_safety_metrics.sql`, …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -194,6 +208,13 @@ widget whose token is sent with sign-in), so do both together, or sign-ins will 
 
 Never put the **service_role** (secret) key in this app or in any `NEXT_PUBLIC_` variable.
 
+**Make yourself an admin** (once, in the SQL Editor), then open `/admin` (also linked at the
+bottom of your Profile):
+
+```sql
+update public.profiles set is_admin = true where username = 'your_username';
+```
+
 ### 5. Deploy (Vercel)
 
 Import the repo on [vercel.com](https://vercel.com), add the same two environment variables (plus,
@@ -238,6 +259,10 @@ per Supabase auth user, created automatically by a database trigger.
 | No direct writes from the browser | Inserts and updates are revoked for `anon` and `authenticated`. Writes go through database functions |
 | Banned users and closed polls | Checked inside `cast_vote()` |
 | Comments disappear after 24h | `expires_at`, filtered by row level security. Rows stay in the database so moderators can review them |
+| Reports: signed-in only, 20 a day, one per person per poll; 3 reporters hide a poll | `report()` |
+| Only admins see reports and metrics, or remove / ban | `require_admin()` in every `admin_…()` function; `reports`, `visits`, `mod_actions` aren't readable by clients |
+| Banned accounts can't vote, post or report, and their polls are hidden | `admin_act('ban')`, checked by `cast_vote()`, `create_poll()`, `report()` |
+| Data is deleted on schedule (as the Privacy page says) | `purge_old_records()` daily via pg_cron: removed polls, old comments and resolved reports after 180 days, visits after 2 years |
 
 **The feed** (`get_feed`) shows open polls, 30 per page ("load more" fetches the next page a few
 cards before the end). On Trending and New, polls you haven't voted on come first, with today's
@@ -256,6 +281,12 @@ otherwise by the first feed load that finds it stale. New polls get a score on i
 show up straight away. Username search uses a trigram index (`pg_trgm`). A shared link (`/?poll=<id>`) puts that poll first, even
 after it has closed (`get_poll`).
 
+**Metrics** come from one `visits` row per browser per day (a random id in localStorage, sent by
+`track_visit()` when the app opens or comes back after 30 minutes), plus the votes, shares, polls
+and profiles tables. Finished days are counted once into `metrics_daily`, so the admin page stays
+fast as votes grow. The targets (from `docs/poll-app-validation.md`): ≥60% of visitors vote, ≥8
+votes per session, 3–5% share rate, D1 ≥30%, D7 ≥12%.
+
 **Poll of the Day** is the system poll whose `featured_on` is today's date in India time
 (`Asia/Kolkata`). To schedule one, insert a system poll with a future `featured_on`; it stays
 hidden until that day.
@@ -273,8 +304,7 @@ docs/               product validation and design handoff
 
 ## Next in the build order
 
-1. Terms and Community guidelines pages
-2. Tracking the success metrics
-3. Comments that expire after 24h
-4. Weekly leaderboard job (public polls only)
-5. Admin panel and moderation (reports, rate limits)
+1. Comments that expire after 24h
+2. Weekly leaderboard job (public polls only)
+3. CAPTCHA (Cloudflare Turnstile) on sign-in, and rate limits on circle requests and shares
+4. Admin: schedule system polls / Poll of the Day

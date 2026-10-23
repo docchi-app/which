@@ -367,6 +367,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
                 onNeedSignIn={onNeedSignIn}
                 onShare={() => setSharing(poll)}
                 onNext={() => go(1)}
+                onReported={(id) => setPolls((list) => list?.filter((p) => p.id !== id) ?? null)}
               />
             ) : (
               tab === "circle" && polls.length === 0 ? (

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { continueWithGoogle } from "@/lib/auth";
 
@@ -68,6 +69,11 @@ export function SignInSheet({ pick, onClose }: Props) {
           <GoogleG />
           {busy ? "Opening Google…" : "Continue with Google"}
         </button>
+
+        <p className="sheet-legal">
+          By continuing you agree to the <Link href="/terms">Terms</Link> and{" "}
+          <Link href="/guidelines">Community guidelines</Link>, and our <Link href="/privacy">Privacy policy</Link>.
+        </p>
 
         {error && (
           <p className="poll-error" role="alert">

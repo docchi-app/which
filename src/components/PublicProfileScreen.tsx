@@ -22,6 +22,7 @@ import type { Poll } from "@/lib/types";
 import { Avatar } from "./Avatar";
 import { BottomNav } from "./BottomNav";
 import { ProfilePoll } from "./ProfileScreen";
+import { ReportSheet } from "./ReportSheet";
 import { ShareSheet } from "./ShareSheet";
 
 /** /u/<name>: someone's public polls, and asking to join their circle. */
@@ -35,6 +36,7 @@ export function PublicProfileScreen({ username }: { username: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmBlock, setConfirmBlock] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -197,9 +199,9 @@ export function PublicProfileScreen({ username }: { username: string }) {
         )}
       </ul>
 
-      {person && signedIn && !person.blockedByMe && (
+      {person && !person.blockedByMe && (
         <div className="block-row">
-          {confirmBlock ? (
+          {confirmBlock && signedIn ? (
             <>
               <span className="confirm-text">Block @{person.username}? They leave your circle, you leave theirs, and they can&apos;t ask again.</span>
               <button type="button" className="mini-btn mini-btn-danger" onClick={() => act(() => blockUser(person.username))}>
@@ -210,11 +212,21 @@ export function PublicProfileScreen({ username }: { username: string }) {
               </button>
             </>
           ) : (
-            <button type="button" className="mini-btn mini-btn-danger-text" onClick={() => setConfirmBlock(true)}>
-              Block @{person.username}
-            </button>
+            <>
+              <button type="button" className="mini-btn mini-btn-danger-text" onClick={() => setReporting(true)}>
+                Report
+              </button>
+              {signedIn && (
+                <button type="button" className="mini-btn mini-btn-danger-text block-btn" onClick={() => setConfirmBlock(true)}>
+                  Block @{person.username}
+                </button>
+              )}
+            </>
           )}
         </div>
+      )}
+      {reporting && person && (
+        <ReportSheet target={{ kind: "user", username: person.username }} canReport={signedIn} onClose={() => setReporting(false)} />
       )}
 
       <BottomNav />
