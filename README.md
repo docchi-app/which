@@ -74,7 +74,10 @@ The first slice of the build order:
   who voted on it, and anyone else can open it only from its link. Chosen on the + screen, changeable later.
 - **Deleting:** the creator can delete a poll. It disappears everywhere (a shared link shows "That
   poll isn't available anymore"), but the row stays in the database for moderation review.
-- Leaders is a placeholder page for now.
+- **Leaders (weekly):** Monday–Sunday, India time. **Top creators** by votes their public polls got
+  this week (podium for the top 3, then the list), **Hottest polls** by votes this week, last
+  week's champ on top, your own rank pinned at the bottom, and a Last week view. Votes on your own
+  poll, on Docchi's polls, from banned accounts or from accounts under a day old don't count.
 - **Report:** the ⋯ on a poll card, or Report on someone's profile, opens a sheet with a reason
   (hate, private info, sexual, violence, spam, illegal, other). Signed-in accounts only, up to 20
   a day, anonymous to everyone else. A poll that **3 different people** report hides itself until
@@ -82,7 +85,9 @@ The first slice of the build order:
 - **Admin (`/admin`):** for accounts with `profiles.is_admin`. **Reports** lists what's waiting
   (auto-hidden polls first) with the full poll, who posted it and their report history:
   Remove poll, Keep / Dismiss, or Ban (they can't vote, post or report, and all their polls are
-  hidden). **Done** lists recent actions with Undo. **Metrics** shows visitors, votes, % of
+  hidden). **Schedule** shows Poll of the Day for the next three weeks, flags empty days, and adds, edits
+  or removes one (classic, hot take or mystery; open 1–7 days; goes live at midnight India time).
+  **Done** lists recent actions with Undo. **Metrics** shows visitors, votes, % of
   visitors who vote, votes per session, share rate and D1/D7 retention against the launch targets,
   plus a table by day.
 - **Settings (⚙︎ on Profile):** notifications, the app (Home Screen), account (Admin, Sign out) and
@@ -142,7 +147,7 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261028000000_poll_formats.sql`, `20261029000000_profile_privacy.sql`,
    `20261030000000_circles.sql`, `20261031000000_usernames.sql`, `20261101000000_circle_polls.sql`,
    `20261102000000_scale.sql`, `20261103000000_feed_voted_last.sql`,
-   `20261104000000_safety_metrics.sql`, `20261105000000_push.sql`, `20261106000000_push_fixes.sql`, …), in date order,
+   `20261104000000_safety_metrics.sql`, `20261105000000_push.sql`, `20261106000000_push_fixes.sql`, `20261107000000_leaders_schedule.sql`, …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -345,8 +350,12 @@ fast as votes grow. The targets (from `docs/poll-app-validation.md`): ≥60% of 
 votes per session, 3–5% share rate, D1 ≥30%, D7 ≥12%.
 
 **Poll of the Day** is the system poll whose `featured_on` is today's date in India time
-(`Asia/Kolkata`). To schedule one, insert a system poll with a future `featured_on`; it stays
-hidden until that day.
+(`Asia/Kolkata`). Schedule them in **Admin → Schedule** (`admin_schedule_poll()`); each stays hidden
+until its day.
+
+**The leaderboard** is stored in `leader_scores` (top 100 per board per week) and rebuilt every
+10 minutes by pg_cron (`docchi-leaders`), or by the first visit after 15 minutes without it. Past
+weeks are kept, so last week's champ is a lookup.
 
 ## Project layout
 
@@ -361,6 +370,4 @@ docs/               product validation and design handoff
 
 ## Next in the build order
 
-1. Weekly leaderboard job (public polls only)
-2. CAPTCHA (Cloudflare Turnstile) on sign-in, and rate limits on circle requests and shares
-3. Admin: schedule system polls / Poll of the Day
+1. CAPTCHA (Cloudflare Turnstile) on sign-in, and rate limits on circle requests and shares
