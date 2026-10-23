@@ -237,6 +237,13 @@ export function ProfileScreen() {
         </>
       )}
 
+      <nav className="legal-links" aria-label="Policies">
+        {profile?.isAdmin && <Link href="/admin">Admin</Link>}
+        <Link href="/guidelines">Community guidelines</Link>
+        <Link href="/terms">Terms</Link>
+        <Link href="/privacy">Privacy</Link>
+      </nav>
+
       <BottomNav current="profile" />
       {sharing && <ShareSheet poll={sharing} onClose={() => setSharing(null)} />}
     </div>

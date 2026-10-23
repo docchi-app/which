@@ -1,0 +1,57 @@
+import type { Metadata } from "next";
+import { LegalPage } from "@/components/LegalPage";
+
+export const metadata: Metadata = { title: "Privacy · Docchi" };
+
+export default function PrivacyPage() {
+  return (
+    <LegalPage
+      path="/privacy"
+      title="Privacy policy"
+      intro="We collect as little as we can to run Docchi. We don't sell your data and there are no ads."
+    >
+      <h2>What we collect</h2>
+      <ul>
+        <li><strong>From Google, when you sign in:</strong> your name, email address and profile photo. Your name and photo help suggest a username; your email is never shown to anyone.</li>
+        <li><strong>What you do on Docchi:</strong> your username, the polls you post, your votes, shares, circle requests and groups, blocks and reports.</li>
+        <li><strong>Visits:</strong> a random ID stored in your browser, which days you opened Docchi and how many times. We use it to count visitors and see whether people come back. It isn&apos;t linked to ads or other sites.</li>
+        <li><strong>Technical logs</strong> kept by our hosting providers (like IP address and browser) for security, for a short time.</li>
+      </ul>
+
+      <h2>Who sees what</h2>
+      <ul>
+        <li><strong>Everyone:</strong> your username, photo and public polls. Votes on public polls are only shown as totals.</li>
+        <li><strong>Your circle:</strong> your circle polls, and who picked what on them.</li>
+        <li><strong>Docchi&apos;s team:</strong> reports and the content they point to, to keep the app safe.</li>
+        <li><strong>Service providers</strong> that run Docchi for us: Supabase (database and sign-in) and Vercel (hosting). They process data only to provide their service.</li>
+        <li><strong>Authorities</strong>, only when Indian law requires it.</li>
+      </ul>
+
+      <h2>Cookies and storage</h2>
+      <p>
+        We use a sign-in cookie to keep you logged in, and your browser&apos;s storage for the visit ID and small settings.
+        No advertising or cross-site tracking cookies.
+      </p>
+
+      <h2>How long we keep it</h2>
+      <ul>
+        <li>Your account and polls: until you delete them or ask us to delete your account.</li>
+        <li>Deleted or removed polls, reports and comments: kept for up to 180 days for safety reviews, then deleted.</li>
+        <li>Visit records: up to 2 years, then deleted.</li>
+      </ul>
+
+      <h2>Your choices</h2>
+      <ul>
+        <li>Change your username, delete polls or make them link-only from your profile.</li>
+        <li>Ask us for a copy of your data, to correct it, or to delete your account (write to us below).</li>
+        <li>Clearing your browser&apos;s site data resets your visit ID.</li>
+      </ul>
+
+      <h2>Kids</h2>
+      <p>
+        Docchi isn&apos;t for children under 13. If you&apos;re under 18, use it only with a parent or guardian&apos;s
+        permission. If you think a child is using Docchi without that, tell us and we&apos;ll remove the account.
+      </p>
+    </LegalPage>
+  );
+}

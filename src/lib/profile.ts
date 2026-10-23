@@ -12,6 +12,8 @@ export type Profile = {
   votesReceived: number;
   shares: number;
   votesCast: number;
+  /** Can open /admin. */
+  isAdmin: boolean;
 };
 
 export async function getMyProfile(): Promise<Profile | null> {
@@ -30,6 +32,7 @@ export async function getMyProfile(): Promise<Profile | null> {
     votesReceived: data.votes_received,
     shares: data.shares,
     votesCast: data.votes_cast,
+    isAdmin: data.is_admin === true,
   };
 }
 
