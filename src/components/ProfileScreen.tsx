@@ -6,7 +6,7 @@ import { continueWithGoogle, onUserChange, saveReturnTo, signOut, canVote } from
 import { checkUsername, type UsernameProblem } from "@/lib/create";
 import { formatCount, percentages, timeLeft } from "@/lib/format";
 import { deletePoll, fetchMyPolls, setPollVisibility } from "@/lib/polls";
-import { compactCount, getMyProfile, updateUsername, type Profile } from "@/lib/profile";
+import { compactCount, getMyProfile, PROFILE_CHANGED, updateUsername, type Profile } from "@/lib/profile";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import type { Poll } from "@/lib/types";
 import { BottomNav } from "./BottomNav";
@@ -69,6 +69,12 @@ export function ProfileScreen() {
     loadProfile();
     loadBadge();
   }, [signedIn, loadProfile, loadBadge]);
+
+  // The "Pick your @name" sheet can change the name while this screen is open.
+  useEffect(() => {
+    window.addEventListener(PROFILE_CHANGED, loadProfile);
+    return () => window.removeEventListener(PROFILE_CHANGED, loadProfile);
+  }, [loadProfile]);
 
   useEffect(() => {
     if (!signedIn || tab === "circle") return;
