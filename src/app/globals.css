@@ -241,6 +241,28 @@ button {
   animation: rise 0.55s var(--ease-pop) both;
 }
 
+/* A card brought back with a downward swipe drops in from above. */
+@keyframes drop {
+  from { opacity: 0; transform: translateY(-20px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.enter-prev > .poll-card { animation-name: drop; }
+
+.swipe-hint {
+  position: absolute;
+  top: calc(100% + 26px);
+  left: 0;
+  right: 0;
+  display: none;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+@media (hover: none) {
+  .swipe-hint { display: block; }
+}
+
 .poll-meta {
   display: flex;
   flex-wrap: wrap;

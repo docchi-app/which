@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type TouchEvent } from "react";
 import Link from "next/link";
 import { savePendingVote, takePendingVote } from "@/lib/auth";
 import { fetchFeed } from "@/lib/polls";
@@ -25,6 +25,9 @@ export function Feed() {
   const [sheet, setSheet] = useState<SheetPick | null>(null);
   // Poll whose vote was just cast on the way back from Google sign-in.
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
+  // Which way the last move went, so the next card comes in from that side.
+  const [dir, setDir] = useState<"next" | "prev">("next");
+  const touch = useRef<{ x: number; y: number; scrollY: number } | null>(null);
 
   const load = useCallback(async (which: FeedTab) => {
     setPolls(null);
@@ -79,6 +82,45 @@ export function Feed() {
     setSheet(null);
   }, []);
 
+  // index === polls.length is the "all caught up" card.
+  const go = useCallback(
+    (delta: 1 | -1) => {
+      if (!polls) return;
+      setDir(delta === 1 ? "next" : "prev");
+      setIndex((i) => Math.min(Math.max(i + delta, 0), polls.length));
+    },
+    [polls],
+  );
+
+  // Swipe up for the next poll, down for the previous one. On short screens
+  // the page still scrolls first: a gesture that moved the page isn't a swipe.
+  function onTouchStart(e: TouchEvent) {
+    touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, scrollY: window.scrollY };
+  }
+  function onTouchEnd(e: TouchEvent) {
+    const start = touch.current;
+    touch.current = null;
+    if (!start || sheet) return;
+    const dx = e.changedTouches[0].clientX - start.x;
+    const dy = e.changedTouches[0].clientY - start.y;
+    if (Math.abs(dy) < 60 || Math.abs(dy) < Math.abs(dx) * 1.5) return;
+    if (Math.abs(window.scrollY - start.scrollY) > 4) return;
+    go(dy < 0 ? 1 : -1);
+  }
+
+  // Keyboard: ↓ / j for next, ↑ / k for previous (same scroll-edge rule).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (sheet || e.metaKey || e.ctrlKey || e.altKey) return;
+      const doc = document.documentElement;
+      const atBottom = window.scrollY + window.innerHeight >= doc.scrollHeight - 2;
+      if ((e.key === "ArrowDown" && atBottom) || e.key === "j") go(1);
+      else if ((e.key === "ArrowUp" && window.scrollY <= 0) || e.key === "k") go(-1);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [go, sheet]);
+
   const poll = polls?.[index];
 
   function tagFor(p: Poll, i: number) {
@@ -118,8 +160,8 @@ export function Feed() {
         ))}
       </div>
 
-      <main className="stack">
-        <div className="stack-deck">
+      <main className="stack" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <div className={`stack-deck enter-${dir}`}>
           <div className="stack-card stack-card-back" aria-hidden="true" />
           <div className="stack-card stack-card-mid" aria-hidden="true" />
 
@@ -146,7 +188,7 @@ export function Feed() {
               celebrate={poll.id === celebrateId}
               onVoted={onVoted}
               onNeedSignIn={onNeedSignIn}
-              onNext={() => setIndex((i) => i + 1)}
+              onNext={() => go(1)}
             />
           ) : (
             <section className="poll-card empty-card">
@@ -154,7 +196,14 @@ export function Feed() {
               <h1 className="poll-question">That&apos;s every poll for now.</h1>
               <p className="poll-foot-note">New ones drop every day. Or make your own.</p>
               <div className="empty-actions">
-                <button type="button" className="btn btn-white press" onClick={() => setIndex(0)}>
+                <button
+                  type="button"
+                  className="btn btn-white press"
+                  onClick={() => {
+                    setDir("prev");
+                    setIndex(0);
+                  }}
+                >
                   Start over
                 </button>
                 <Link href="/create" className="btn btn-coral press">
@@ -163,6 +212,7 @@ export function Feed() {
               </div>
             </section>
           )}
+          {polls && index === 0 && polls.length > 1 && <p className="swipe-hint">Swipe up for the next one</p>}
         </div>
       </main>
 
