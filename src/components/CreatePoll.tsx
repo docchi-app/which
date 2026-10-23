@@ -14,6 +14,7 @@ import {
   type UsernameProblem,
 } from "@/lib/create";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import type { PollKind } from "@/lib/types";
 import { ANSWER_COLORS } from "./PollCard";
 import { ArrowIcon, PlusIcon } from "./icons";
 
@@ -22,8 +23,15 @@ const ANSWER_MAX = 40;
 const DURATIONS = [1, 3, 7] as const;
 type Days = (typeof DURATIONS)[number];
 
-type Draft = { question: string; answers: string[]; days: Days; username: string };
-const EMPTY_DRAFT: Draft = { question: "", answers: ["", ""], days: 3, username: "" };
+type Draft = { kind: PollKind; question: string; teaser: string; answers: string[]; days: Days; username: string };
+const EMPTY_DRAFT: Draft = { kind: "classic", question: "", teaser: "", answers: ["", ""], days: 3, username: "" };
+const TEASER_MAX = 60;
+
+const FORMATS: { kind: PollKind; label: string; blurb: string }[] = [
+  { kind: "classic", label: "Classic", blurb: "A question and 2 to 4 answers." },
+  { kind: "hot_take", label: "Hot take", blurb: "A bold statement. People agree or disagree." },
+  { kind: "mystery", label: "Mystery", blurb: "People pick on gut. Your question shows after they tap." },
+];
 const DRAFT_KEY = "docchi.draft";
 
 // Result of checking one username with the server.
@@ -39,6 +47,8 @@ const ERRORS: Record<string, string> = {
   duplicate_answers: "Two answers are the same. Make each one different.",
   duration: "Pick when the poll closes.",
   blocked_words: "Let's keep it friendly: some of those words aren't allowed.",
+  special_limit: "One hot take or mystery poll a day. Post a classic, or come back tomorrow!",
+  teaser_length: "Mystery polls need a teaser of 3 to 60 characters.",
   demo: "Demo mode: polls can't be posted until Supabase is connected.",
 };
 
@@ -129,22 +139,34 @@ export function CreatePoll() {
   };
   const setAnswer = (i: number, v: string) => set({ answers: draft.answers.map((a, j) => (j === i ? v : a)) });
 
+  const kind = draft.kind;
+  const isTake = kind === "hot_take";
+  const isMystery = kind === "mystery";
   const question = draft.question.trim();
-  const answers = draft.answers.map((a) => a.trim()).filter(Boolean);
+  const teaser = draft.teaser.trim();
+  const answers = isTake ? ["Agree", "Disagree"] : draft.answers.map((a) => a.trim()).filter(Boolean);
   const dupes = new Set(answers.map((a) => a.toLowerCase())).size !== answers.length;
   const nameOk = nameCheck?.problem === "ok";
-  const missing =
-    question.length < 3
-      ? "Ask a question"
-      : answers.length < 2
-        ? "Add at least 2 answers"
-        : dupes
-          ? "Two answers are the same"
-          : !nameOk
-            ? "Pick a username"
-            : status && status.pollsLeft <= 0
-              ? `That's ${DAILY_POLL_LIMIT} polls today. Come back tomorrow!`
-              : null;
+  const specialUsed = kind !== "classic" && status?.specialLeft === 0;
+  const missing = specialUsed
+    ? "You've posted today's hot take or mystery poll. Classic polls are still open!"
+    : isMystery && teaser.length < 3
+      ? "Write the teaser people see first"
+      : question.length < 3
+        ? isTake
+          ? "Write your hot take"
+          : isMystery
+            ? "Write the hidden question"
+            : "Ask a question"
+        : answers.length < 2
+          ? "Add at least 2 answers"
+          : dupes
+            ? "Two answers are the same"
+            : !nameOk
+              ? "Pick a username"
+              : status && status.pollsLeft <= 0
+                ? `That's ${DAILY_POLL_LIMIT} polls today. Come back tomorrow!`
+                : null;
 
   async function post() {
     if (missing || posting) return;
@@ -156,6 +178,8 @@ export function CreatePoll() {
         answers,
         days: draft.days,
         username: needsName ? draft.username : null,
+        kind,
+        teaser: isMystery ? teaser : null,
       });
       sessionStorage.removeItem(DRAFT_KEY);
       router.push(`/?poll=${id}&created=1`);
@@ -207,16 +231,60 @@ export function CreatePoll() {
           post();
         }}
       >
+        <fieldset className="field">
+          <legend className="field-label">Format</legend>
+          <div className="formats" role="radiogroup" aria-label="Poll format">
+            {FORMATS.map((f) => (
+              <button
+                key={f.kind}
+                type="button"
+                role="radio"
+                aria-checked={kind === f.kind}
+                className={`format press format-${f.kind}`}
+                onClick={() => set({ kind: f.kind })}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <span className="format-blurb">
+            {FORMATS.find((f) => f.kind === kind)?.blurb}
+            {kind !== "classic" && " One a day."}
+          </span>
+        </fieldset>
+
+        {isMystery && (
+          <div className="field">
+            <label htmlFor="teaser" className="field-label">
+              What people see first
+            </label>
+            <input
+              id="teaser"
+              className="answer-input teaser-input"
+              maxLength={TEASER_MAX}
+              placeholder="Pick a colour"
+              value={draft.teaser}
+              onChange={(e) => set({ teaser: e.target.value })}
+            />
+          </div>
+        )}
+
         <div className="field">
           <label htmlFor="question" className="field-label">
-            Ask anything
+            {isTake ? "Your hot take" : isMystery ? "The hidden question" : "Ask anything"}
           </label>
           <textarea
             id="question"
             className="question-input"
             rows={2}
             maxLength={QUESTION_MAX}
-            placeholder="Tea or coffee to start the day?"
+            placeholder={
+              isTake
+                ? "Pineapple belongs on pizza."
+                : isMystery
+                  ? "What colour is your dream car?"
+                  : "Tea or coffee to start the day?"
+            }
             value={draft.question}
             onChange={(e) => set({ question: e.target.value.replace(/\n/g, " ") })}
           />
@@ -225,42 +293,44 @@ export function CreatePoll() {
           </span>
         </div>
 
-        <fieldset className="field">
-          <legend className="field-label">Answers</legend>
-          {draft.answers.map((a, i) => (
-            <div key={i} className="answer-row">
-              <span className="answer-letter" aria-hidden="true" style={{ background: ANSWER_COLORS[i] }}>
-                {"ABCD"[i]}
-              </span>
-              <input
-                className="answer-input"
-                aria-label={`Answer ${i + 1}`}
-                maxLength={ANSWER_MAX}
-                placeholder="Type an answer"
-                value={a}
-                onChange={(e) => setAnswer(i, e.target.value)}
-              />
-              {draft.answers.length > 2 && (
-                <button
-                  type="button"
-                  className="remove-answer"
-                  aria-label={`Remove answer ${i + 1}`}
-                  onClick={() => set({ answers: draft.answers.filter((_, j) => j !== i) })}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
-                    <path d="M6 6l12 12M18 6L6 18" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          ))}
-          {draft.answers.length < 4 && (
-            <button type="button" className="add-answer" onClick={() => set({ answers: [...draft.answers, ""] })}>
-              <PlusIcon size={18} strokeWidth={2.6} />
-              Add answer ({4 - draft.answers.length} left)
-            </button>
-          )}
-        </fieldset>
+        {!isTake && (
+          <fieldset className="field">
+            <legend className="field-label">Answers</legend>
+            {draft.answers.map((a, i) => (
+              <div key={i} className="answer-row">
+                <span className="answer-letter" aria-hidden="true" style={{ background: ANSWER_COLORS[i] }}>
+                  {"ABCD"[i]}
+                </span>
+                <input
+                  className="answer-input"
+                  aria-label={`Answer ${i + 1}`}
+                  maxLength={ANSWER_MAX}
+                  placeholder="Type an answer"
+                  value={a}
+                  onChange={(e) => setAnswer(i, e.target.value)}
+                />
+                {draft.answers.length > 2 && (
+                  <button
+                    type="button"
+                    className="remove-answer"
+                    aria-label={`Remove answer ${i + 1}`}
+                    onClick={() => set({ answers: draft.answers.filter((_, j) => j !== i) })}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+                      <path d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            ))}
+            {draft.answers.length < 4 && (
+              <button type="button" className="add-answer" onClick={() => set({ answers: [...draft.answers, ""] })}>
+                <PlusIcon size={18} strokeWidth={2.6} />
+                Add answer ({4 - draft.answers.length} left)
+              </button>
+            )}
+          </fieldset>
+        )}
 
         <fieldset className="field">
           <legend className="field-label">Closes after</legend>
@@ -322,11 +392,20 @@ export function CreatePoll() {
 
         <div className="field">
           <span className="field-label muted">Live preview</span>
-          <div className="preview-card">
-            <span className="preview-q">{question || "Your question shows up here"}</span>
+          <div className={`preview-card preview-${kind}`}>
+            {isMystery && <span className="preview-blur" aria-hidden="true" />}
+            <span className="preview-q">
+              {isMystery
+                ? teaser || "Your teaser shows up here"
+                : question || (isTake ? "Your hot take shows up here" : "Your question shows up here")}
+            </span>
             <div className="preview-answers">
-              {draft.answers.map((a, i) => (
-                <span key={i} className="preview-chip" style={{ background: ANSWER_COLORS[i] }}>
+              {(isTake ? ["Agree", "Disagree"] : draft.answers).map((a, i) => (
+                <span
+                  key={i}
+                  className="preview-chip"
+                  style={{ background: isTake ? (i ? "var(--ink)" : "var(--white)") : ANSWER_COLORS[i], color: isTake && i ? "var(--cream)" : undefined }}
+                >
                   {a.trim() || `Answer ${"ABCD"[i]}`}
                 </span>
               ))}

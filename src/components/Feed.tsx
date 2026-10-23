@@ -120,7 +120,9 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   const onVoted = useCallback((pollId: string, r: VoteResult) => {
     setPolls((list) =>
       list?.map((p) =>
-        p.id === pollId ? { ...p, myOptionId: r.myOptionId, voteCount: r.voteCount, options: r.options } : p,
+        p.id === pollId
+          ? { ...p, myOptionId: r.myOptionId, voteCount: r.voteCount, options: r.options, question: r.question || p.question }
+          : p,
       ) ?? null,
     );
   }, []);
@@ -273,6 +275,8 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   function tagFor(p: Poll, i: number) {
     if (p.featuredToday) return "Poll of the Day";
     if (votedBefore.has(p.id)) return "You voted";
+    if (p.kind === "hot_take") return "Hot take";
+    if (p.kind === "mystery") return "Mystery poll";
     if (tab === "new") return "New";
     const rank = i + 1 - (polls?.[0]?.featuredToday ? 1 : 0);
     return `Trending #${rank}`;

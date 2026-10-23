@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import type { PollKind } from "./types";
 
 export type CreateStatus = {
   signedIn: boolean;
@@ -6,6 +7,8 @@ export type CreateStatus = {
   username: string | null;
   suggestions: string[];
   pollsLeft: number;
+  /** Hot takes and mystery polls: 1 a day. */
+  specialLeft: number;
 };
 
 export type UsernameProblem = "ok" | "format" | "reserved" | "blocked" | "taken";
@@ -14,7 +17,7 @@ export const DAILY_POLL_LIMIT = 5;
 
 export async function getCreateStatus(nameSeed: string | null): Promise<CreateStatus> {
   const supabase = getSupabase();
-  if (!supabase) return { signedIn: true, username: "you", suggestions: [], pollsLeft: DAILY_POLL_LIMIT };
+  if (!supabase) return { signedIn: true, username: "you", suggestions: [], pollsLeft: DAILY_POLL_LIMIT, specialLeft: 1 };
   const { data, error } = await supabase.rpc("create_poll_status", { name_seed: nameSeed });
   if (error) throw error;
   return {
@@ -22,6 +25,7 @@ export async function getCreateStatus(nameSeed: string | null): Promise<CreateSt
     username: data.username ?? null,
     suggestions: data.suggestions ?? [],
     pollsLeft: data.polls_left ?? 0,
+    specialLeft: data.special_left ?? 1,
   };
 }
 
@@ -45,6 +49,8 @@ export async function createPoll(input: {
   answers: string[];
   days: 1 | 3 | 7;
   username: string | null;
+  kind: PollKind;
+  teaser: string | null;
 }): Promise<string> {
   const supabase = getSupabase();
   if (!supabase) throw new CreatePollError("demo");
@@ -53,6 +59,9 @@ export async function createPoll(input: {
     answers: input.answers,
     days: input.days,
     username: input.username,
+    // Only for the new formats, so classic polls also work before the
+    // 20261028 migration has been run.
+    ...(input.kind === "classic" ? {} : { kind: input.kind, teaser: input.teaser }),
   });
   if (error) {
     const code = /docchi:(\w+)/.exec(error.message)?.[1];

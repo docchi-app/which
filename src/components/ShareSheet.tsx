@@ -13,7 +13,7 @@ export function ShareSheet({ poll, onClose }: Props) {
   const [copied, setCopied] = useState(false);
   const [canNativeShare] = useState(() => typeof navigator !== "undefined" && "share" in navigator);
   const voted = poll.myOptionId !== null;
-  const text = shareText(poll.question, voted);
+  const text = shareText(poll);
 
   useEffect(() => {
     firstRef.current?.focus();
@@ -29,7 +29,7 @@ export function ShareSheet({ poll, onClose }: Props) {
 
   async function native() {
     try {
-      await navigator.share({ title: poll.question, text, url: pollUrl(poll.id, "native") });
+      await navigator.share({ title: poll.question ?? poll.teaser ?? "Docchi", text, url: pollUrl(poll.id, "native") });
       recordShare(poll.id, "native");
     } catch {
       // Share menu dismissed.
@@ -54,7 +54,7 @@ export function ShareSheet({ poll, onClose }: Props) {
       <section role="dialog" aria-modal="true" aria-labelledby="share-title" className="sheet share-sheet">
         <div className="sheet-handle" aria-hidden="true" />
         <h2 id="share-title" className="sheet-title">
-          {voted ? "Challenge a friend" : "Share this poll"}
+          {voted || poll.kind === "hot_take" ? "Challenge a friend" : "Share this poll"}
         </h2>
         <p className="sheet-text">Friends see the question, not the result. They vote to find out.</p>
 

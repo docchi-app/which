@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import type { Poll } from "./types";
 
 export type ShareChannel = "native" | "whatsapp" | "x" | "copy";
 
@@ -6,9 +7,13 @@ export type ShareChannel = "native" | "whatsapp" | "x" | "copy";
 export const pollUrl = (pollId: string, channel: ShareChannel) =>
   `${window.location.origin}/p/${pollId}?src=${channel}`;
 
-/** Never gives away the result: friends vote to find out. */
-export const shareText = (question: string, voted: boolean) =>
-  voted ? `I picked my side on "${question}" Which one are you?` : `${question} Pick a side:`;
+/** Never gives away the result (or a mystery poll's question): friends vote to find out. */
+export function shareText(poll: Poll): string {
+  const voted = poll.myOptionId !== null;
+  if (poll.kind === "mystery") return `Mystery poll: ${poll.teaser} Pick on gut, the question shows after:`;
+  if (poll.kind === "hot_take") return `Hot take: "${poll.question}" Agree or disagree?`;
+  return voted ? `I picked my side on "${poll.question}" Which one are you?` : `${poll.question} Pick a side:`;
+}
 
 /** Counts toward the leaderboard (once per person per poll). Fire and forget. */
 export function recordShare(pollId: string, channel: ShareChannel) {

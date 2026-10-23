@@ -27,11 +27,25 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     font("DMSans-Bold.ttf"),
   ]);
 
-  const question = poll?.question ?? "Which one? Tap a side, then see where everyone landed.";
+  const kind = poll?.kind ?? "classic";
+  // A mystery poll shows its teaser; the question is the surprise.
+  const question =
+    (kind === "mystery" ? poll?.teaser : poll?.question) ?? "Which one? Tap a side, then see where everyone landed.";
+  const cardBg = kind === "hot_take" ? "#FF7A59" : kind === "mystery" ? "#B79CFF" : "#FFFFFF";
+  const badge = kind === "hot_take" ? "Hot take" : kind === "mystery" ? "Mystery poll" : null;
+  const cta = poll?.closed
+    ? "See the final result"
+    : kind === "hot_take"
+      ? "Agree or disagree?"
+      : kind === "mystery"
+        ? "Tap to find out"
+        : "Tap to vote";
   // Long questions and 4-answer polls get a tighter layout so nothing overlaps.
+  // The format badge row takes space too.
+  const answersCount = poll?.options.length ?? 0;
   const long = question.length > 80;
-  const compact = long || (question.length > 45 && (poll?.options.length ?? 0) > 2);
-  const questionSize = question.length <= 45 ? 76 : long ? 46 : 60;
+  const compact = long || (answersCount > 2 && (question.length > 45 || kind !== "classic"));
+  const questionSize = Math.min(question.length <= 45 ? 76 : long ? 46 : 60, kind === "classic" ? 76 : 62);
   const votes = poll ? `${poll.voteCount.toLocaleString("en-US")} ${poll.voteCount === 1 ? "vote" : "votes"}` : null;
 
   return new ImageResponse(
@@ -62,8 +76,26 @@ export default async function Image({ params }: { params: Promise<{ id: string }
             docchi<span style={{ color: "#FF7A59" }}>?</span>
           </div>
           {poll && (
-            <div style={{ display: "flex", marginLeft: "auto", fontSize: 26, color: "#5A5370" }}>
-              by @{poll.creator}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", fontSize: 26, color: "#5A5370" }}>
+              by <span style={{ color: INK }}>@{poll.creator}</span>
+              {poll.verified && (
+                <div
+                  style={{
+                    display: "flex",
+                    width: 30,
+                    height: 30,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: `3px solid ${INK}`,
+                    borderRadius: 999,
+                    background: "#6CB4FF",
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke={INK} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -78,10 +110,34 @@ export default async function Image({ params }: { params: Promise<{ id: string }
             padding: "36px 44px",
             border: `5px solid ${INK}`,
             borderRadius: 40,
-            background: "#FFFFFF",
+            background: cardBg,
             boxShadow: `12px 12px 0 ${INK}`,
           }}
         >
+          {badge && (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 14, flexShrink: 0 }}>
+              <div
+                style={{
+                  display: "flex",
+                  padding: "6px 18px",
+                  border: `3px solid ${INK}`,
+                  borderRadius: 999,
+                  background: "#FFFFFF",
+                  fontSize: 22,
+                  letterSpacing: 1,
+                  textTransform: "uppercase",
+                }}
+              >
+                {badge}
+              </div>
+              {kind === "mystery" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, paddingTop: 4 }}>
+                  <div style={{ display: "flex", height: 16, borderRadius: 8, background: "rgba(27,21,48,0.35)" }} />
+                  <div style={{ display: "flex", height: 16, width: "60%", borderRadius: 8, background: "rgba(27,21,48,0.35)" }} />
+                </div>
+              )}
+            </div>
+          )}
           <div
             style={{
               display: "flex",
@@ -96,7 +152,23 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           </div>
           {poll && (
             <div style={{ display: "flex", flexWrap: "wrap", flexShrink: 0, gap: compact ? 10 : 14 }}>
-              {poll.options.map((text, i) => (
+              {poll.options.map((text, i) =>
+                kind === "hot_take" ? (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      padding: "10px 34px",
+                      border: `4px solid ${INK}`,
+                      borderRadius: 22,
+                      background: i === 0 ? "#FFFFFF" : INK,
+                      color: i === 0 ? INK : CREAM,
+                      fontSize: 30,
+                    }}
+                  >
+                    {text}
+                  </div>
+                ) : (
                 <div
                   key={i}
                   style={{
@@ -127,7 +199,8 @@ export default async function Image({ params }: { params: Promise<{ id: string }
                   </div>
                   {text}
                 </div>
-              ))}
+                ),
+              )}
             </div>
           )}
           <div style={{ display: "flex", alignItems: "center", gap: 18, marginTop: "auto" }}>
@@ -141,9 +214,13 @@ export default async function Image({ params }: { params: Promise<{ id: string }
                 fontSize: 30,
               }}
             >
-              {poll?.closed ? "See the final result" : "Tap to vote"}
+              {cta}
             </div>
-            {votes && <div style={{ display: "flex", fontSize: 30, color: "#5A5370" }}>{votes} · results after you vote</div>}
+            {votes && (
+              <div style={{ display: "flex", fontSize: 30, color: kind === "classic" ? "#5A5370" : INK }}>
+                {votes} · {kind === "mystery" ? "the question shows after you vote" : "results after you vote"}
+              </div>
+            )}
           </div>
         </div>
       </div>

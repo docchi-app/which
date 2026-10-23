@@ -1127,3 +1127,141 @@ button.ghost-action { cursor: pointer; }
   font-weight: 700;
 }
 .share-btn-whatsapp { background: var(--mint); }
+
+/* ─── Poll formats + verified ────────────────────────────────────────────── */
+
+.verified {
+  display: inline-flex;
+  width: 17px;
+  height: 17px;
+  margin-left: 4px;
+  align-items: center;
+  justify-content: center;
+  vertical-align: -3px;
+  border: 1.6px solid var(--ink);
+  border-radius: 50%;
+  background: var(--sky);
+  color: var(--ink);
+}
+.chip-white { background: var(--white); }
+
+/* Hot take: coral card, Agree / Disagree side by side. */
+.poll-card.poll-hot_take { background: var(--coral); }
+.poll-hot_take .poll-by,
+.poll-hot_take .poll-foot-note { color: var(--ink); }
+.poll-hot_take .poll-actions { border-top-color: rgb(27 21 48 / 0.25); }
+.take-answers {
+  display: flex;
+  gap: 10px;
+}
+.take-btn {
+  flex: 1;
+  height: 56px;
+  border: var(--outline);
+  border-radius: var(--radius-answer);
+  background: var(--white);
+  box-shadow: var(--shadow);
+  font-size: 17px;
+  font-weight: 700;
+}
+.take-btn-dark {
+  background: var(--ink);
+  color: var(--cream);
+}
+.spice-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.spice-track {
+  flex: 1;
+  height: 12px;
+  overflow: hidden;
+  border: var(--outline);
+  border-radius: 999px;
+  background: var(--white);
+}
+.spice-fill {
+  display: block;
+  height: 100%;
+  background: var(--sun);
+  transform-origin: left;
+  animation: grow 0.9s var(--ease-pop) both;
+}
+.settle-btn { align-self: flex-start; }
+
+/* Mystery: lilac card, blurred question until you vote. */
+.poll-card.poll-mystery { background: var(--lilac); }
+.poll-mystery .poll-by,
+.poll-mystery .poll-foot-note { color: var(--ink); }
+.poll-mystery .answer { background: var(--white); }
+.poll-mystery .poll-actions { border-top-color: rgb(27 21 48 / 0.25); }
+.mystery-blur {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  filter: blur(5px);
+}
+.mystery-blur span {
+  height: 22px;
+  border-radius: 8px;
+  background: rgb(27 21 48 / 0.45);
+}
+.mystery-blur span:last-child { width: 62%; }
+.mystery-teaser { font-size: 24px; }
+.mystery-hint {
+  margin: -6px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+.mystery-reveal {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-control);
+  background: var(--ink);
+  color: var(--cream);
+  animation: pop 0.5s var(--ease-pop) both;
+}
+.mystery-reveal small {
+  color: var(--sun);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.mystery-reveal .poll-question { font-size: 22px; }
+
+/* Create: format picker */
+.formats {
+  display: flex;
+  gap: 8px;
+}
+.format {
+  flex: 1;
+  height: 44px;
+  border: var(--outline);
+  border-radius: 999px;
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+  font-size: 14px;
+  font-weight: 700;
+}
+.format[aria-checked="true"] { box-shadow: 3px 3px 0 var(--ink); border-width: 2.5px; }
+.format-classic[aria-checked="true"] { background: var(--sun); }
+.format-hot_take[aria-checked="true"] { background: var(--coral); }
+.format-mystery[aria-checked="true"] { background: var(--lilac); }
+.format-blurb { color: var(--muted); font-size: 13px; }
+.teaser-input { flex: none; font-weight: 700; }
+.preview-card.preview-hot_take { background: var(--coral); }
+.preview-card.preview-mystery { background: var(--lilac); }
+.preview-blur {
+  height: 16px;
+  width: 80%;
+  border-radius: 6px;
+  background: rgb(27 21 48 / 0.45);
+  filter: blur(4px);
+}
+.poll-hot_take .next-btn { background: var(--white); }

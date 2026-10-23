@@ -38,6 +38,11 @@ The first slice of the build order:
   for newly posted polls and shows a "Fresh polls ↑" pill; tapping it reloads the feed. Nothing
   runs while the tab is hidden. This is simple polling; Supabase Realtime can replace it once
   traffic grows.
+- **Poll formats:** besides classic polls there are **hot takes** (a bold statement, Agree /
+  Disagree, with a spice meter showing how split people are and a "Settle this" share button when
+  it's close) and **mystery polls** (people see a teaser like "Pick a colour" and the answers; the
+  real question stays on the server until they vote, then it's revealed). Anyone can post one of
+  these a day. Docchi's own polls show a **verified** tick, in the app and on link previews.
 - **Create poll:** question (up to 140 characters), 2 to 4 answers (up to 40 each), closes after
   1, 3 or 7 days, with a live preview. Anyone signed in can post up to 5 polls in 24 hours. The
   first poll also picks a username: a free one is prefilled from the Google name, it's checked as
@@ -78,7 +83,8 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `supabase/migrations/20261023000000_init.sql`, and click **Run**.
 2. Do the same with each later file in `supabase/migrations/`
    (`20261024000000_google_sign_in.sql`, `20261025000000_feed_paging.sql`,
-   `20261026000000_create_poll.sql`, `20261027000000_shares.sql`, …), in date order,
+   `20261026000000_create_poll.sql`, `20261027000000_shares.sql`,
+   `20261028000000_poll_formats.sql`, …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -92,6 +98,17 @@ npx supabase link --project-ref <your-project-ref>   # the ref is in the project
 npx supabase db push                                  # applies supabase/migrations
 # then run supabase/seed.sql in the SQL Editor
 ```
+
+**Starter pack (before the friends beta):** run `supabase/starter_pack.sql` once in the SQL
+Editor. It adds 49 more verified system polls (61 in all), mixing classic polls, hot takes and
+mystery polls:
+- a Poll of the Day for each of the next 14 days (unlocks at 00:00 India time, open 3 days);
+- one new poll each morning for 15 days (09:00 India time, open 7 days), so the New tab and the
+  "Fresh polls" pill stay alive;
+- 20 evergreen polls, live now and open for 30 days.
+
+It also keeps the original `seed.sql` polls open for 30 more days. It's safe to re-run, and dates
+count from the day you run it. To write your own, copy a row in the `pack` list.
 
 ### 3. Google sign-in
 
@@ -177,6 +194,8 @@ per Supabase auth user, created automatically by a database trigger.
 | Only signed-in accounts vote | `cast_vote()` refuses signed-out and guest (anonymous) sessions |
 | Poll rules (length, 2–4 distinct answers, 1/3/7 days, 5 per 24h) | `create_poll()` checks them all again |
 | Usernames are unique, 3–20 of `a-z 0-9 _`, not reserved or rude | `username_problem()`, used by `check_username()` and `create_poll()` |
+| A mystery question stays hidden until you vote | `poll_rows()` returns `null` for it; `cast_vote()` reveals it |
+| One hot take or mystery poll per person per day | `create_poll()` |
 | Shares count once per person per poll | `shares` primary key + `record_share()`; signed-out shares aren't counted |
 | Word filter | `blocked_terms` table (whole words, English + Hindi); add rows to extend it |
 | Counters stay correct | `cast_vote()` saves the vote and bumps both counters in one transaction |

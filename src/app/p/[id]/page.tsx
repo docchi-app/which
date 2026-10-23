@@ -11,15 +11,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const poll = await getSharedPoll(id);
   if (!poll) return { title: "Docchi. Which one?" };
   const votes = `${poll.voteCount.toLocaleString("en-US")} ${poll.voteCount === 1 ? "vote" : "votes"}`;
+  // A mystery poll's question never goes into a preview: that's the surprise.
+  const title =
+    poll.kind === "mystery"
+      ? `Mystery poll: ${poll.teaser}`
+      : poll.kind === "hot_take"
+        ? `Hot take: ${poll.question}`
+        : (poll.question ?? "Docchi");
   const description = poll.closed
     ? `${votes}. See where everyone landed on Docchi.`
-    : `${votes} so far. Pick a side to see the results.`;
+    : poll.kind === "mystery"
+      ? `${votes} so far. Pick on gut. The question shows up after you tap.`
+      : poll.kind === "hot_take"
+        ? `${votes} so far. Agree or disagree? See how spicy it is.`
+        : `${votes} so far. Pick a side to see the results.`;
   return {
-    title: `${poll.question} · Docchi`,
+    title: `${title} · Docchi`,
     description,
     alternates: { canonical: `/p/${poll.id}` },
-    openGraph: { title: poll.question, description, type: "website", siteName: "Docchi", url: `/p/${poll.id}` },
-    twitter: { card: "summary_large_image", title: poll.question, description },
+    openGraph: { title, description, type: "website", siteName: "Docchi", url: `/p/${poll.id}` },
+    twitter: { card: "summary_large_image", title, description },
   };
 }
 
