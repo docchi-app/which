@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
+import { siteUrl } from "@/lib/server-poll";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -15,6 +16,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: siteUrl(),
   title: "Docchi. Which one?",
   description: "Tap a side. See where everyone else landed.",
   applicationName: "Docchi",

@@ -39,10 +39,11 @@ type Props = {
   /** Fresher numbers for this poll arrived (live updates). */
   onRefresh: (poll: Poll) => void;
   onNeedSignIn: (pollId: string, optionId: string) => void;
+  onShare: () => void;
   onNext: () => void;
 };
 
-export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = false, onVoted, onRefresh, onNeedSignIn, onNext }: Props) {
+export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = false, onVoted, onRefresh, onNeedSignIn, onShare, onNext }: Props) {
   // The pick being saved. The card switches to results the moment you tap;
   // the bars fill in when the server answers.
   const [lockingId, setLockingId] = useState<string | null>(null);
@@ -72,16 +73,6 @@ export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = 
       }
     } finally {
       setLockingId(null);
-    }
-  }
-
-  async function share() {
-    const url = `${window.location.origin}/?poll=${poll.id}&src=share`;
-    try {
-      if (navigator.share) await navigator.share({ title: poll.question, text: `${poll.question} Docchi?`, url });
-      else await navigator.clipboard.writeText(url);
-    } catch {
-      // Share sheet dismissed; nothing to do.
     }
   }
 
@@ -118,7 +109,7 @@ export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = 
           <span>
             <strong>Your poll is live!</strong> Share it so friends can vote.
           </span>
-          <button type="button" className="btn btn-coral press" onClick={share}>
+          <button type="button" className="btn btn-coral press" onClick={onShare}>
             <ShareIcon size={18} />
             Share
           </button>
@@ -238,7 +229,7 @@ export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = 
           <CommentIcon />
           {poll.commentCount}
         </span>
-        <button type="button" className="ghost-action" onClick={share}>
+        <button type="button" className="ghost-action" onClick={onShare}>
           <ShareIcon />
           Share
         </button>

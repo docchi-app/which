@@ -28,6 +28,11 @@ The first slice of the build order:
 - **Design tokens:** colours, fonts (Bricolage Grotesque and DM Sans), outlines, hard shadows and
   corner radii are CSS variables in `src/app/globals.css`.
 - **PWA basics:** web app manifest, app icon, theme colour.
+- **Share links:** every poll has its own link, `/p/<id>`. WhatsApp, X and other apps show a
+  preview card in the poster style with the question, the answers and the vote count, never the
+  result. The Share button opens a sheet with WhatsApp, X, the phone's share menu and Copy link;
+  links are tagged `?src=whatsapp|x|native|copy`. Each signed-in person counts once per poll
+  toward `share_count` (for the leaderboard).
 - **Live updates:** while a poll is on screen, its numbers refresh every 5 seconds and the bars
   slide to the new values (before you vote, only the total moves). Every 45 seconds the feed checks
   for newly posted polls and shows a "Fresh polls ↑" pill; tapping it reloads the feed. Nothing
@@ -73,7 +78,7 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `supabase/migrations/20261023000000_init.sql`, and click **Run**.
 2. Do the same with each later file in `supabase/migrations/`
    (`20261024000000_google_sign_in.sql`, `20261025000000_feed_paging.sql`,
-   `20261026000000_create_poll.sql`, …), in date order,
+   `20261026000000_create_poll.sql`, `20261027000000_shares.sql`, …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -146,7 +151,9 @@ Never put the **service_role** (secret) key in this app or in any `NEXT_PUBLIC_`
 
 ### 5. Deploy (Vercel)
 
-Import the repo on [vercel.com](https://vercel.com), add the same two environment variables, and
+Import the repo on [vercel.com](https://vercel.com), add the same two environment variables (plus,
+optionally, `NEXT_PUBLIC_SITE_URL=https://dochhi.vercel.app` so link previews always use that
+address; otherwise Vercel's production address is used), and
 deploy. Vercel warns about the `NEXT_PUBLIC_` prefix on values saved as private: set their type to
 **Config** instead, since both are meant to be public. After changing a variable, **Redeploy**;
 the values are baked in at build time. Then set up the Supabase URL Configuration as in step 3.
@@ -170,6 +177,7 @@ per Supabase auth user, created automatically by a database trigger.
 | Only signed-in accounts vote | `cast_vote()` refuses signed-out and guest (anonymous) sessions |
 | Poll rules (length, 2–4 distinct answers, 1/3/7 days, 5 per 24h) | `create_poll()` checks them all again |
 | Usernames are unique, 3–20 of `a-z 0-9 _`, not reserved or rude | `username_problem()`, used by `check_username()` and `create_poll()` |
+| Shares count once per person per poll | `shares` primary key + `record_share()`; signed-out shares aren't counted |
 | Word filter | `blocked_terms` table (whole words, English + Hindi); add rows to extend it |
 | Counters stay correct | `cast_vote()` saves the vote and bumps both counters in one transaction |
 | Results hidden until you vote | Clients can't read `poll_options.vote_count` directly. `get_feed()` only returns counts once you've voted or the poll has closed |
