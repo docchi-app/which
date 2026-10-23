@@ -330,7 +330,7 @@ function Metrics() {
         <p className="admin-empty" aria-busy="true">Loading…</p>
       ) : (
         <>
-          <div className="stat-grid">
+          <div className="metric-grid">
             <Stat label="Visitors" value={summary.visitors.toLocaleString("en-IN")} />
             <Stat label="Votes" value={summary.votes.toLocaleString("en-IN")} />
             <Stat label="Visitors who vote" value={summary.votePct} unit="%" target={TARGETS.votePct} />
@@ -394,11 +394,11 @@ function Stat({ label, value, unit = "", target }: { label: string; value: numbe
   const shown = value === null ? "–" : typeof value === "number" ? `${Math.round(value * 10) / 10}${unit}` : value;
   const ok = target && n !== null ? n >= target.min : null;
   return (
-    <div className="stat" data-ok={ok === null ? undefined : String(ok)}>
-      <span className="stat-label">{label}</span>
-      <span className="stat-value">{shown}</span>
+    <div className="metric" data-ok={ok === null ? undefined : String(ok)}>
+      <span className="metric-label">{label}</span>
+      <span className="metric-value">{shown}</span>
       {target && (
-        <span className="stat-target">
+        <span className="metric-target">
           {ok === null ? "No data yet" : ok ? "✓ On target" : "↓ Below target"} · goal {target.label}
         </span>
       )}

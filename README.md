@@ -85,6 +85,12 @@ The first slice of the build order:
   hidden). **Done** lists recent actions with Undo. **Metrics** shows visitors, votes, % of
   visitors who vote, votes per session, share rate and D1/D7 retention against the launch targets,
   plus a table by day.
+- **Phone notifications (web push):** Profile → Notifications → Turn on. Then a switch for each
+  kind: **votes** on your polls (at 10, 25, 50, 100…), **circle** (requests, yeses, new circle
+  polls), **results** (when a poll you voted on or made closes) and **Poll of the Day** (9am).
+  Quiet 11pm–8am India time, at most 8 a day, and tapping one opens the poll. Works on Android and
+  desktop browsers; on iPhone, only after adding Docchi to the Home Screen (iOS 16.4+), and the
+  card says so. Signing out stops that phone getting your notifications.
 - **Terms, Privacy and Community guidelines** at `/terms`, `/privacy`, `/guidelines`, linked from
   the sign-in sheet, the + screen and the bottom of Profile. Set `NEXT_PUBLIC_CONTACT_EMAIL` to
   show a contact address on them.
@@ -126,7 +132,7 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261028000000_poll_formats.sql`, `20261029000000_profile_privacy.sql`,
    `20261030000000_circles.sql`, `20261031000000_usernames.sql`, `20261101000000_circle_polls.sql`,
    `20261102000000_scale.sql`, `20261103000000_feed_voted_last.sql`,
-   `20261104000000_safety_metrics.sql`, …), in date order,
+   `20261104000000_safety_metrics.sql`, `20261105000000_push.sql`, …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -224,6 +230,36 @@ deploy. Vercel warns about the `NEXT_PUBLIC_` prefix on values saved as private:
 **Config** instead, since both are meant to be public. After changing a variable, **Redeploy**;
 the values are baked in at build time. Then set up the Supabase URL Configuration as in step 3.
 
+### 6. Phone notifications
+
+1. **Make the keys**, on any computer with Node: `npx web-push generate-vapid-keys`. It prints a
+   public and a private key. Also make a long random secret: `openssl rand -hex 32`.
+2. **Vercel → Settings → Environment Variables**, then redeploy:
+
+   | Name | Value |
+   |---|---|
+   | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | the public key |
+   | `VAPID_PRIVATE_KEY` | the private key (never `NEXT_PUBLIC_`) |
+   | `VAPID_SUBJECT` | `mailto:` plus an address you read, e.g. `mailto:you@example.com` |
+   | `PUSH_CRON_SECRET` | the random secret |
+
+3. **Supabase → Database → Extensions:** turn on **pg_net** (pg_cron is already on).
+4. **SQL Editor:** run `supabase/migrations/20261105000000_push.sql`, then, with your app's address
+   and the same secret:
+
+   ```sql
+   select public.schedule_push('https://dochhi.vercel.app', '<PUSH_CRON_SECRET>');
+   ```
+
+   Every 2 minutes pg_cron calls `/api/push/run`, which collects new events into
+   `notifications` and sends them. To check it's running:
+   `select status, return_message, start_time from cron.job_run_details order by start_time desc limit 5;`
+   and `select status_code, content from net._http_response order by created desc limit 5;`
+   (expect `200` and something like `{"sent":0,"gone":0,"failed":0}`).
+
+The card on Profile only appears once `NEXT_PUBLIC_VAPID_PUBLIC_KEY` is set. Losing the private key
+means everyone has to turn notifications on again, so keep a copy.
+
 ### Free tier limits to know about
 
 - **A free project pauses after about a week with no activity.** You can restore it from the
@@ -262,6 +298,8 @@ per Supabase auth user, created automatically by a database trigger.
 | Reports: signed-in only, 20 a day, one per person per poll; 3 reporters hide a poll | `report()` |
 | Only admins see reports and metrics, or remove / ban | `require_admin()` in every `admin_…()` function; `reports`, `visits`, `mod_actions` aren't readable by clients |
 | Banned accounts can't vote, post or report, and their polls are hidden | `admin_act('ban')`, checked by `cast_vote()`, `create_poll()`, `report()` |
+| Push goes only to your own devices, only for things you can see | `save_push_subscription()` ties a phone to the signed-in account; `push_scan()` uses `can_view_poll()` for circle polls; subscriptions and the outbox aren't readable by clients |
+| Only the app's sender can collect and send pushes | `push_collect()`, `push_gone()`, `push_test_targets()` need the `PUSH_CRON_SECRET` (stored hashed in `push_config`) |
 | Data is deleted on schedule (as the Privacy page says) | `purge_old_records()` daily via pg_cron: removed polls, old comments and resolved reports after 180 days, visits after 2 years |
 
 **The feed** (`get_feed`) shows open polls, 30 per page ("load more" fetches the next page a few
@@ -304,7 +342,6 @@ docs/               product validation and design handoff
 
 ## Next in the build order
 
-1. Comments that expire after 24h
-2. Weekly leaderboard job (public polls only)
-3. CAPTCHA (Cloudflare Turnstile) on sign-in, and rate limits on circle requests and shares
-4. Admin: schedule system polls / Poll of the Day
+1. Weekly leaderboard job (public polls only)
+2. CAPTCHA (Cloudflare Turnstile) on sign-in, and rate limits on circle requests and shares
+3. Admin: schedule system polls / Poll of the Day

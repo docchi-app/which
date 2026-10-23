@@ -1,4 +1,5 @@
 import type { User } from "@supabase/supabase-js";
+import { forgetThisDevice } from "./push";
 import { getSupabase } from "./supabase";
 
 /** Thrown by castVote when the viewer needs to sign in first. */
@@ -58,6 +59,7 @@ export async function signInWithGoogle(): Promise<void> {
 }
 
 export async function signOut(): Promise<void> {
+  await forgetThisDevice();
   await getSupabase()?.auth.signOut();
 }
 

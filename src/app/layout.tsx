@@ -3,6 +3,7 @@ import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
 import { siteUrl } from "@/lib/server-poll";
 import { UsernameGate } from "@/components/UsernameGate";
 import { VisitTracker } from "@/components/VisitTracker";
+import { PushSync } from "@/components/PushSync";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         <UsernameGate />
         <VisitTracker />
+        <PushSync />
       </body>
     </html>
   );

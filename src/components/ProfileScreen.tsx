@@ -10,6 +10,7 @@ import { compactCount, getMyProfile, PROFILE_CHANGED, updateUsername, type Profi
 import { isSupabaseConfigured } from "@/lib/supabase";
 import type { Poll, Visibility } from "@/lib/types";
 import { BottomNav } from "./BottomNav";
+import { NotificationsCard } from "./NotificationsCard";
 import { ANSWER_COLORS, VerifiedTick } from "./PollCard";
 import { ShareSheet } from "./ShareSheet";
 import { CirclePanel } from "./CirclePanel";
@@ -147,6 +148,8 @@ export function ProfileScreen() {
               <dd>{profile ? compactCount(profile.shares) : "–"}</dd>
             </div>
           </dl>
+
+          {signedIn && <NotificationsCard />}
 
           <div role="tablist" aria-label="Profile lists" className="tabs profile-tabs">
             {(
