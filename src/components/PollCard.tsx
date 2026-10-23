@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, type CSSProperties } from "react";
+import { SignInRequired } from "@/lib/auth";
 import { castVote } from "@/lib/polls";
 import { formatCount, percentages, timeLeft } from "@/lib/format";
 import type { Poll, VoteResult } from "@/lib/types";
 import { ArrowIcon, CommentIcon, ShareIcon } from "./icons";
 
-const ANSWER_COLORS = ["var(--coral)", "var(--sky)", "var(--sun)", "var(--mint)"];
+export const ANSWER_COLORS = ["var(--coral)", "var(--sky)", "var(--sun)", "var(--mint)"];
 
 // 16 pieces fanned out in an ellipse, as on the canvas.
 const CONFETTI = Array.from({ length: 16 }, (_, n) => {
@@ -25,13 +26,16 @@ const CONFETTI = Array.from({ length: 16 }, (_, n) => {
 type Props = {
   poll: Poll;
   tag: string;
+  /** Play the vote celebration on mount (returning from sign-in). */
+  celebrate?: boolean;
   onVoted: (pollId: string, result: VoteResult) => void;
+  onNeedSignIn: (pollId: string, optionId: string) => void;
   onNext: () => void;
 };
 
-export function PollCard({ poll, tag, onVoted, onNext }: Props) {
+export function PollCard({ poll, tag, celebrate = false, onVoted, onNeedSignIn, onNext }: Props) {
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [justVoted, setJustVoted] = useState(false);
+  const [justVoted, setJustVoted] = useState(celebrate);
   const [error, setError] = useState<string | null>(null);
   // Read the clock once per card; closing mid-view is handled by cast_vote.
   const [now] = useState(() => Date.now());
@@ -49,6 +53,10 @@ export function PollCard({ poll, tag, onVoted, onNext }: Props) {
       setJustVoted(true);
       onVoted(poll.id, result);
     } catch (e) {
+      if (e instanceof SignInRequired) {
+        onNeedSignIn(poll.id, optionId);
+        return;
+      }
       console.error(e);
       setError("That vote didn't go through. Try again?");
     } finally {

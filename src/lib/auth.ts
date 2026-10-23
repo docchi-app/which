@@ -1,0 +1,75 @@
+import type { User } from "@supabase/supabase-js";
+import { getSupabase } from "./supabase";
+
+/** Thrown by castVote when the viewer needs to sign in first. */
+export class SignInRequired extends Error {
+  constructor() {
+    super("sign in to vote");
+  }
+}
+
+/** Guest (anonymous) accounts from the first release can browse but not vote. */
+export const canVote = (user: User | null | undefined) => Boolean(user && !user.is_anonymous);
+
+export async function currentUser(): Promise<User | null> {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user ?? null;
+}
+
+const callbackUrl = () => `${window.location.origin}/auth/callback`;
+
+/**
+ * Sends the viewer to Google. A guest account gets Google linked to it, so it
+ * keeps its id and its votes; anyone else signs in normally.
+ */
+export async function continueWithGoogle(): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Supabase is not configured");
+  const user = await currentUser();
+  const options = { redirectTo: callbackUrl() };
+  const { error } = user?.is_anonymous
+    ? await supabase.auth.linkIdentity({ provider: "google", options })
+    : await supabase.auth.signInWithOAuth({ provider: "google", options });
+  if (error) throw error;
+}
+
+/** Plain Google sign-in, used when that Google account already has a Docchi account. */
+export async function signInWithGoogle(): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Supabase is not configured");
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: callbackUrl() },
+  });
+  if (error) throw error;
+}
+
+export async function signOut(): Promise<void> {
+  await getSupabase()?.auth.signOut();
+}
+
+// The pick made before signing in, cast once Google sends the viewer back.
+
+export type PendingVote = { pollId: string; optionId: string };
+
+const PENDING_KEY = "docchi.pendingVote";
+
+export function savePendingVote(vote: PendingVote) {
+  try {
+    sessionStorage.setItem(PENDING_KEY, JSON.stringify(vote));
+  } catch {
+    // Storage blocked: the viewer just taps their pick again after signing in.
+  }
+}
+
+export function takePendingVote(): PendingVote | null {
+  try {
+    const raw = sessionStorage.getItem(PENDING_KEY);
+    sessionStorage.removeItem(PENDING_KEY);
+    return raw ? (JSON.parse(raw) as PendingVote) : null;
+  } catch {
+    return null;
+  }
+}

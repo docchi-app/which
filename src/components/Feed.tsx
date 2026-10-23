@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { savePendingVote, takePendingVote } from "@/lib/auth";
 import { fetchFeed } from "@/lib/polls";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import type { FeedTab, Poll, VoteResult } from "@/lib/types";
 import { LogoMark, Wordmark } from "./Logo";
-import { PollCard } from "./PollCard";
+import { ANSWER_COLORS, PollCard } from "./PollCard";
+import { SignInSheet, type SheetPick } from "./SignInSheet";
 import { BottomNav } from "./BottomNav";
 import { TrophyIcon } from "./icons";
 
@@ -20,6 +22,9 @@ export function Feed() {
   const [polls, setPolls] = useState<Poll[] | null>(null);
   const [index, setIndex] = useState(0);
   const [failed, setFailed] = useState(false);
+  const [sheet, setSheet] = useState<SheetPick | null>(null);
+  // Poll whose vote was just cast on the way back from Google sign-in.
+  const [celebrateId, setCelebrateId] = useState<string | null>(null);
 
   const load = useCallback(async (which: FeedTab) => {
     setPolls(null);
@@ -28,9 +33,15 @@ export function Feed() {
     try {
       const list = await fetchFeed(which);
       // A shared link (?poll=…) puts that poll on top.
-      const shared = new URLSearchParams(window.location.search).get("poll");
+      const url = new URL(window.location.href);
+      const shared = url.searchParams.get("poll");
       const at = shared ? list.findIndex((p) => p.id === shared) : -1;
       if (at > 0) list.unshift(...list.splice(at, 1));
+      if (shared && url.searchParams.has("voted")) {
+        setCelebrateId(shared);
+        url.searchParams.delete("voted"); // no confetti replay on reload
+        window.history.replaceState(window.history.state, "", url);
+      }
       setPolls(list);
     } catch (e) {
       console.error(e);
@@ -50,6 +61,22 @@ export function Feed() {
         p.id === pollId ? { ...p, myOptionId: r.myOptionId, voteCount: r.voteCount, options: r.options } : p,
       ) ?? null,
     );
+  }, []);
+
+  const onNeedSignIn = useCallback(
+    (pollId: string, optionId: string) => {
+      const p = polls?.find((x) => x.id === pollId);
+      const i = p?.options.findIndex((o) => o.id === optionId) ?? -1;
+      if (!p || i < 0) return;
+      savePendingVote({ pollId, optionId });
+      setSheet({ text: p.options[i].text, color: ANSWER_COLORS[i] });
+    },
+    [polls],
+  );
+
+  const closeSheet = useCallback(() => {
+    takePendingVote();
+    setSheet(null);
   }, []);
 
   const poll = polls?.[index];
@@ -116,7 +143,9 @@ export function Feed() {
               key={poll.id}
               poll={poll}
               tag={tagFor(poll, index)}
+              celebrate={poll.id === celebrateId}
               onVoted={onVoted}
+              onNeedSignIn={onNeedSignIn}
               onNext={() => setIndex((i) => i + 1)}
             />
           ) : (
@@ -138,6 +167,8 @@ export function Feed() {
       </main>
 
       <BottomNav current="feed" />
+
+      {sheet && <SignInSheet pick={sheet} onClose={closeSheet} />}
     </div>
   );
 }
