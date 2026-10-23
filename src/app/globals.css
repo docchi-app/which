@@ -43,6 +43,8 @@ body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+  /* No pull-to-refresh or rubber-band on the page: swipes belong to the feed. */
+  overscroll-behavior-y: none;
 }
 
 a {
@@ -209,6 +211,40 @@ button {
 .stack-deck {
   position: relative;
 }
+
+/* The feed is one fixed screen: header, tabs, then the card filling what's
+   left above the nav. A tall card scrolls inside itself, never the page. */
+.screen-feed {
+  height: 100dvh;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+.screen-feed .stack {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-bottom: calc(120px + env(safe-area-inset-bottom));
+}
+.screen-feed .stack-deck {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 0;
+}
+.swipe-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  will-change: transform;
+}
+.swipe-card > .poll-card {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.swipe-card > .poll-card::-webkit-scrollbar { display: none; }
 /* Decorative cards peeking out behind the current poll; they follow its height. */
 .stack-card {
   position: absolute;
@@ -246,11 +282,11 @@ button {
   from { opacity: 0; transform: translateY(-20px) scale(0.97); }
   to { opacity: 1; transform: none; }
 }
-.enter-prev > .poll-card { animation-name: drop; }
+.enter-prev .poll-card { animation-name: drop; }
 
 .swipe-hint {
   position: absolute;
-  top: calc(100% + 26px);
+  top: calc(100% + 22px);
   left: 0;
   right: 0;
   display: none;
@@ -386,6 +422,7 @@ button {
   text-align: center;
 }
 .with-you.pop { animation: pop 0.5s var(--ease-pop) both; }
+.with-you.locking { animation: shimmer 1s ease-in-out infinite; }
 
 .confetti {
   position: absolute;

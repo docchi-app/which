@@ -26,6 +26,8 @@ const CONFETTI = Array.from({ length: 16 }, (_, n) => {
 type Props = {
   poll: Poll;
   tag: string;
+  /** false when the viewer must sign in first; null while that's still unknown. */
+  canVote: boolean | null;
   /** Play the vote celebration on mount (returning from sign-in). */
   celebrate?: boolean;
   onVoted: (pollId: string, result: VoteResult) => void;
@@ -33,8 +35,10 @@ type Props = {
   onNext: () => void;
 };
 
-export function PollCard({ poll, tag, celebrate = false, onVoted, onNeedSignIn, onNext }: Props) {
-  const [pendingId, setPendingId] = useState<string | null>(null);
+export function PollCard({ poll, tag, canVote, celebrate = false, onVoted, onNeedSignIn, onNext }: Props) {
+  // The pick being saved. The card switches to results the moment you tap;
+  // the bars fill in when the server answers.
+  const [lockingId, setLockingId] = useState<string | null>(null);
   const [justVoted, setJustVoted] = useState(celebrate);
   const [error, setError] = useState<string | null>(null);
   // Read the clock once per card; closing mid-view is handled by cast_vote.
@@ -45,22 +49,22 @@ export function PollCard({ poll, tag, celebrate = false, onVoted, onNeedSignIn, 
   const showResults = voted || closed;
 
   async function vote(optionId: string) {
-    if (pendingId || voted) return;
-    setPendingId(optionId);
+    if (lockingId || voted) return;
+    if (canVote === false) return onNeedSignIn(poll.id, optionId);
+    setLockingId(optionId);
     setError(null);
     try {
       const result = await castVote(poll.id, optionId);
       setJustVoted(true);
       onVoted(poll.id, result);
     } catch (e) {
-      if (e instanceof SignInRequired) {
-        onNeedSignIn(poll.id, optionId);
-        return;
+      if (e instanceof SignInRequired) onNeedSignIn(poll.id, optionId);
+      else {
+        console.error(e);
+        setError("That vote didn't go through. Try again?");
       }
-      console.error(e);
-      setError("That vote didn't go through. Try again?");
     } finally {
-      setPendingId(null);
+      setLockingId(null);
     }
   }
 
@@ -75,7 +79,8 @@ export function PollCard({ poll, tag, celebrate = false, onVoted, onNeedSignIn, 
   }
 
   const pcts = percentages(poll.options.map((o) => o.votes ?? 0));
-  const mineIndex = poll.options.findIndex((o) => o.id === poll.myOptionId);
+  const mineId = poll.myOptionId ?? lockingId;
+  const mineIndex = poll.options.findIndex((o) => o.id === mineId);
   const votesLabel = `${formatCount(poll.voteCount)} ${poll.voteCount === 1 ? "vote" : "votes"}`;
 
   return (
@@ -94,7 +99,7 @@ export function PollCard({ poll, tag, celebrate = false, onVoted, onNeedSignIn, 
         {poll.question}
       </h1>
 
-      {!showResults ? (
+      {!showResults && !lockingId ? (
         <>
           <div className="answers">
             {poll.options.map((o, i) => (
@@ -104,9 +109,6 @@ export function PollCard({ poll, tag, celebrate = false, onVoted, onNeedSignIn, 
                 className="answer press"
                 style={{ animationDelay: `${i * 0.08}s` }}
                 onClick={() => vote(o.id)}
-                disabled={pendingId !== null}
-                aria-busy={pendingId === o.id}
-                data-pending={pendingId === o.id || undefined}
               >
                 <span className="answer-letter" style={{ background: ANSWER_COLORS[i] }}>
                   {"ABCD"[i]}
@@ -119,9 +121,13 @@ export function PollCard({ poll, tag, celebrate = false, onVoted, onNeedSignIn, 
         </>
       ) : (
         <>
-          {voted && (
-            <div className={`with-you${justVoted ? " pop" : ""}`} role="status">
-              {poll.voteCount === 1 ? "First vote. You set the trend!" : `You're with the ${pcts[mineIndex]}%!`}
+          {(voted || lockingId) && (
+            <div className={`with-you${justVoted ? " pop" : ""}${showResults ? "" : " locking"}`} role="status">
+              {!showResults
+                ? "Locking in your pick…"
+                : poll.voteCount === 1
+                  ? "First vote. You set the trend!"
+                  : `You're with the ${pcts[mineIndex]}%!`}
               {justVoted &&
                 CONFETTI.map((c, n) => (
                   <span
@@ -145,34 +151,38 @@ export function PollCard({ poll, tag, celebrate = false, onVoted, onNeedSignIn, 
           )}
           <ul className="results" aria-label="Results">
             {poll.options.map((o, i) => {
-              const mine = o.id === poll.myOptionId;
+              const mine = o.id === mineId;
               return (
                 <li key={o.id} className={`result${mine ? " result-mine" : ""}`}>
-                  <span
-                    className="result-bar"
-                    aria-hidden="true"
-                    style={{
-                      width: `${pcts[i]}%`,
-                      background: ANSWER_COLORS[i],
-                      borderRightWidth: pcts[i] === 0 ? 0 : undefined,
-                      animationDelay: `${i * 0.08}s`,
-                    }}
-                  />
+                  {showResults && (
+                    <span
+                      className="result-bar"
+                      aria-hidden="true"
+                      style={{
+                        width: `${pcts[i]}%`,
+                        background: ANSWER_COLORS[i],
+                        borderRightWidth: pcts[i] === 0 ? 0 : undefined,
+                        animationDelay: `${i * 0.08}s`,
+                      }}
+                    />
+                  )}
                   <span className="result-row">
                     <span className="result-text">
                       {o.text}
                       {mine && <span className="chip chip-small">Your pick</span>}
                     </span>
-                    <span className="result-pct" style={{ animationDelay: `${0.5 + i * 0.08}s` }}>
-                      {pcts[i]}%
-                    </span>
+                    {showResults && (
+                      <span className="result-pct" style={{ animationDelay: `${0.5 + i * 0.08}s` }}>
+                        {pcts[i]}%
+                      </span>
+                    )}
                   </span>
                 </li>
               );
             })}
           </ul>
           <p className="poll-foot-note">
-            {votesLabel} · {closed ? "final results" : "live"}
+            {votesLabel} · {closed ? "final results" : showResults ? "live" : "counting…"}
           </p>
         </>
       )}
@@ -192,7 +202,7 @@ export function PollCard({ poll, tag, celebrate = false, onVoted, onNeedSignIn, 
           <ShareIcon />
           Share
         </button>
-        {showResults ? (
+        {showResults || lockingId ? (
           <button type="button" className="btn btn-coral press next-btn" onClick={onNext}>
             Next <ArrowIcon size={18} />
           </button>

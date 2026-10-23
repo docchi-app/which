@@ -18,25 +18,44 @@ type FeedRow = {
 
 type VoteRow = { my_option_id: string; vote_count: number; options: PollOption[] };
 
-export async function fetchFeed(tab: FeedTab): Promise<Poll[]> {
-  const supabase = getSupabase();
-  if (!supabase) return demoFeed(tab);
+export const FEED_PAGE_SIZE = 30;
 
-  const { data, error } = await supabase.rpc("get_feed", { tab, max_rows: 30 });
+const toPoll = (r: FeedRow): Poll => ({
+  id: r.id,
+  question: r.question,
+  creator: r.creator ?? "someone",
+  isSystem: r.is_system,
+  featuredToday: r.featured_today,
+  voteCount: r.vote_count,
+  commentCount: r.comment_count,
+  createdAt: r.created_at,
+  closesAt: r.closes_at,
+  myOptionId: r.my_option_id,
+  options: r.options,
+});
+
+/** One page of the feed: open polls, ones you haven't voted on first. */
+export async function fetchFeed(tab: FeedTab, skip = 0): Promise<Poll[]> {
+  const supabase = getSupabase();
+  if (!supabase) return skip ? [] : demoFeed(tab);
+
+  // `skip` only when paging, so the first page also works before the
+  // 20261025 migration has been run.
+  const args = skip ? { tab, max_rows: FEED_PAGE_SIZE, skip } : { tab, max_rows: FEED_PAGE_SIZE };
+  const { data, error } = await supabase.rpc("get_feed", args);
   if (error) throw error;
-  return (data as FeedRow[]).map((r) => ({
-    id: r.id,
-    question: r.question,
-    creator: r.creator ?? "someone",
-    isSystem: r.is_system,
-    featuredToday: r.featured_today,
-    voteCount: r.vote_count,
-    commentCount: r.comment_count,
-    createdAt: r.created_at,
-    closesAt: r.closes_at,
-    myOptionId: r.my_option_id,
-    options: r.options,
-  }));
+  return (data as FeedRow[]).map(toPoll);
+}
+
+/** A single poll (for shared links), even if it has closed. */
+export async function fetchPoll(id: string): Promise<Poll | null> {
+  const supabase = getSupabase();
+  if (!supabase) return demoFeed("trending").find((p) => p.id === id) ?? null;
+
+  const { data, error } = await supabase.rpc("get_poll", { poll: id });
+  if (error) throw error;
+  const row = (data as FeedRow[])[0];
+  return row ? toPoll(row) : null;
 }
 
 export async function castVote(pollId: string, optionId: string): Promise<VoteResult> {
@@ -98,7 +117,8 @@ function demoFeed(tab: FeedTab): Poll[] {
     return { ...p, myOptionId: mine, options: p.options.map((o) => ({ ...o, votes: mine ? o.votes : null })) };
   });
   if (tab === "new") polls.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  return polls;
+  // Same rule as get_feed: polls you've voted on go to the end.
+  return [...polls.filter((p) => !p.myOptionId), ...polls.filter((p) => p.myOptionId)];
 }
 
 async function demoVote(pollId: string, optionId: string): Promise<VoteResult> {

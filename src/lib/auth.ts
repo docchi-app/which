@@ -18,7 +18,15 @@ export async function currentUser(): Promise<User | null> {
   return data.session?.user ?? null;
 }
 
-const callbackUrl = () => `${window.location.origin}/auth/callback`;
+/** Calls back with the current user now and whenever they sign in or out. Returns an unsubscribe. */
+export function onUserChange(callback: (user: User | null) => void): () => void {
+  const supabase = getSupabase();
+  if (!supabase) return () => {};
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => callback(session?.user ?? null));
+  return () => data.subscription.unsubscribe();
+}
+
+const callbackUrl = () =>`${window.location.origin}/auth/callback`;
 
 /**
  * Sends the viewer to Google. A guest account gets Google linked to it, so it
