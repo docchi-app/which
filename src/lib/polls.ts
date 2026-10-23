@@ -1,3 +1,4 @@
+import { canVote, currentUser, SignInRequired } from "./auth";
 import { getSupabase } from "./supabase";
 import type { FeedTab, Poll, PollOption, VoteResult } from "./types";
 
@@ -42,13 +43,7 @@ export async function castVote(pollId: string, optionId: string): Promise<VoteRe
   const supabase = getSupabase();
   if (!supabase) return demoVote(pollId, optionId);
 
-  // Until Google sign-in lands, a first vote creates an anonymous account.
-  // Linking Google later keeps the same user id, so these votes carry over.
-  const { data: auth } = await supabase.auth.getSession();
-  if (!auth.session) {
-    const { error } = await supabase.auth.signInAnonymously();
-    if (error) throw error;
-  }
+  if (!canVote(await currentUser())) throw new SignInRequired();
 
   const { data, error } = await supabase.rpc("cast_vote", {
     target_poll: pollId,
