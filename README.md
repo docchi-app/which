@@ -13,7 +13,11 @@ The first slice of the build order:
 
 - **Feed:** Trending and New tabs, Poll of the Day pinned on top, a card stack with Next and Skip,
   and an "all caught up" card at the end. A shared link (`/?poll=<id>`) puts that poll first.
-- **One-tap voting:** results stay hidden until you vote. The database enforces one vote per
+- **Swipe pager:** the feed is one fixed screen. Swipe up for the next poll, down for the
+  previous one (the card follows your finger). A long poll scrolls inside its card first. The page
+  never scrolls, so there's no accidental pull-to-refresh. On desktop: ↓/↑ or `j`/`k`.
+- **One-tap voting:** results stay hidden until you vote. The tap responds instantly: your pick
+  locks in and the bars fill in as soon as the server answers. The database enforces one vote per
   person.
 - **Sign in at first vote:** the first time a signed-out visitor taps an answer, the "Lock in your
   pick" sheet slides up. After Google sign-in they land back on the poll with their vote counted
@@ -57,8 +61,9 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
 
 1. Open **SQL Editor → New query**, paste all of
    `supabase/migrations/20261023000000_init.sql`, and click **Run**.
-2. Do the same with `supabase/migrations/20261024000000_google_sign_in.sql`. Always run the files
-   in `supabase/migrations/` in date order, each one once.
+2. Do the same with each later file in `supabase/migrations/`
+   (`20261024000000_google_sign_in.sql`, `20261025000000_feed_paging.sql`, …), in date order,
+   each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
    polls that already exist.
@@ -158,8 +163,12 @@ per Supabase auth user, created automatically by a database trigger.
 | Banned users and closed polls | Checked inside `cast_vote()` |
 | Comments disappear after 24h | `expires_at`, filtered by row level security. Rows stay in the database so moderators can review them |
 
-**Trending** ranks polls by votes with a time decay (Hacker News style), computed when the feed
-loads. Once traffic grows it should move to a score refreshed every few minutes.
+**The feed** (`get_feed`) shows open polls only, 30 per page ("load more" fetches the next page a
+few cards before the end). Polls you haven't voted on come first, with today's Poll of the Day on
+top; ones you've voted on go to the end. **Trending** ranks by votes with a time decay (Hacker News
+style), computed when the feed loads; once traffic grows it should move to a score refreshed every
+few minutes. **New** is newest first. A shared link (`/?poll=<id>`) puts that poll first, even
+after it has closed (`get_poll`).
 
 **Poll of the Day** is the system poll whose `featured_on` is today's date in India time
 (`Asia/Kolkata`). To schedule one, insert a system poll with a future `featured_on`; it stays
