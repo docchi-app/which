@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HomeIcon, PlusIcon, TrophyIcon, UserIcon } from "./icons";
+import { NavBadge } from "./NavBadge";
 
 type Section = "feed" | "leaders" | "profile" | "create";
 
@@ -10,7 +11,7 @@ const ITEMS = [
 ] as const;
 
 /** Floating dark pill (Feed / Leaders / Profile) plus the coral create button. */
-export function BottomNav({ current }: { current: Section }) {
+export function BottomNav({ current }: { current?: Section }) {
   return (
     <div className="bottom-bar">
       <nav aria-label="Main" className="nav-pill">
@@ -19,10 +20,12 @@ export function BottomNav({ current }: { current: Section }) {
             <Link key={id} href={href} aria-current="page" className="nav-item nav-item-active">
               <Icon />
               {label}
+              {id === "profile" && <NavBadge />}
             </Link>
           ) : (
             <Link key={id} href={href} aria-label={label} className="nav-item">
               <Icon size={22} />
+              {id === "profile" && <NavBadge />}
             </Link>
           ),
         )}

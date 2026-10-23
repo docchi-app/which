@@ -63,3 +63,23 @@ export function siteUrl(): URL {
   const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
   return new URL(explicit ?? (vercel ? `https://${vercel}` : "http://localhost:3000"));
 }
+
+/** Someone's public profile basics, for link previews of /u/<name>. */
+export async function getSharedProfile(name: string): Promise<{ username: string; publicPolls: number } | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key || !/^[a-z0-9_]{3,20}$/i.test(name)) return null;
+  try {
+    const res = await fetch(`${url}/rest/v1/rpc/get_profile`, {
+      method: "POST",
+      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { username: string; public_polls: number } | null;
+    return data ? { username: data.username, publicPolls: data.public_polls } : null;
+  } catch {
+    return null;
+  }
+}

@@ -66,6 +66,15 @@ export async function fetchMyPolls(which: "mine" | "voted", skip = 0): Promise<P
   return (data as FeedRow[]).map(toPoll);
 }
 
+/** Someone's public polls, newest first. */
+export async function fetchProfilePolls(name: string, skip = 0): Promise<Poll[]> {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc("profile_polls", { name, max_rows: FEED_PAGE_SIZE, skip });
+  if (error) throw error;
+  return (data as FeedRow[]).map(toPoll);
+}
+
 export async function setPollVisibility(pollId: string, visibility: "public" | "link"): Promise<void> {
   const { error } = (await getSupabase()?.rpc("set_poll_visibility", { poll: pollId, visibility })) ?? {};
   if (error) throw error;
