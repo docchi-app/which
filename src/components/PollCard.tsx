@@ -11,6 +11,8 @@ import { ArrowIcon, CommentIcon, ShareIcon } from "./icons";
 const LIVE_REFRESH_MS = 5000;
 
 export const ANSWER_COLORS = ["var(--coral)", "var(--sky)", "var(--sun)", "var(--mint)"];
+// Hot takes: Agree / Disagree.
+const TAKE_COLORS = ["var(--sun)", "var(--sky)"];
 
 // 16 pieces fanned out in an ellipse, as on the canvas.
 const CONFETTI = Array.from({ length: 16 }, (_, n) => {
@@ -43,7 +45,36 @@ type Props = {
   onNext: () => void;
 };
 
-export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = false, onVoted, onRefresh, onNeedSignIn, onShare, onNext }: Props) {
+/** Docchi's own polls carry a tick. */
+export function VerifiedTick() {
+  return (
+    <span className="verified" role="img" aria-label="Verified">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M5 12.5l4.5 4.5L19 7.5" />
+      </svg>
+    </span>
+  );
+}
+
+/** How split a hot take is: 100 = dead even, 0 = everyone agrees. */
+function spiciness(pcts: number[]) {
+  const split = 100 - Math.abs((pcts[0] ?? 0) - (pcts[1] ?? 0));
+  const label = split >= 80 ? "Split down the middle" : split >= 50 ? "Spicy" : "Mild: most people agree";
+  return { split, label };
+}
+
+export function PollCard({
+  poll,
+  tag,
+  canVote,
+  celebrate = false,
+  justCreated = false,
+  onVoted,
+  onRefresh,
+  onNeedSignIn,
+  onShare,
+  onNext,
+}: Props) {
   // The pick being saved. The card switches to results the moment you tap;
   // the bars fill in when the server answers.
   const [lockingId, setLockingId] = useState<string | null>(null);
@@ -55,6 +86,9 @@ export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = 
   const voted = poll.myOptionId !== null;
   const closed = new Date(poll.closesAt).getTime() <= now;
   const showResults = voted || closed;
+  const isTake = poll.kind === "hot_take";
+  const isMystery = poll.kind === "mystery";
+  const colors = isTake ? TAKE_COLORS : ANSWER_COLORS;
 
   async function vote(optionId: string) {
     if (lockingId || voted) return;
@@ -88,7 +122,7 @@ export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = 
           (fresh.voteCount !== poll.voteCount ||
             fresh.commentCount !== poll.commentCount ||
             fresh.options.some((o, i) => o.votes !== poll.options[i]?.votes));
-        if (changed) onRefresh(fresh);
+        if (changed) onRefresh({ ...fresh, question: fresh.question ?? poll.question });
       } catch {
         // Offline for a moment: try again on the next tick.
       }
@@ -101,9 +135,18 @@ export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = 
   const mineId = poll.myOptionId ?? lockingId;
   const mineIndex = poll.options.findIndex((o) => o.id === mineId);
   const votesLabel = `${formatCount(poll.voteCount)} ${poll.voteCount === 1 ? "vote" : "votes"}`;
+  const spice = isTake && showResults ? spiciness(pcts) : null;
+
+  const withYou = !showResults
+    ? "Locking in your pick…"
+    : poll.voteCount === 1
+      ? "First vote. You set the trend!"
+      : isTake
+        ? `You're with the ${pcts[mineIndex]}% who ${mineIndex === 0 ? "agree" : "disagree"}!`
+        : `You're with the ${pcts[mineIndex]}%!`;
 
   return (
-    <article className="poll-card" aria-labelledby={`q-${poll.id}`}>
+    <article className={`poll-card poll-${poll.kind}`} aria-labelledby={`q-${poll.id}`}>
       {justCreated && (
         <div className="created-banner" role="status">
           <span>
@@ -116,48 +159,79 @@ export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = 
         </div>
       )}
       <div className="poll-meta">
-        <span className="chip chip-sun">
-          <span className="live-dot" aria-hidden="true" />
+        <span className={`chip ${poll.kind === "classic" || poll.featuredToday ? "chip-sun" : "chip-white"}`}>
+          {isTake ? <ChiliIcon /> : isMystery ? <span aria-hidden="true">?</span> : <span className="live-dot" aria-hidden="true" />}
           {tag}
         </span>
         <span className="poll-by">
-          by <strong>@{poll.creator}</strong> · {timeLeft(poll.closesAt, now)}
+          by <strong>@{poll.creator}</strong>
+          {poll.isSystem && <VerifiedTick />} · {timeLeft(poll.closesAt, now)}
         </span>
       </div>
 
-      <h1 id={`q-${poll.id}`} className="poll-question">
-        {poll.question}
-      </h1>
+      {isMystery && !poll.question ? (
+        <>
+          {/* The real question stays on the server until you vote. */}
+          <div className="mystery-blur" aria-hidden="true">
+            <span />
+            <span />
+          </div>
+          <h1 id={`q-${poll.id}`} className="poll-question mystery-teaser">
+            {poll.teaser}
+          </h1>
+          <p className="mystery-hint">Pick on gut. The question shows up after you tap.</p>
+        </>
+      ) : isMystery ? (
+        <div className="mystery-reveal">
+          <small>The question was</small>
+          <h1 id={`q-${poll.id}`} className="poll-question">
+            {poll.question}
+          </h1>
+        </div>
+      ) : (
+        <h1 id={`q-${poll.id}`} className="poll-question">
+          {poll.question}
+        </h1>
+      )}
 
       {!showResults && !lockingId ? (
         <>
-          <div className="answers">
-            {poll.options.map((o, i) => (
-              <button
-                key={o.id}
-                type="button"
-                className="answer press"
-                style={{ animationDelay: `${i * 0.08}s` }}
-                onClick={() => vote(o.id)}
-              >
-                <span className="answer-letter" style={{ background: ANSWER_COLORS[i] }}>
-                  {"ABCD"[i]}
-                </span>
-                {o.text}
-              </button>
-            ))}
+          <div className={isTake ? "take-answers" : "answers"}>
+            {poll.options.map((o, i) =>
+              isTake ? (
+                <button
+                  key={o.id}
+                  type="button"
+                  className={`take-btn press${i === 1 ? " take-btn-dark" : ""}`}
+                  onClick={() => vote(o.id)}
+                >
+                  {o.text}
+                </button>
+              ) : (
+                <button
+                  key={o.id}
+                  type="button"
+                  className="answer press"
+                  style={{ animationDelay: `${i * 0.08}s` }}
+                  onClick={() => vote(o.id)}
+                >
+                  <span className="answer-letter" style={{ background: colors[i] }}>
+                    {"ABCD"[i]}
+                  </span>
+                  {o.text}
+                </button>
+              ),
+            )}
           </div>
-          <p className="poll-foot-note">{votesLabel} · tap to reveal results</p>
+          <p className="poll-foot-note">
+            {votesLabel} · {isTake ? "tap to see how spicy this is" : "tap to reveal results"}
+          </p>
         </>
       ) : (
         <>
           {(voted || lockingId) && (
             <div className={`with-you${justVoted ? " pop" : ""}${showResults ? "" : " locking"}`} role="status">
-              {!showResults
-                ? "Locking in your pick…"
-                : poll.voteCount === 1
-                  ? "First vote. You set the trend!"
-                  : `You're with the ${pcts[mineIndex]}%!`}
+              {withYou}
               {justVoted &&
                 CONFETTI.map((c, n) => (
                   <span
@@ -179,6 +253,15 @@ export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = 
                 ))}
             </div>
           )}
+          {spice && (
+            <div className="spice-meter">
+              <strong>Spice meter</strong>
+              <span className="spice-track" aria-hidden="true">
+                <span className="spice-fill" style={{ width: `${spice.split}%` }} />
+              </span>
+              <strong>{spice.label}</strong>
+            </div>
+          )}
           <ul className="results" aria-label="Results">
             {poll.options.map((o, i) => {
               const mine = o.id === mineId;
@@ -190,7 +273,7 @@ export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = 
                       aria-hidden="true"
                       style={{
                         width: `${pcts[i]}%`,
-                        background: ANSWER_COLORS[i],
+                        background: colors[i],
                         borderRightWidth: pcts[i] === 0 ? 0 : undefined,
                         animationDelay: `${i * 0.08}s`,
                       }}
@@ -211,6 +294,12 @@ export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = 
               );
             })}
           </ul>
+          {spice && spice.split >= 70 && voted && (
+            <button type="button" className="btn btn-white press settle-btn" onClick={onShare}>
+              <ShareIcon size={18} />
+              Too close to call. Settle this
+            </button>
+          )}
           <p className="poll-foot-note">
             {!closed && showResults && <span className="live-dot live-dot-small" aria-hidden="true" />}
             {votesLabel} · {closed ? "final results" : showResults ? "live" : "counting…"}
@@ -244,5 +333,14 @@ export function PollCard({ poll, tag, canVote, celebrate = false, justCreated = 
         )}
       </div>
     </article>
+  );
+}
+
+function ChiliIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M13 6c-5 1-9 6-9 13 4-1 13-4 15-10a3 3 0 0 0-6-3z" />
+      <path d="M15 5c0-2 1-3 3-3" />
+    </svg>
   );
 }

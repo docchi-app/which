@@ -1,6 +1,10 @@
 export type SharedPoll = {
   id: string;
-  question: string;
+  kind: "classic" | "hot_take" | "mystery";
+  /** null for a mystery poll (it stays hidden until you vote). */
+  question: string | null;
+  teaser: string | null;
+  verified: boolean;
   creator: string;
   voteCount: number;
   options: string[];
@@ -27,7 +31,10 @@ export async function getSharedPoll(id: string): Promise<SharedPoll | null> {
     if (!res.ok) return null;
     const [row] = (await res.json()) as {
       id: string;
-      question: string;
+      kind?: SharedPoll["kind"];
+      question: string | null;
+      teaser?: string | null;
+      is_system: boolean;
       creator: string | null;
       vote_count: number;
       closes_at: string;
@@ -36,7 +43,10 @@ export async function getSharedPoll(id: string): Promise<SharedPoll | null> {
     if (!row) return null;
     return {
       id: row.id,
+      kind: row.kind ?? "classic",
       question: row.question,
+      teaser: row.teaser ?? null,
+      verified: row.is_system,
       creator: row.creator ?? "someone",
       voteCount: row.vote_count,
       options: row.options.map((o) => o.text),

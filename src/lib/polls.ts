@@ -1,10 +1,12 @@
 import { canVote, currentUser, SignInRequired } from "./auth";
 import { getSupabase } from "./supabase";
-import type { FeedTab, Poll, PollOption, VoteResult } from "./types";
+import type { FeedTab, Poll, PollKind, PollOption, VoteResult } from "./types";
 
 type FeedRow = {
   id: string;
-  question: string;
+  kind?: PollKind;
+  question: string | null;
+  teaser?: string | null;
   creator: string | null;
   is_system: boolean;
   featured_today: boolean;
@@ -16,13 +18,15 @@ type FeedRow = {
   options: PollOption[];
 };
 
-type VoteRow = { my_option_id: string; vote_count: number; options: PollOption[] };
+type VoteRow = { my_option_id: string; vote_count: number; options: PollOption[]; question?: string };
 
 export const FEED_PAGE_SIZE = 30;
 
 const toPoll = (r: FeedRow): Poll => ({
   id: r.id,
+  kind: r.kind ?? "classic",
   question: r.question,
+  teaser: r.teaser ?? null,
   creator: r.creator ?? "someone",
   isSystem: r.is_system,
   featuredToday: r.featured_today,
@@ -73,7 +77,7 @@ export async function castVote(pollId: string, optionId: string): Promise<VoteRe
   });
   if (error) throw error;
   const row = (data as VoteRow[])[0];
-  return { myOptionId: row.my_option_id, voteCount: row.vote_count, options: row.options };
+  return { myOptionId: row.my_option_id, voteCount: row.vote_count, options: row.options, question: row.question ?? "" };
 }
 
 // ─── Demo mode (no Supabase env vars) ─────────────────────────────────────
@@ -95,6 +99,19 @@ const DEMO: Poll[] = [
   demo("d4", "Work from home or office?", "desk_life", false, -2, 144, 97, [
     ["Home, forever", 2677], ["Office", 965], ["Hybrid", 746],
   ]),
+  {
+    ...demo("d5", "Idli is boring. The chutney is doing all the work.", "docchi", false, -3, 60, 211, [
+      ["Agree", 2597], ["Disagree", 3305],
+    ]),
+    kind: "hot_take",
+  },
+  {
+    ...demo("d6", "Where would you go if you quit your job tomorrow?", "docchi", false, -4, 70, 64, [
+      ["Mountains", 412], ["A beach shack", 240], ["A new city", 160], ["My bed", 519],
+    ]),
+    kind: "mystery",
+    teaser: "Pick a place. Don't overthink it.",
+  },
 ];
 
 function demo(
@@ -102,7 +119,7 @@ function demo(
   ageHours: number, closesInHours: number, comments: number, opts: [string, number][],
 ): Poll {
   return {
-    id, question, creator, isSystem: creator === "docchi", featuredToday: featured,
+    id, kind: "classic", question, teaser: null, creator, isSystem: creator === "docchi", featuredToday: featured,
     voteCount: opts.reduce((n, [, v]) => n + v, 0),
     commentCount: comments,
     createdAt: hoursFromNow(ageHours),
@@ -117,7 +134,12 @@ const demoVotes = new Map<string, string>();
 function demoFeed(tab: FeedTab): Poll[] {
   const polls = DEMO.map((p) => {
     const mine = demoVotes.get(p.id) ?? null;
-    return { ...p, myOptionId: mine, options: p.options.map((o) => ({ ...o, votes: mine ? o.votes : null })) };
+    return {
+      ...p,
+      myOptionId: mine,
+      question: p.kind === "mystery" && !mine ? null : p.question,
+      options: p.options.map((o) => ({ ...o, votes: mine ? o.votes : null })),
+    };
   });
   if (tab === "new") polls.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   // Same rule as get_feed: polls you've voted on go to the end.
@@ -132,7 +154,12 @@ async function demoVote(pollId: string, optionId: string): Promise<VoteResult> {
     poll.voteCount += 1;
     poll.options = poll.options.map((o) => (o.id === optionId ? { ...o, votes: (o.votes ?? 0) + 1 } : o));
   }
-  return { myOptionId: demoVotes.get(pollId)!, voteCount: poll.voteCount, options: poll.options };
+  return {
+    myOptionId: demoVotes.get(pollId)!,
+    voteCount: poll.voteCount,
+    options: poll.options,
+    question: poll.question ?? "",
+  };
 }
 
 /** Demo mode: now and then someone else votes, so live updates can be seen. */

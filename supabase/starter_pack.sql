@@ -1,4 +1,5 @@
--- Docchi starter pack: about 50 system polls for the friends beta.
+-- Docchi starter pack: 49 verified system polls for the friends beta,
+-- mixing classic polls, hot takes and mystery polls.
 -- Run once in the Supabase SQL Editor (after the migrations and seed.sql).
 -- Safe to re-run: questions that already exist are skipped. Dates are
 -- relative to when you run it, in India time.
@@ -8,10 +9,12 @@
 --     open for 3 days)
 --   * One new poll a day for the next 15 days (unlocks at 09:00 IST, open
 --     for 7 days), so the New tab and the "Fresh polls" pill stay alive
---   * 14 evergreen polls, live now, open for 30 days
+--   * 20 evergreen polls, live now, open for 30 days
 --   * Keeps the original seed.sql polls open for 30 more days
 --
 -- Light topics only: no politics, religion or real people.
+-- Columns: kind, day, question, teaser (mystery only), answers
+-- (hot takes always get Agree / Disagree).
 
 -- ─── Keep the original starter polls open ─────────────────────────────────
 update public.polls
@@ -26,58 +29,101 @@ where is_system
   );
 
 -- ─── The pack ─────────────────────────────────────────────────────────────
--- kind: 'daily' = Poll of the Day on day n; 'drip' = goes live on day n;
+-- slot: 'daily' = Poll of the Day on day n; 'drip' = goes live on day n;
 --       'now'   = live now.
-with pack(kind, day, question, options) as (
+with pack(slot, day, kind, question, teaser, options) as (
   values
     -- Poll of the Day, days 1–14
-    ('daily',  1, 'Monsoon evening: chai and pakoras or a long drive?', array['Chai and pakoras', 'Long drive', 'Stay in bed']),
-    ('daily',  2, 'Best way to eat a mango?', array['Sliced', 'Straight off the seed', 'Aamras', 'Mango shake']),
-    ('daily',  3, 'Give up WhatsApp or Instagram for a year?', array['Give up WhatsApp', 'Give up Instagram']),
-    ('daily',  4, 'Your ideal Sunday?', array['Sleep till noon', 'Brunch with friends', 'Binge a series', 'Get outdoors']),
-    ('daily',  5, 'Maggi: plain or loaded?', array['Plain, always', 'Loaded with veggies', 'Extra masala', 'Cheese on top']),
-    ('daily',  6, 'Test cricket or T20?', array['Test, the real deal', 'T20 all the way', 'ODI, the middle path']),
-    ('daily',  7, 'Movie night: theatre or home?', array['Theatre, big screen', 'Home with snacks']),
-    ('daily',  8, 'Pani puri, bhel puri or sev puri?', array['Pani puri', 'Bhel puri', 'Sev puri']),
-    ('daily',  9, 'Biggest letdown at a wedding buffet?', array['Paneer runs out', 'No dessert counter', 'Cold rotis', 'The queue']),
-    ('daily', 10, 'Unlimited free travel or unlimited free food?', array['Free travel', 'Free food']),
-    ('daily', 11, 'Text, call or voice note?', array['Text, always', 'Just call me', 'Voice notes']),
-    ('daily', 12, 'New Year''s Eve: hills, beach or house party?', array['Hill station', 'Beach', 'House party']),
-    ('daily', 13, 'The best Indian sweet?', array['Gulab jamun', 'Rasgulla', 'Jalebi', 'Kaju katli']),
-    ('daily', 14, 'Morning gym or late-night walk?', array['Morning gym', 'Late-night walk', 'Neither, couch']),
+    ('daily',  1, 'classic',  'Your friend says "5 minutes, leaving now". How long do you actually wait?', null,
+       array['5 minutes, I trust people', '20 minutes', 'An hour, I know them', 'I haven''t left either']),
+    ('daily',  2, 'mystery',  'Where would you go if you quit your job tomorrow?', 'Pick a place. Don''t overthink it.',
+       array['Mountains', 'A beach shack', 'A new city', 'My bed']),
+    ('daily',  3, 'hot_take', 'Idli is boring. The chutney is doing all the work.', null, null),
+    ('daily',  4, 'classic',  '₹1 crore today or ₹1 lakh every month for life?', null,
+       array['₹1 crore today', '₹1 lakh a month for life']),
+    ('daily',  5, 'classic',  'Which member of the family WhatsApp group are you?', null,
+       array['Good morning flower sender', 'The forwarder', 'The silent reader', 'The one who left']),
+    ('daily',  6, 'mystery',  'How many hours could you last without your phone?', 'Pick a number',
+       array['1', '3', '7', '12']),
+    ('daily',  7, 'hot_take', 'Dal chawal beats biryani on a weeknight.', null, null),
+    ('daily',  8, 'classic',  'Would you rather have your search history or your chats read out at a family dinner?', null,
+       array['My search history', 'My chats', 'I''d move countries']),
+    ('daily',  9, 'classic',  'How many alarms do you set in the morning?', null,
+       array['Just 1', '2 to 3', '4 to 6', 'A full playlist']),
+    ('daily', 10, 'mystery',  'What colour is your dream car?', 'Pick a colour',
+       array['Red', 'Black', 'White', 'Electric blue']),
+    ('daily', 11, 'hot_take', 'Going to the movies alone is underrated.', null, null),
+    ('daily', 12, 'classic',  'Go back to school with everything you know now?', null,
+       array['Yes, I''d top the class', 'No way', 'Only for the canteen']),
+    ('daily', 13, 'hot_take', 'Voice notes longer than one minute should be illegal.', null, null),
+    ('daily', 14, 'mystery',  'Which animal are you before your morning chai?', 'Pick an animal',
+       array['Sloth', 'Grumpy cat', 'Owl', 'Golden retriever']),
 
     -- One new poll a day, days 1–15
-    ('drip',  1, 'Cereal first or milk first?', array['Cereal first', 'Milk first', 'No cereal, ever']),
-    ('drip',  2, 'Auto or cab for a short trip?', array['Auto', 'Cab', 'Walk it']),
-    ('drip',  3, 'Best breakfast?', array['Poha', 'Idli', 'Paratha', 'Upma']),
-    ('drip',  4, 'Ten minutes early or ten minutes late?', array['Early', 'Late', 'On the dot']),
-    ('drip',  5, 'Do you hit reply-all on office emails?', array['Never', 'Only when needed', 'Every single time']),
-    ('drip',  6, 'Best day of the week?', array['Friday', 'Saturday', 'Sunday']),
-    ('drip',  7, 'Read the book or watch the movie?', array['Book first', 'Movie first', 'Only the movie']),
-    ('drip',  8, 'Which dosa?', array['Plain', 'Masala', 'Paper', 'Rava']),
-    ('drip',  9, 'How many browser tabs are open right now?', array['Under 5', '5 to 20', '20 to 50', 'I''ve lost count']),
-    ('drip', 10, 'Is your Wi-Fi name a joke?', array['Yes, a good one', 'No, it''s boring', 'Great idea, brb']),
-    ('drip', 11, 'Best time for chai?', array['Morning', '4 pm', 'Late night', 'All of the above']),
-    ('drip', 12, 'Dogs in the office?', array['Yes please', 'No thanks', 'Cats instead']),
-    ('drip', 13, 'Weekend trip: plan everything or wing it?', array['Plan everything', 'Wing it']),
-    ('drip', 14, 'Which one do you skip first: breakfast or dinner?', array['Breakfast', 'Dinner', 'Never skip a meal']),
-    ('drip', 15, 'Group trip roles: which one are you?', array['The planner', 'The photographer', 'The one who''s late', 'The snack bag']),
+    ('drip',  1, 'classic',  'How many unread WhatsApp messages do you have right now?', null,
+       array['Zero, I''m a monster', 'Under 50', 'Under 500', '999+']),
+    ('drip',  2, 'hot_take', 'Cold pizza for breakfast beats hot pizza for dinner.', null, null),
+    ('drip',  3, 'classic',  'The worst kind of meeting?', null,
+       array['Could''ve been an email', 'Starts 10 minutes late', 'Cameras on, please', '"Quick 5-minute call"']),
+    ('drip',  4, 'mystery',  'Which one are you at a party?', 'Pick a snack',
+       array['Chips', 'Samosa', 'Popcorn', 'Chocolate']),
+    ('drip',  5, 'classic',  'Group project: which one were you?', null,
+       array['Did everything', 'Made the slides pretty', 'Vanished', 'Presented it all']),
+    ('drip',  6, 'hot_take', 'The window seat person should control the window shade.', null, null),
+    ('drip',  7, 'classic',  'Abroad on holiday: hunt for Indian food or eat only local?', null,
+       array['Indian food every day', 'Once, when homesick', 'Only local, that''s the point']),
+    ('drip',  8, 'classic',  'Free Wi-Fi everywhere forever, or never wait in a queue again?', null,
+       array['Free Wi-Fi forever', 'No queues ever']),
+    ('drip',  9, 'mystery',  'When do your best ideas show up?', 'Pick a time',
+       array['6 am', '2 pm', '11 pm', '3 am']),
+    ('drip', 10, 'classic',  'The real reason people order a samosa?', null,
+       array['The potato', 'The crust', 'The chutney', 'The chai next to it']),
+    ('drip', 11, 'hot_take', 'Reply-all should need a password.', null, null),
+    ('drip', 12, 'classic',  'Best childhood thing?', null,
+       array['Sunday morning cartoons', 'Collecting stickers', 'Video game parlours', 'Trump cards']),
+    ('drip', 13, 'classic',  'What''s your phone battery at right now?', null,
+       array['Under 20%', '20 to 50%', '50 to 80%', '80% and up']),
+    ('drip', 14, 'mystery',  'What''s your honest texting style?', 'Pick a word',
+       array['Hahaha', 'Okay.', 'lol', 'Seen']),
+    ('drip', 15, 'hot_take', 'Wedding food is the real reason anyone goes to weddings.', null, null),
 
     -- Evergreen, live now
-    ('now', 0, 'Rain: love it or hate it?', array['Love it', 'Hate it', 'Only from a window']),
-    ('now', 0, 'Pick a superpower', array['Fly', 'Invisibility', 'Teleport', 'Read minds']),
-    ('now', 0, 'Time travel: past or future?', array['The past', 'The future']),
-    ('now', 0, 'Best pizza topping?', array['Paneer tikka', 'Mushroom', 'Pepperoni', 'Extra cheese']),
-    ('now', 0, 'How spicy do you go?', array['Mild', 'Medium', 'Properly spicy', 'Make me cry']),
-    ('now', 0, 'Cold coffee or hot coffee?', array['Cold', 'Hot']),
-    ('now', 0, 'How do you eat a samosa?', array['Bite straight in', 'Break it open', 'With chutney', 'With chole']),
-    ('now', 0, 'Do you sing in the shower?', array['Every day', 'Sometimes', 'Never', 'Full concert']),
-    ('now', 0, 'Best way to travel?', array['Train', 'Flight', 'Road trip', 'Bike']),
-    ('now', 0, 'Your phone at night?', array['Silent', 'Loud', 'Do not disturb']),
-    ('now', 0, 'Live in the mountains or by the sea?', array['Mountains', 'By the sea']),
-    ('now', 0, 'Ketchup on everything?', array['Yes', 'No', 'Only on fries']),
-    ('now', 0, 'Morning shower or night shower?', array['Morning', 'Night', 'Both']),
-    ('now', 0, 'Best board game?', array['Ludo', 'Carrom', 'Monopoly', 'Chess'])
+    ('now', 0, 'classic',  'You find ₹500 on the road. What do you do?', null,
+       array['Keep it', 'Look for the owner', 'Give it away', 'Chai for everyone']),
+    ('now', 0, 'classic',  'Which friend are you in the group chat?', null,
+       array['The planner', 'The meme sender', 'Reacts, never replies', 'Typing… forever']),
+    ('now', 0, 'classic',  'Most annoying thing in a movie theatre?', null,
+       array['Bright phone screens', 'Loud chewing', 'Seat kickers', 'Spoilers out loud']),
+    ('now', 0, 'classic',  'Famous or rich?', null,
+       array['Famous', 'Rich', 'Neither, just let me sleep']),
+    ('now', 0, 'classic',  'Your food order is late. What do you do?', null,
+       array['Track it every 10 seconds', 'Call the restaurant', 'Snack while waiting', 'Fall asleep']),
+    ('now', 0, 'classic',  'Lose your phone or your wallet?', null,
+       array['Phone', 'Wallet']),
+    ('now', 0, 'classic',  'Best time to watch a horror movie?', null,
+       array['Never', 'Daytime only', 'Midnight, alone', 'With friends']),
+    ('now', 0, 'classic',  'Pick a superpower', null,
+       array['Fly', 'Invisibility', 'Teleport', 'Read minds']),
+    ('now', 0, 'classic',  'How spicy do you go?', null,
+       array['Mild', 'Medium', 'Properly spicy', 'Make me cry']),
+    ('now', 0, 'classic',  'Cereal first or milk first?', null,
+       array['Cereal first', 'Milk first', 'No cereal, ever']),
+    ('now', 0, 'classic',  'Which dosa?', null,
+       array['Plain', 'Masala', 'Paper', 'Rava']),
+    ('now', 0, 'classic',  'How many browser tabs are open right now?', null,
+       array['Under 5', '5 to 20', '20 to 50', 'I''ve lost count']),
+    ('now', 0, 'classic',  'Best time for chai?', null,
+       array['Morning', '4 pm', 'Late night', 'All of the above']),
+    ('now', 0, 'hot_take', 'Roadside chai beats fancy café chai. Every time.', null, null),
+    ('now', 0, 'hot_take', 'Sunday evening is worse than Monday morning.', null, null),
+    ('now', 0, 'hot_take', 'Unboxing is better than the thing inside.', null, null),
+    ('now', 0, 'hot_take', 'Leaving a party without saying bye is polite.', null, null),
+    ('now', 0, 'mystery',  'What''s your vibe on a Monday morning?', 'Pick a drink',
+       array['Black coffee', 'Masala chai', 'Green tea', 'Energy drink']),
+    ('now', 0, 'mystery',  'Where would you live if rent didn''t exist?', 'Pick a city',
+       array['Mumbai', 'Bengaluru', 'Goa', 'Shimla']),
+    ('now', 0, 'mystery',  'What would play in the movie about your life?', 'Pick a sound',
+       array['Pressure cooker whistle', 'Rain on a tin roof', 'Auto horn', 'Kettle boiling'])
 ),
 timed as (
   select
@@ -87,20 +133,22 @@ timed as (
   where not exists (select 1 from public.polls x where x.question = p.question)
 ),
 new_polls as (
-  insert into public.polls (question, is_system, featured_on, created_at, closes_at)
+  insert into public.polls (question, kind, teaser, is_system, featured_on, created_at, closes_at)
   select
     t.question,
+    t.kind,
+    t.teaser,
     true,
     -- Skip a date that already has a Poll of the Day.
-    case when t.kind = 'daily'
+    case when t.slot = 'daily'
           and not exists (select 1 from public.polls x where x.featured_on = t.on_date)
          then t.on_date end,
-    case t.kind
+    case t.slot
       when 'daily' then t.on_date::timestamp at time zone 'Asia/Kolkata'
       when 'drip'  then (t.on_date + time '09:00') at time zone 'Asia/Kolkata'
       else now()
     end,
-    case t.kind
+    case t.slot
       when 'daily' then t.on_date::timestamp at time zone 'Asia/Kolkata' + interval '3 days'
       when 'drip'  then (t.on_date + time '09:00') at time zone 'Asia/Kolkata' + interval '7 days'
       else now() + interval '30 days'
@@ -112,4 +160,6 @@ insert into public.poll_options (poll_id, position, text)
 select np.id, o.ord - 1, o.text
 from new_polls np
 join pack p on p.question = np.question
-cross join lateral unnest(p.options) with ordinality as o(text, ord);
+cross join lateral unnest(
+  case when p.kind = 'hot_take' then array['Agree', 'Disagree'] else p.options end
+) with ordinality as o(text, ord);
