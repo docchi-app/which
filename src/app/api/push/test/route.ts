@@ -11,9 +11,15 @@ export async function POST(request: Request) {
   try {
     targets = await rpc<PushTarget[]>("push_test_targets", { secret: cronSecret, person: user });
   } catch (e) {
-    const tooMany = e instanceof Error && e.message.includes("too_many");
-    return Response.json({ error: tooMany ? "too_many" : "failed" }, { status: tooMany ? 429 : 500 });
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("push test:", message);
+    if (message.includes("too_many")) return Response.json({ error: "too_many" }, { status: 429 });
+    // The database doesn't know this secret: schedule_push() wasn't run, or with another value.
+    if (message.includes("forbidden")) return Response.json({ error: "secret_mismatch" }, { status: 500 });
+    if (message.includes("PGRST202")) return Response.json({ error: "no_migration" }, { status: 500 });
+    return Response.json({ error: "failed" }, { status: 500 });
   }
+  if (!targets.length) return Response.json({ error: "no_device" }, { status: 404 });
   const result = await sendAll(
     targets.map((target) => ({
       target,
@@ -21,5 +27,9 @@ export async function POST(request: Request) {
     })),
   );
   if (result.gone.length) await rpc("push_gone", { secret: cronSecret, endpoints: result.gone });
+  if (!result.sent) {
+    // Usually the VAPID keys in Vercel don't match each other (403 from the push service).
+    return Response.json({ error: result.gone.length ? "no_device" : "send_failed", detail: result.firstError }, { status: 502 });
+  }
   return Response.json({ sent: result.sent });
 }

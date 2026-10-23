@@ -36,6 +36,15 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${bricolage.variable} ${dmSans.variable}`}>
+      <head>
+        {/* Chrome can offer "Install" before the app has loaded; keep it for the install sheet. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__docchiInstall=e});",
+          }}
+        />
+      </head>
       <body>
         {children}
         <UsernameGate />

@@ -10,6 +10,7 @@ import { compactCount, getMyProfile, PROFILE_CHANGED, updateUsername, type Profi
 import { isSupabaseConfigured } from "@/lib/supabase";
 import type { Poll, Visibility } from "@/lib/types";
 import { BottomNav } from "./BottomNav";
+import { GetTheApp } from "./GetTheApp";
 import { NotificationsCard } from "./NotificationsCard";
 import { ANSWER_COLORS, VerifiedTick } from "./PollCard";
 import { ShareSheet } from "./ShareSheet";
@@ -150,6 +151,7 @@ export function ProfileScreen() {
           </dl>
 
           {signedIn && <NotificationsCard />}
+          <GetTheApp />
 
           <div role="tablist" aria-label="Profile lists" className="tabs profile-tabs">
             {(
