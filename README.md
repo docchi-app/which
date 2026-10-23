@@ -91,6 +91,13 @@ The first slice of the build order:
   Quiet 11pm–8am India time, at most 8 a day, and tapping one opens the poll. Works on Android and
   desktop browsers; on iPhone, only after adding Docchi to the Home Screen (iOS 16.4+), and the
   card says so. Signing out stops that phone getting your notifications.
+- **Get the app (Home Screen):** a step-by-step sheet. On iPhone: Share → Add to Home Screen →
+  Add, with an arrow pointing at Safari's Share button (or at the top for Chrome on iPhone),
+  opened from Profile → Notifications → Show me how. Inside Instagram, Facebook, WhatsApp and
+  other in-app browsers: how to open Docchi in Safari or Chrome, plus Copy link. On Android: a
+  real **Install Docchi** button when Chrome offers it (Profile → Get the app), otherwise ⋮ →
+  Install app. After someone's 3rd vote in a browser it offers itself once; "Not now" waits a
+  week. iPhone can't show an install prompt like Android: Apple doesn't allow it for websites.
 - **Terms, Privacy and Community guidelines** at `/terms`, `/privacy`, `/guidelines`, linked from
   the sign-in sheet, the + screen and the bottom of Profile. Set `NEXT_PUBLIC_CONTACT_EMAIL` to
   show a contact address on them.
@@ -132,7 +139,7 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261028000000_poll_formats.sql`, `20261029000000_profile_privacy.sql`,
    `20261030000000_circles.sql`, `20261031000000_usernames.sql`, `20261101000000_circle_polls.sql`,
    `20261102000000_scale.sql`, `20261103000000_feed_voted_last.sql`,
-   `20261104000000_safety_metrics.sql`, `20261105000000_push.sql`, …), in date order,
+   `20261104000000_safety_metrics.sql`, `20261105000000_push.sql`, `20261106000000_push_fixes.sql`, …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -256,6 +263,15 @@ the values are baked in at build time. Then set up the Supabase URL Configuratio
    `select status, return_message, start_time from cron.job_run_details order by start_time desc limit 5;`
    and `select status_code, content from net._http_response order by created desc limit 5;`
    (expect `200` and something like `{"sent":0,"gone":0,"failed":0}`).
+
+**If "Send me a test" fails,** the card says why:
+
+- *the secret doesn't match*: run `schedule_push` again with exactly the `PUSH_CRON_SECRET` value
+  from Vercel (stray spaces are ignored).
+- *the push service refused it*: `VAPID_PRIVATE_KEY` and `NEXT_PUBLIC_VAPID_PUBLIC_KEY` aren't
+  the same pair. Fix them in Vercel and redeploy; people may need to turn notifications off and on.
+- Vercel → your project → **Logs** shows `push test:` / `push run:` / `push send failed:` lines
+  with details.
 
 The card on Profile only appears once `NEXT_PUBLIC_VAPID_PUBLIC_KEY` is set. Losing the private key
 means everyone has to turn notifications on again, so keep a copy.

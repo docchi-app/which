@@ -1,10 +1,11 @@
+import { installPlatform } from "./install";
 import { getSupabase } from "./supabase";
 
 export type PushKinds = { votes: boolean; circle: boolean; results: boolean; daily: boolean };
 
 /**
- * ready: can turn on · install: iPhone/iPad in Safari, must add to Home Screen
- * first · unsupported: this browser can't · off: the app isn't set up for push.
+ * ready: can turn on · install: iPhone/iPad in Safari (add to Home Screen first)
+ * or another app's built-in browser (open in a real browser first) · unsupported: this browser can't · off: the app isn't set up for push.
  */
 export type PushSupport = "ready" | "install" | "unsupported" | "off";
 
@@ -22,6 +23,7 @@ export function pushSupport(): PushSupport {
   if (!VAPID_KEY || !getSupabase()) return "off";
   const capable = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
   if (isIOS() && !isStandalone()) return "install";
+  if (installPlatform() === "in-app") return "install";
   return capable ? "ready" : "unsupported";
 }
 
@@ -121,11 +123,18 @@ export async function setPushKinds(kinds: PushKinds): Promise<void> {
   if (error) throw error;
 }
 
+export type TestResult = "sent" | "too_many" | "secret_mismatch" | "no_migration" | "send_failed" | "no_device" | "not_configured" | "failed";
+
 /** Pushes a test to this person's devices now. */
-export async function sendTestPush(): Promise<"sent" | "too_many" | "failed"> {
+export async function sendTestPush(): Promise<{ result: TestResult; detail?: string }> {
   const session = (await getSupabase()?.auth.getSession())?.data.session;
-  if (!session) return "failed";
-  const res = await fetch("/api/push/test", { method: "POST", headers: { Authorization: `Bearer ${session.access_token}` } });
-  if (res.status === 429) return "too_many";
-  return res.ok ? "sent" : "failed";
+  if (!session) return { result: "failed" };
+  try {
+    const res = await fetch("/api/push/test", { method: "POST", headers: { Authorization: `Bearer ${session.access_token}` } });
+    if (res.ok) return { result: "sent" };
+    const body = (await res.json().catch(() => ({}))) as { error?: string; detail?: string };
+    return { result: (body.error as TestResult) ?? "failed", detail: body.detail };
+  } catch {
+    return { result: "failed" };
+  }
 }

@@ -5,11 +5,13 @@ import webpush from "web-push";
 export type PushTarget = { endpoint: string; p256dh: string; auth: string };
 export type PushPayload = { title: string; body: string; url: string; tag?: string | null };
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-const privateKey = process.env.VAPID_PRIVATE_KEY;
-export const cronSecret = process.env.PUSH_CRON_SECRET;
+// Trimmed: a stray space or newline pasted into Vercel shouldn't break push.
+const env = (name: string) => process.env[name]?.trim() || undefined;
+const url = env("NEXT_PUBLIC_SUPABASE_URL");
+const anonKey = env("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+const publicKey = env("NEXT_PUBLIC_VAPID_PUBLIC_KEY");
+const privateKey = env("VAPID_PRIVATE_KEY");
+export const cronSecret = env("PUSH_CRON_SECRET");
 
 /** Everything the sender needs is configured. */
 export const pushConfigured = Boolean(url && anonKey && publicKey && privateKey && cronSecret);
@@ -17,7 +19,7 @@ export const pushConfigured = Boolean(url && anonKey && publicKey && privateKey 
 let ready = false;
 function setup() {
   if (ready) return;
-  webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:hello@docchi.app", publicKey!, privateKey!);
+  webpush.setVapidDetails(env("VAPID_SUBJECT") || "mailto:hello@docchi.app", publicKey!, privateKey!);
   ready = true;
 }
 
@@ -48,11 +50,14 @@ export async function userFromToken(token: string): Promise<string | null> {
  * Sends to many devices, a few at a time. Resolves to the endpoints the push
  * service says no longer exist (404 / 410), so they can be deleted.
  */
-export async function sendAll(items: { target: PushTarget; payload: PushPayload }[]): Promise<{ sent: number; gone: string[]; failed: number }> {
+export async function sendAll(
+  items: { target: PushTarget; payload: PushPayload }[],
+): Promise<{ sent: number; gone: string[]; failed: number; firstError?: string }> {
   setup();
   const gone: string[] = [];
   let sent = 0;
   let failed = 0;
+  let firstError: string | undefined;
   const queue = [...items];
   async function worker() {
     for (let item = queue.shift(); item; item = queue.shift()) {
@@ -66,10 +71,14 @@ export async function sendAll(items: { target: PushTarget; payload: PushPayload 
       } catch (e) {
         const status = (e as { statusCode?: number }).statusCode;
         if (status === 404 || status === 410) gone.push(item.target.endpoint);
-        else failed++;
+        else {
+          failed++;
+          firstError ??= `${status ?? ""} ${(e as { body?: string }).body ?? (e as Error).message}`.trim().slice(0, 200);
+        }
       }
     }
   }
   await Promise.all(Array.from({ length: 16 }, worker));
-  return { sent, gone, failed };
+  if (firstError) console.error("push send failed:", firstError);
+  return { sent, gone, failed, firstError };
 }

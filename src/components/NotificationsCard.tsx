@@ -1,17 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { installPlatform } from "@/lib/install";
 import {
   getPushKinds,
   isPushOn,
   pushSupport,
   sendTestPush,
   setPushKinds,
+  type TestResult,
   turnOffPush,
   turnOnPush,
   type PushKinds,
   type PushSupport,
 } from "@/lib/push";
+import { InstallSheet } from "./InstallSheet";
 
 const KINDS: { id: keyof PushKinds; label: string; hint: string }[] = [
   { id: "votes", label: "Votes on my polls", hint: "At 10, 25, 50, 100…" },
@@ -22,6 +25,18 @@ const KINDS: { id: keyof PushKinds; label: string; hint: string }[] = [
 
 type State = "loading" | "off" | "on" | "denied";
 
+/** What to say when the test doesn't arrive. The setup hints are for whoever runs Docchi. */
+const TEST_TEXT: Record<TestResult, string> = {
+  sent: "Sent! Check your notifications.",
+  too_many: "That's enough tests for now. Try again in an hour.",
+  secret_mismatch: "Push isn't connected yet: the secret in Supabase doesn't match PUSH_CRON_SECRET in Vercel. Run schedule_push again with the Vercel value.",
+  no_migration: "Push isn't set up in the database yet (run the push migration).",
+  send_failed: "The push service refused it. Check VAPID_PRIVATE_KEY and NEXT_PUBLIC_VAPID_PUBLIC_KEY in Vercel are the same pair, then redeploy.",
+  no_device: "This phone isn't registered anymore. Turn notifications off and on again.",
+  not_configured: "Push isn't set up on the server yet.",
+  failed: "Couldn't send a test. Try again?",
+};
+
 /** Profile → turn phone notifications on/off and pick what they're for. */
 export function NotificationsCard() {
   const [support, setSupport] = useState<PushSupport | null>(null);
@@ -30,6 +45,7 @@ export function NotificationsCard() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [howTo, setHowTo] = useState(false);
 
   useEffect(() => {
     const s = pushSupport();
@@ -59,7 +75,7 @@ export function NotificationsCard() {
       if (r === "on") {
         setOpen(true);
         const t = await sendTestPush();
-        setNote(t === "sent" ? "Sent you a test. Check your notifications." : null);
+        setNote(t.result === "sent" ? "Sent you a test. Check your notifications." : TEST_TEXT[t.result]);
       }
     } catch (e) {
       console.error(e);
@@ -95,7 +111,7 @@ export function NotificationsCard() {
   async function test() {
     setBusy(true);
     const r = await sendTestPush();
-    setNote(r === "sent" ? "Sent! Check your notifications." : r === "too_many" ? "That's enough tests for now." : "Couldn't send a test.");
+    setNote(TEST_TEXT[r.result] + (r.detail ? ` (${r.detail})` : ""));
     setBusy(false);
   }
 
@@ -111,7 +127,9 @@ export function NotificationsCard() {
           </h2>
           <p className="notif-text">
             {support === "install"
-              ? "On iPhone, add Docchi to your Home Screen first: tap Share, then “Add to Home Screen”. Open it from there and turn these on."
+              ? installPlatform() === "in-app"
+                ? "Open Docchi in your browser first, then turn these on there."
+                : "On iPhone, add Docchi to your Home Screen first. Then open it from there and turn these on."
               : support === "unsupported"
                 ? "This browser can't show notifications. Try Chrome, or Safari on iPhone from the Home Screen."
                 : state === "denied"
@@ -122,6 +140,13 @@ export function NotificationsCard() {
           </p>
         </div>
       </div>
+
+      {support === "install" && (
+        <button type="button" className="post-btn press" onClick={() => setHowTo(true)}>
+          Show me how
+        </button>
+      )}
+      {howTo && <InstallSheet reason="notifications" onClose={() => setHowTo(false)} />}
 
       {support === "ready" && state === "off" && (
         <button type="button" className="post-btn press" onClick={on} disabled={busy}>

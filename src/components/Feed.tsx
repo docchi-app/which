@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { canVote as userCanVote, onUserChange, savePendingVote, takePendingVote } from "@/lib/auth";
+import { countVoteForNudge } from "@/lib/install";
 import { FEED_PAGE_SIZE, fetchFeed, fetchPoll } from "@/lib/polls";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useLiveInterval } from "@/lib/useLiveInterval";
@@ -12,6 +13,7 @@ import { ANSWER_COLORS, PollCard } from "./PollCard";
 import { SignInSheet, type SheetPick } from "./SignInSheet";
 import { ShareSheet } from "./ShareSheet";
 import { BottomNav } from "./BottomNav";
+import { InstallSheet } from "./InstallSheet";
 import { TrophyIcon } from "./icons";
 
 const TABS: { id: FeedTab; label: string }[] = [
@@ -37,6 +39,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   const [canVote, setCanVote] = useState<boolean | null>(isSupabaseConfigured ? null : true);
   const [sheet, setSheet] = useState<SheetPick | null>(null);
   const [sharing, setSharing] = useState<Poll | null>(null);
+  const [installNudge, setInstallNudge] = useState(false);
   // Poll whose vote was just cast on the way back from Google sign-in.
   const [celebrateId, setCelebrateId] = useState<string | null>(null);
   // Poll the viewer just posted (arrives from /create with ?created=1).
@@ -125,6 +128,8 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   }, [index, polls, hasMore, tab]);
 
   const onVoted = useCallback((pollId: string, r: VoteResult) => {
+    // After the 3rd vote here, once a week at most: offer the Home Screen.
+    if (countVoteForNudge()) window.setTimeout(() => setInstallNudge(true), 1800);
     setPolls((list) =>
       list?.map((p) =>
         p.id === pollId
@@ -416,6 +421,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
 
       {sheet && <SignInSheet pick={sheet} onClose={closeSheet} />}
       {sharing && <ShareSheet poll={sharing} onClose={() => setSharing(null)} />}
+      {installNudge && !sheet && !sharing && <InstallSheet reason="nudge" onClose={() => setInstallNudge(false)} />}
     </div>
   );
 }
