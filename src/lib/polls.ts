@@ -7,6 +7,9 @@ type FeedRow = {
   kind?: PollKind;
   question: string | null;
   teaser?: string | null;
+  visibility?: "public" | "link";
+  is_mine?: boolean;
+  share_count?: number;
   creator: string | null;
   is_system: boolean;
   featured_today: boolean;
@@ -27,6 +30,9 @@ const toPoll = (r: FeedRow): Poll => ({
   kind: r.kind ?? "classic",
   question: r.question,
   teaser: r.teaser ?? null,
+  visibility: r.visibility ?? "public",
+  isMine: r.is_mine ?? false,
+  shareCount: r.share_count ?? 0,
   creator: r.creator ?? "someone",
   isSystem: r.is_system,
   featuredToday: r.featured_today,
@@ -49,6 +55,26 @@ export async function fetchFeed(tab: FeedTab, skip = 0, limit = FEED_PAGE_SIZE):
   const { data, error } = await supabase.rpc("get_feed", args);
   if (error) throw error;
   return (data as FeedRow[]).map(toPoll);
+}
+
+/** Polls you made ("mine") or voted on ("voted"), newest first. */
+export async function fetchMyPolls(which: "mine" | "voted", skip = 0): Promise<Poll[]> {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc("my_polls", { which, max_rows: FEED_PAGE_SIZE, skip });
+  if (error) throw error;
+  return (data as FeedRow[]).map(toPoll);
+}
+
+export async function setPollVisibility(pollId: string, visibility: "public" | "link"): Promise<void> {
+  const { error } = (await getSupabase()?.rpc("set_poll_visibility", { poll: pollId, visibility })) ?? {};
+  if (error) throw error;
+}
+
+/** Hidden for everyone (kept on the server for moderation). */
+export async function deletePoll(pollId: string): Promise<void> {
+  const { error } = (await getSupabase()?.rpc("delete_poll", { poll: pollId })) ?? {};
+  if (error) throw error;
 }
 
 /** A single poll (for shared links), even if it has closed. */
@@ -119,7 +145,7 @@ function demo(
   ageHours: number, closesInHours: number, comments: number, opts: [string, number][],
 ): Poll {
   return {
-    id, kind: "classic", question, teaser: null, creator, isSystem: creator === "docchi", featuredToday: featured,
+    id, kind: "classic", question, teaser: null, visibility: "public", isMine: false, shareCount: 0, creator, isSystem: creator === "docchi", featuredToday: featured,
     voteCount: opts.reduce((n, [, v]) => n + v, 0),
     commentCount: comments,
     createdAt: hoursFromNow(ageHours),

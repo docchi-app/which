@@ -1,10 +1,5 @@
-import { AccountCard } from "@/components/AccountCard";
-import { ComingSoon } from "@/components/ComingSoon";
+import { ProfileScreen } from "@/components/ProfileScreen";
 
 export default function ProfilePage() {
-  return (
-    <ComingSoon section="profile" title="Your profile" blurb="Your polls, votes received and best rank will live here.">
-      <AccountCard />
-    </ComingSoon>
-  );
+  return <ProfileScreen />;
 }

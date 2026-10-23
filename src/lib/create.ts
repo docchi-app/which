@@ -51,6 +51,7 @@ export async function createPoll(input: {
   username: string | null;
   kind: PollKind;
   teaser: string | null;
+  visibility: "public" | "link";
 }): Promise<string> {
   const supabase = getSupabase();
   if (!supabase) throw new CreatePollError("demo");
@@ -62,6 +63,7 @@ export async function createPoll(input: {
     // Only for the new formats, so classic polls also work before the
     // 20261028 migration has been run.
     ...(input.kind === "classic" ? {} : { kind: input.kind, teaser: input.teaser }),
+    ...(input.visibility === "link" ? { visibility: "link" } : {}),
   });
   if (error) {
     const code = /docchi:(\w+)/.exec(error.message)?.[1];
