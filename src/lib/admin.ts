@@ -23,7 +23,7 @@ export type QueueItem = {
 
 export type LogItem = {
   id: string;
-  action: "remove" | "restore" | "dismiss" | "ban" | "unban";
+  action: "remove" | "restore" | "dismiss" | "ban" | "unban" | "schedule" | "reschedule" | "unschedule";
   targetType: "poll" | "user";
   targetId: string;
   at: string;
@@ -55,6 +55,31 @@ export type DayMetrics = {
 };
 
 export type AdminAction = "remove" | "restore" | "dismiss" | "ban" | "unban";
+
+export type PollKind = "classic" | "hot_take" | "mystery";
+
+export type ScheduleDay = {
+  day: string;
+  pollId: string | null;
+  kind: PollKind | null;
+  question: string | null;
+  teaser: string | null;
+  options: string[];
+  voteCount: number;
+  openDays: number | null;
+  live: boolean;
+};
+
+export type ScheduleInput = {
+  day: string;
+  question: string;
+  answers: string[];
+  kind: PollKind;
+  teaser: string;
+  openDays: number;
+  /** editing an existing (not yet live) poll */
+  pollId?: string;
+};
 
 async function call<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
   const supabase = getSupabase();
@@ -130,4 +155,36 @@ export async function fetchMetrics(days: number): Promise<DayMetrics[]> {
     d1: num(r.d1),
     d7: num(r.d7),
   }));
+}
+
+export async function fetchSchedule(days = 21): Promise<ScheduleDay[]> {
+  const rows = await call<Record<string, unknown>[]>("admin_schedule", { days });
+  return rows.map((r) => ({
+    day: r.day as string,
+    pollId: r.poll_id as string | null,
+    kind: r.kind as PollKind | null,
+    question: r.question as string | null,
+    teaser: r.teaser as string | null,
+    options: (r.options as string[]) ?? [],
+    voteCount: (r.vote_count as number) ?? 0,
+    openDays: r.open_days as number | null,
+    live: Boolean(r.live),
+  }));
+}
+
+/** Throws an Error whose message is the reason code (day_taken, question_length, …). */
+export async function schedulePoll(input: ScheduleInput): Promise<string> {
+  return call<string>("admin_schedule_poll", {
+    day: input.day,
+    question: input.question,
+    answers: input.kind === "hot_take" ? null : input.answers,
+    kind: input.kind,
+    teaser: input.kind === "mystery" ? input.teaser : null,
+    open_days: input.openDays,
+    poll: input.pollId ?? null,
+  });
+}
+
+export async function unschedule(pollId: string): Promise<void> {
+  await call("admin_unschedule", { poll: pollId });
 }

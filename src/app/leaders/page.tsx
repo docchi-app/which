@@ -1,5 +1,8 @@
-import { ComingSoon } from "@/components/ComingSoon";
+import type { Metadata } from "next";
+import { LeadersScreen } from "@/components/LeadersScreen";
+
+export const metadata: Metadata = { title: "Leaders · Docchi" };
 
 export default function LeadersPage() {
-  return <ComingSoon section="leaders" title="Top creators this week" blurb="The weekly leaderboard lands after sharing and comments." />;
+  return <LeadersScreen />;
 }

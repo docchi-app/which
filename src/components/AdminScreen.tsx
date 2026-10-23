@@ -17,9 +17,10 @@ import { getMyProfile } from "@/lib/profile";
 import { REPORT_REASONS } from "@/lib/safety";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { Avatar } from "./Avatar";
+import { Schedule } from "./AdminSchedule";
 import { LogoMark, Wordmark } from "./Logo";
 
-type Tab = "reports" | "done" | "metrics";
+type Tab = "reports" | "schedule" | "done" | "metrics";
 
 const REASON_LABEL: Record<string, string> = Object.fromEntries(
   REPORT_REASONS.map((r) => [r.id, r.label.split(/[,(]/)[0].replace(/ or .*$/, "")]),
@@ -73,6 +74,7 @@ export function AdminScreen() {
             {(
               [
                 ["reports", "Reports"],
+                ["schedule", "Schedule"],
                 ["done", "Done"],
                 ["metrics", "Metrics"],
               ] as const
@@ -83,6 +85,7 @@ export function AdminScreen() {
             ))}
           </div>
           {tab === "reports" && <Queue />}
+          {tab === "schedule" && <Schedule />}
           {tab === "done" && <Done />}
           {tab === "metrics" && <Metrics />}
         </>
@@ -229,6 +232,9 @@ const DID: Record<LogItem["action"], string> = {
   dismiss: "dismissed reports on",
   ban: "banned",
   unban: "unbanned",
+  schedule: "scheduled",
+  reschedule: "changed the schedule for",
+  unschedule: "removed a scheduled poll",
 };
 
 function Done() {
@@ -261,7 +267,7 @@ function Done() {
         <li key={it.id} className="admin-card admin-log">
           <span>
             <strong>@{it.admin ?? "admin"}</strong> {DID[it.action]}{" "}
-            {it.targetType === "poll" && it.question ? <>“{it.question}”</> : <>@{it.username}</>}
+            {it.targetType === "poll" ? (it.question ? <>“{it.question}”</> : null) : <>@{it.username}</>}
             <span className="admin-meta"> · {ago(it.at)}</span>
             {it.undone && <span className="admin-meta"> · undone</span>}
           </span>
