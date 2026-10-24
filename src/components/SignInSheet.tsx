@@ -72,11 +72,11 @@ export function SignInSheet({ pick, onClose }: Props) {
         ) : (
           <>
             <h2 id="signin-title" className="sheet-title">
-              Make your votes count
+              {votes > 1 ? `Make your ${votes} votes count` : "Make your vote count"}
             </h2>
             <p className="sheet-text">
-              {votes > 1 ? `Your ${votes} picks aren't` : "Your pick isn't"} in the results yet. Sign in and{" "}
-              {votes > 1 ? "they count" : "it counts"}, plus you can comment and post your own polls.
+              {votes > 1 ? "They're" : "It's"} saved on this phone but not in the results yet. Sign in and{" "}
+              {votes > 1 ? "they count" : "it counts"}, plus you can comment and post polls.
             </p>
           </>
         )}
@@ -85,6 +85,8 @@ export function SignInSheet({ pick, onClose }: Props) {
           <GoogleG />
           {busy ? "Opening Google…" : "Continue with Google"}
         </button>
+
+        <GoogleTrust />
 
         <p className="sheet-legal">
           By continuing you agree to the <Link href="/terms">Terms</Link> and{" "}
@@ -116,4 +118,53 @@ function GoogleG() {
       </svg>
     </span>
   );
+}
+
+/** Exactly what Docchi gets from Google, and what it never does. */
+export function GoogleTrust() {
+  return (
+    <div className="trust">
+      <h3>What Docchi gets from Google</h3>
+      <ul>
+        <li>
+          <span aria-hidden="true">👤</span>
+          <span>
+            Your <strong>name</strong>, to suggest a @username
+          </span>
+        </li>
+        <li>
+          <span aria-hidden="true">🖼️</span>
+          <span>
+            Your <strong>profile photo</strong>
+          </span>
+        </li>
+        <li>
+          <span aria-hidden="true">✉️</span>
+          <span>
+            Your <strong>email</strong>, kept private, never shown
+          </span>
+        </li>
+      </ul>
+      <hr />
+      <ul className="trust-no">
+        <li>
+          <span aria-hidden="true">✕</span>
+          <span>Never posts anything for you</span>
+        </li>
+        <li>
+          <span aria-hidden="true">✕</span>
+          <span>No contacts, Gmail, Drive or anything else</span>
+        </li>
+        <li>
+          <span aria-hidden="true">✕</span>
+          <span>No ads, never sold</span>
+        </li>
+      </ul>
+    </div>
+  );
+}
+
+/** The one-line version, under other "Sign in with Google" buttons. */
+export function SignInNote() {
+  return <p className="signin-note">We only get your name, email (kept private) and photo from Google.</p>;
 }

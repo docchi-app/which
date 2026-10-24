@@ -18,6 +18,7 @@ import type { PollKind, Visibility } from "@/lib/types";
 import { getMyCircle, type MyCircle } from "@/lib/circle";
 import { ANSWER_COLORS } from "./PollCard";
 import { ArrowIcon, PlusIcon } from "./icons";
+import { SignInNote } from "./SignInSheet";
 
 const QUESTION_MAX = 140;
 const ANSWER_MAX = 40;
@@ -579,6 +580,7 @@ export function CreatePoll() {
             {!posting && <ArrowIcon size={20} strokeWidth={2.6} />}
           </button>
         )}
+        {isSupabaseConfigured && status && !status.signedIn && <SignInNote />}
         <p id="post-hint" className="create-note">
           {missing && status?.signedIn !== false ? (
             missing

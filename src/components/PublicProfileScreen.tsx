@@ -26,6 +26,7 @@ import { BottomNav } from "./BottomNav";
 import { ProfilePoll } from "./ProfileScreen";
 import { ReportSheet } from "./ReportSheet";
 import { ShareSheet } from "./ShareSheet";
+import { SignInNote } from "./SignInSheet";
 
 /** /u/<name>: someone's public polls, and adding them as a friend. ?invite=<code> makes you friends. */
 export function PublicProfileScreen({ username }: { username: string }) {
@@ -220,6 +221,7 @@ export function PublicProfileScreen({ username }: { username: string }) {
               )}
             </div>
           )}
+          {!signedIn && !person.blockedByMe && <SignInNote />}
           <p className="circle-hint">
             {status === "friends"
               ? `You see each other's friends-only polls and show up in each other's "friends voted".`

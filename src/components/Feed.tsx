@@ -33,6 +33,9 @@ const NEW_POLLS_CHECK_MS = 45_000;
 const SAVE_VOTES_AFTER = 3;
 const SAVE_ASKED_KEY = "docchi.saveVotesAsked";
 const WELCOMED_KEY = "docchi.welcomed";
+// The guest's "votes not counted yet" bar: ✕ hides it for a day.
+const GUEST_BAR_HIDDEN_KEY = "docchi.guestBarHidden";
+const GUEST_TOAST_KEY = "docchi.guestToastShown";
 
 function stored(key: string) {
   try {
@@ -71,6 +74,10 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   const [sheet, setSheet] = useState<SheetPick | "save" | null>(null);
   // First visit: a line saying what Docchi is, until dismissed or the first vote.
   const [welcome, setWelcome] = useState(false);
+  // Guest votes waiting to be counted (shown in the bar), and the one-time note after the first.
+  const [waiting, setWaiting] = useState(0);
+  const [guestBarHidden, setGuestBarHidden] = useState(true);
+  const [guestToast, setGuestToast] = useState(false);
   const signedInRef = useRef(signedIn);
   useEffect(() => {
     signedInRef.current = signedIn;
@@ -105,7 +112,30 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
     // Reads localStorage, so it can only run after hydration.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (signedIn === false && !stored(WELCOMED_KEY)) setWelcome(true);
+    setWaiting(signedIn === false ? guestPicks().length : 0);
+    let until = 0;
+    try {
+      until = Number(localStorage.getItem(GUEST_BAR_HIDDEN_KEY) ?? 0);
+    } catch {
+      // Show it.
+    }
+    setGuestBarHidden(until > Date.now());
   }, [signedIn]);
+
+  const hideGuestBar = useCallback(() => {
+    try {
+      localStorage.setItem(GUEST_BAR_HIDDEN_KEY, String(Date.now() + 864e5));
+    } catch {
+      // Hidden for this visit only.
+    }
+    setGuestBarHidden(true);
+  }, []);
+
+  useEffect(() => {
+    if (!guestToast) return;
+    const t = window.setTimeout(() => setGuestToast(false), 6000);
+    return () => window.clearTimeout(t);
+  }, [guestToast]);
 
   const dismissWelcome = useCallback(() => {
     store(WELCOMED_KEY);
@@ -195,6 +225,12 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
     dismissWelcome();
     announceVote();
     if (signedInRef.current === false) {
+      setWaiting(guestPicks().length);
+      // A guest's first vote: say once what that means.
+      if (!stored(GUEST_TOAST_KEY)) {
+        store(GUEST_TOAST_KEY);
+        setGuestToast(true);
+      }
       // A guest's 3rd vote: ask them to sign in so their votes count (once).
       if (guestPicks().length >= SAVE_VOTES_AFTER && !stored(SAVE_ASKED_KEY)) {
         store(SAVE_ASKED_KEY);
@@ -394,6 +430,24 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
         </div>
       )}
 
+      {waiting > 0 && !guestBarHidden && !welcome && (
+        <div className="guest-bar" role="status">
+          <span aria-hidden="true">🕒</span>
+          <p>
+            <strong>
+              {waiting} {waiting === 1 ? "vote" : "votes"}
+            </strong>{" "}
+            not counted yet
+          </p>
+          <button type="button" className="guest-bar-btn press" onClick={() => setSheet("save")}>
+            Count {waiting === 1 ? "it" : "them"}
+          </button>
+          <button type="button" className="guest-bar-close" aria-label="Hide for now" onClick={hideGuestBar}>
+            ×
+          </button>
+        </div>
+      )}
+
       {!isSupabaseConfigured && (
         <p className="demo-banner">Demo mode: sample polls, votes aren&apos;t saved. Add Supabase keys to go live.</p>
       )}
@@ -508,6 +562,11 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
 
       <BottomNav current="feed" />
 
+      {guestToast && !sheet && (
+        <p className="guest-toast" role="status">
+          ✓ <strong>Voted as a guest.</strong> You see results right away. Sign in anytime and your votes join the totals.
+        </p>
+      )}
       {sheet && <SignInSheet pick={sheet === "save" ? undefined : sheet} onClose={closeSheet} />}
       {sharing && <ShareSheet poll={sharing} onClose={() => setSharing(null)} />}
       {installNudge && !sheet && !sharing && <InstallSheet reason="nudge" onClose={() => setInstallNudge(false)} />}

@@ -9,6 +9,7 @@ import { fetchRecentResults, type RecentResult } from "@/lib/streak";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { BottomNav } from "./BottomNav";
 import { PersonLink } from "./FriendsPanel";
+import { SignInNote } from "./SignInSheet";
 
 /** The bell: friend requests, then new votes and comments on your polls. */
 export function ActivityScreen() {
@@ -85,9 +86,12 @@ export function ActivityScreen() {
           <h2 className="poll-question">Nothing here yet</h2>
           <p className="poll-foot-note">Sign in to get friend requests and see when people vote on your polls.</p>
           {isSupabaseConfigured && (
-            <button type="button" className="post-btn post-btn-dark press" onClick={signIn}>
-              Sign in with Google
-            </button>
+            <>
+              <button type="button" className="post-btn post-btn-dark press" onClick={signIn}>
+                Sign in with Google
+              </button>
+              <SignInNote />
+            </>
           )}
         </section>
       ) : (
