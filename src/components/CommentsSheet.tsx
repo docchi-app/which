@@ -17,7 +17,7 @@ type Props = {
   /** Answer colours for this poll, so each pick chip matches its answer. */
   colors: string[];
   /** false: signed out (or a guest) · null: not known yet */
-  canVote: boolean | null;
+  signedIn: boolean | null;
   onClose: () => void;
   /** The number of live comments changed. */
   onCount: (n: number) => void;
@@ -31,7 +31,7 @@ function ago(iso: string) {
 }
 
 /** A poll's comments: the conversation, the write box, delete and report. */
-export function CommentsSheet({ pollId, colors, canVote, onClose, onCount }: Props) {
+export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount }: Props) {
   const [thread, setThread] = useState<Thread | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -228,7 +228,7 @@ export function CommentsSheet({ pollId, colors, canVote, onClose, onCount }: Pro
               </form>
             ) : (
               <p className="comments-note comments-closed">
-                {thread.closed ? "This poll has closed, so comments are read-only." : canVote === false ? "Sign in to comment." : "You can't comment right now."}
+                {thread.closed ? "This poll has closed, so comments are read-only." : signedIn === false ? "Sign in to comment." : "You can't comment right now."}
               </p>
             )}
           </>
@@ -242,7 +242,7 @@ export function CommentsSheet({ pollId, colors, canVote, onClose, onCount }: Pro
       {reporting && (
         <ReportSheet
           target={{ kind: "comment", commentId: reporting }}
-          canReport={canVote}
+          canReport={signedIn}
           onClose={() => setReporting(null)}
           onReported={load}
         />

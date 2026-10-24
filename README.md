@@ -19,9 +19,17 @@ The first slice of the build order:
 - **One-tap voting:** results stay hidden until you vote. The tap responds instantly: your pick
   locks in and the bars fill in as soon as the server answers. The database enforces one vote per
   person.
-- **Sign in at first vote:** the first time a signed-out visitor taps an answer, the "Lock in your
-  pick" sheet slides up. After Google sign-in they land back on the poll with their vote counted
-  and the confetti playing.
+- **Vote first, sign in later:** a new visitor votes straight away as a guest (a Supabase anonymous
+  account) and sees the results, with their own pick shown in them. A guest's votes are stored but
+  left out of every total and the leaderboard until they sign in with Google; linking Google keeps
+  the same account, so their votes join the totals then (if that Google account already had
+  Docchi, `/auth/callback` casts the guest's picks again as that account). Results show "Your vote
+  counts once you sign in", and after a guest's 3rd vote a "Make your votes count" sheet asks once.
+  If guest sign-ins are switched off, the first tap opens the old "Lock in your pick" sheet.
+- **First visit:** a one-line welcome above the tabs says what Docchi is, until it's dismissed or
+  the first vote. An unvoted card with fewer than 10 votes says "Be the first to vote" / "Be one of
+  the first to vote" instead of a tiny count, and a poll with no comments shows the bubble without
+  a "0".
 - **Animated results:** bars grow in from the left (900ms, 80ms apart), percentages pop,
   "You're with the X%!" appears with a confetti burst, and buttons sink when pressed. All motion
   stops when the phone's "reduce motion" setting is on.
@@ -77,7 +85,9 @@ The first slice of the build order:
 - **Leaders (weekly):** Monday–Sunday, India time. **Top creators** by votes their public polls got
   this week (podium for the top 3, then the list), **Hottest polls** by votes this week, last
   week's champ on top, your own rank pinned at the bottom, and a Last week view. Votes on your own
-  poll, on Docchi's polls, from banned accounts or from accounts under a day old don't count.
+  poll, on Docchi's polls, from guests who haven't signed in, from banned accounts or from accounts
+  under a day old don't count. Arriving while this week's board is still empty shows last week's
+  instead.
 - **Comments:** tap the 💬 count on a card. You can read and write once you've voted (or the poll
   has closed, or it's yours), so comments never spoil a vote or a mystery question. Each shows the
   writer's pick in that answer's colour; 200 characters; gone after 24 hours. Delete your own, or
@@ -164,7 +174,7 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261102000000_scale.sql`, `20261103000000_feed_voted_last.sql`,
    `20261104000000_safety_metrics.sql`, `20261105000000_push.sql`, `20261106000000_push_fixes.sql`, `20261107000000_leaders_schedule.sql`,
    `20261108000000_comments.sql`, `20261109000000_rate_limits.sql`,
-   `20261110000000_activity.sql`, …), in date order,
+   `20261110000000_activity.sql`, `20261111000000_guest_votes.sql`, …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -218,8 +228,9 @@ count from the day you run it. To write your own, copy a row in the `pack` list.
    - **Redirect URLs:** add `https://dochhi.vercel.app/auth/callback`,
      `https://*.vercel.app/auth/callback` (preview deployments) and
      `http://localhost:3000/auth/callback`
-4. Once Google sign-in works, turn **off** **Allow anonymous sign-ins**. The app no longer creates
-   guest accounts, and the database refuses votes from them anyway.
+4. On the same page, turn **on** **Allow anonymous sign-ins**. Visitors vote as guests before
+   signing in; their votes only count once they link Google (step 2). With it off, the app asks
+   for Google at the first vote instead.
 
 **Show "Docchi", not the Supabase address, on Google's screen.** By default Google sends people
 back to Supabase, so its screen says "Sign in to <project-ref>.supabase.co". To run sign-in
@@ -241,7 +252,8 @@ sign-in goes through Supabase as it always has. Preview deployments use the Supa
 their address is also added as a redirect URI.
 
 **CAPTCHA.** Google sign-in is protected by Google, so CAPTCHA isn't needed while Google is the
-only way in and anonymous sign-ins are off. Add it before phone sign-in ships. Turning on
+only way in. Guest (anonymous) sign-ins are on, but a guest's votes never count until they link
+Google, and Supabase limits new guest accounts per IP address. Add it before phone sign-in ships. Turning on
 **Authentication → Attack Protection → CAPTCHA** also needs a small app change (a Turnstile
 widget whose token is sent with sign-in), so do both together, or sign-ins will fail.
 
@@ -336,7 +348,7 @@ per Supabase auth user, created automatically by a database trigger.
 | Rule | Where it's enforced |
 |------|---------------------|
 | One vote per person | `votes` primary key `(poll_id, user_id)` |
-| Only signed-in accounts vote | `cast_vote()` refuses signed-out and guest (anonymous) sessions |
+| Only Google accounts' votes count | `cast_vote()` stores a guest's vote with `counted = false` and leaves the totals alone; linking Google runs `count_guest_votes()`; the leaderboard reads only counted votes |
 | Poll rules (length, 2–4 distinct answers, 1/3/7 days, 5 per 24h) | `create_poll()` checks them all again |
 | Usernames are unique, 3–20 of `a-z 0-9 _`, not reserved or rude | `username_problem()`, used by `check_username()` and `create_poll()` |
 | A mystery question stays hidden until you vote | `poll_cards()` returns `null` for it; `cast_vote()` reveals it |

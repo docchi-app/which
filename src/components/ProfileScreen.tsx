@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { continueWithGoogle, onUserChange, saveReturnTo, canVote } from "@/lib/auth";
+import { continueWithGoogle, guestPicks, onUserChange, saveReturnTo, isSignedIn } from "@/lib/auth";
 import { checkUsername, type UsernameProblem } from "@/lib/create";
 import { formatCount, percentages, timeLeft } from "@/lib/format";
 import { deletePoll, fetchMyPolls, setPollVisibility } from "@/lib/polls";
@@ -33,6 +33,8 @@ export function ProfileScreen() {
   // undefined: still checking; null: signed out.
   const [signedIn, setSignedIn] = useState<boolean | undefined>(isSupabaseConfigured ? undefined : false);
   const [profile, setProfile] = useState<Profile | null>(null);
+  // Polls voted on as a guest (not counted until they sign in).
+  const [guestVotes, setGuestVotes] = useState(0);
   const [tab, setTab] = useState<Tab>("mine");
   const [polls, setPolls] = useState<Poll[] | null>(null);
   const [sharing, setSharing] = useState<Poll | null>(null);
@@ -56,7 +58,10 @@ export function ProfileScreen() {
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
-    return onUserChange((user) => setSignedIn(canVote(user)));
+    return onUserChange((user) => {
+      setSignedIn(isSignedIn(user));
+      setGuestVotes(user?.is_anonymous ? guestPicks().length : 0);
+    });
   }, []);
 
   const loadProfile = useCallback(() => {
@@ -134,7 +139,9 @@ export function ProfileScreen() {
           <h1 className="poll-question">Your polls live here</h1>
           <p className="poll-foot-note">
             {isSupabaseConfigured
-              ? "Sign in to see the polls you made, the ones you voted on, and how many votes you got."
+              ? guestVotes > 0
+                ? `You've voted on ${guestVotes} ${guestVotes === 1 ? "poll" : "polls"} as a guest. Sign in so your votes count, and to post polls and see how many votes you got.`
+                : "Sign in to see the polls you made, the ones you voted on, and how many votes you got."
               : "Profiles need Supabase. Add the keys to try this screen."}
           </p>
           {isSupabaseConfigured && (

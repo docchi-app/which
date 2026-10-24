@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { canVote, continueWithGoogle, onUserChange, saveReturnTo } from "@/lib/auth";
+import { isSignedIn, continueWithGoogle, onUserChange, saveReturnTo } from "@/lib/auth";
 import {
   announceCircleChange,
   blockUser,
@@ -40,7 +40,7 @@ export function PublicProfileScreen({ username }: { username: string }) {
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
-    return onUserChange((user) => setSignedIn(canVote(user)));
+    return onUserChange((user) => setSignedIn(isSignedIn(user)));
   }, []);
 
   const load = useCallback(() => {

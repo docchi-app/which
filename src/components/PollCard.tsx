@@ -13,6 +13,8 @@ import { CommentsSheet } from "./CommentsSheet";
 import { ReportSheet } from "./ReportSheet";
 
 const LIVE_REFRESH_MS = 5000;
+// Below this many votes, an unvoted card invites you to be early instead of showing the count.
+const FEW_VOTES = 10;
 
 export const ANSWER_COLORS = ["var(--coral)", "var(--sky)", "var(--sun)", "var(--mint)"];
 // Hot takes: Agree / Disagree.
@@ -35,8 +37,8 @@ const CONFETTI = Array.from({ length: 16 }, (_, n) => {
 type Props = {
   poll: Poll;
   tag: string;
-  /** false when the viewer must sign in first; null while that's still unknown. */
-  canVote: boolean | null;
+  /** Signed in with Google: false for guests (their votes count once they sign in); null while unknown. */
+  signedIn: boolean | null;
   /** Play the vote celebration on mount (returning from sign-in). */
   celebrate?: boolean;
   /** The viewer just posted this poll: nudge them to share it. */
@@ -45,6 +47,8 @@ type Props = {
   /** Fresher numbers for this poll arrived (live updates). */
   onRefresh: (poll: Poll) => void;
   onNeedSignIn: (pollId: string, optionId: string) => void;
+  /** A guest tapped "Sign in" to make their votes count. */
+  onSaveVotes?: () => void;
   onShare: () => void;
   onNext: () => void;
   /** The viewer reported this poll. */
@@ -64,6 +68,15 @@ export function VerifiedTick() {
   );
 }
 
+/** The poll with the viewer's own (not yet counted) vote added in. */
+function withOwnVote(poll: Poll): Poll {
+  return {
+    ...poll,
+    voteCount: poll.voteCount + 1,
+    options: poll.options.map((o) => (o.id === poll.myOptionId && o.votes !== null ? { ...o, votes: o.votes + 1 } : o)),
+  };
+}
+
 /** How split a hot take is: 100 = dead even, 0 = everyone agrees. */
 function spiciness(pcts: number[]) {
   const split = 100 - Math.abs((pcts[0] ?? 0) - (pcts[1] ?? 0));
@@ -74,12 +87,13 @@ function spiciness(pcts: number[]) {
 export function PollCard({
   poll,
   tag,
-  canVote,
+  signedIn,
   celebrate = false,
   justCreated = false,
   onVoted,
   onRefresh,
   onNeedSignIn,
+  onSaveVotes,
   onShare,
   onNext,
   onReported,
@@ -104,7 +118,6 @@ export function PollCard({
 
   async function vote(optionId: string) {
     if (lockingId || voted) return;
-    if (canVote === false) return onNeedSignIn(poll.id, optionId);
     setLockingId(optionId);
     setError(null);
     try {
@@ -147,10 +160,17 @@ export function PollCard({
     !closed,
   );
 
-  const pcts = percentages(poll.options.map((o) => o.votes ?? 0));
+  // A guest's vote stays out of the totals until they sign in, but they should
+  // still see themselves in the results.
+  const guestVote = signedIn === false && voted;
+  const shown = guestVote ? withOwnVote(poll) : poll;
+  const pcts = percentages(shown.options.map((o) => o.votes ?? 0));
   const mineId = poll.myOptionId ?? lockingId;
   const mineIndex = poll.options.findIndex((o) => o.id === mineId);
-  const votesLabel = `${formatCount(poll.voteCount)} ${poll.voteCount === 1 ? "vote" : "votes"}`;
+  const votesLabel = `${formatCount(shown.voteCount)} ${shown.voteCount === 1 ? "vote" : "votes"}`;
+  // A handful of votes reads as "nobody's here"; before voting, say it as an invitation.
+  const beforeVoteLabel =
+    poll.voteCount === 0 ? "Be the first to vote" : poll.voteCount < FEW_VOTES ? "Be one of the first to vote" : votesLabel;
   const spice = isTake && showResults ? spiciness(pcts) : null;
   const isCircle = poll.visibility === "circle";
 
@@ -166,7 +186,7 @@ export function PollCard({
             </Link>
           </span>
         </div>
-        <LockedCircle poll={poll} canVote={canVote} />
+        <LockedCircle poll={poll} signedIn={signedIn} />
         <div className="poll-actions">
           <button type="button" className="skip-btn" onClick={onNext} aria-label="Skip to next poll">
             Skip
@@ -178,7 +198,7 @@ export function PollCard({
 
   const withYou = !showResults
     ? "Locking in your pick…"
-    : poll.voteCount === 1
+    : shown.voteCount === 1
       ? "First vote. You set the trend!"
       : isTake
         ? `You're with the ${pcts[mineIndex]}% who ${mineIndex === 0 ? "agree" : "disagree"}!`
@@ -276,7 +296,7 @@ export function PollCard({
             )}
           </div>
           <p className="poll-foot-note">
-            {votesLabel} · {isTake ? "tap to see how spicy this is" : "tap to reveal results"}
+            {beforeVoteLabel} · {isTake ? "vote to see how spicy it is" : "vote to see the results"}
           </p>
           {isCircle && !poll.isMine && (
             <p className="circle-note">Your pick is visible to @{poll.creator}&apos;s circle.</p>
@@ -360,6 +380,16 @@ export function PollCard({
             {!closed && showResults && <span className="live-dot live-dot-small" aria-hidden="true" />}
             {votesLabel} · {closed ? "final results" : showResults ? "live" : "counting…"}
           </p>
+          {guestVote && !closed && (
+            <p className="guest-note">
+              Your vote counts once you sign in.
+              {onSaveVotes && (
+                <button type="button" className="guest-note-btn press" onClick={onSaveVotes}>
+                  Sign in
+                </button>
+              )}
+            </p>
+          )}
         </>
       )}
 
@@ -373,12 +403,12 @@ export function PollCard({
         <button
           type="button"
           className="ghost-action"
-          aria-label={`${poll.commentCount} ${poll.commentCount === 1 ? "comment" : "comments"}`}
+          aria-label={poll.commentCount ? `${poll.commentCount} ${poll.commentCount === 1 ? "comment" : "comments"}` : "Comments"}
           data-tip="comments"
           onClick={() => setCommenting(true)}
         >
           <CommentIcon />
-          {poll.commentCount}
+          {poll.commentCount > 0 && poll.commentCount}
         </button>
         <button type="button" className="ghost-action" onClick={onShare}>
           <ShareIcon />
@@ -403,7 +433,7 @@ export function PollCard({
         <CommentsSheet
           pollId={poll.id}
           colors={colors}
-          canVote={canVote}
+          signedIn={signedIn}
           onClose={() => setCommenting(false)}
           onCount={(n) => n !== poll.commentCount && onRefresh({ ...poll, commentCount: n })}
         />
@@ -411,7 +441,7 @@ export function PollCard({
       {reporting && (
         <ReportSheet
           target={{ kind: "poll", pollId: poll.id }}
-          canReport={canVote}
+          canReport={signedIn}
           onClose={() => setReporting(false)}
           onReported={() => onReported?.(poll.id)}
         />

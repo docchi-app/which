@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { canVote, continueWithGoogle, onUserChange, saveReturnTo, signOut } from "@/lib/auth";
+import { isSignedIn, continueWithGoogle, onUserChange, saveReturnTo, signOut } from "@/lib/auth";
 import { installPlatform, type InstallPlatform } from "@/lib/install";
 import { getMyProfile, type Profile } from "@/lib/profile";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -24,7 +24,7 @@ export function SettingsScreen() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPlatform(installPlatform());
     if (!isSupabaseConfigured) return;
-    return onUserChange((user) => setSignedIn(canVote(user)));
+    return onUserChange((user) => setSignedIn(isSignedIn(user)));
   }, []);
 
   useEffect(() => {

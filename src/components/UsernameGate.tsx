@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { canVote, onUserChange } from "@/lib/auth";
+import { isSignedIn, onUserChange } from "@/lib/auth";
 import { checkUsername, type UsernameProblem } from "@/lib/create";
 import { getMyProfile, getUsernameSuggestions, PROFILE_CHANGED, updateUsername } from "@/lib/profile";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -33,7 +33,7 @@ export function UsernameGate() {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     return onUserChange(async (user) => {
-      if (!canVote(user)) return setOpen(false);
+      if (!isSignedIn(user)) return setOpen(false);
       try {
         const profile = await getMyProfile();
         if (!profile || profile.usernameConfirmed) return setOpen(false);

@@ -180,6 +180,37 @@ button {
   line-height: 1.4;
 }
 
+/* First visit: what Docchi is, in one line. */
+.welcome {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 6px 20px 0;
+  padding: 10px 8px 10px 14px;
+  border: var(--outline);
+  border-radius: 14px;
+  background: var(--sun);
+  box-shadow: var(--shadow-sm);
+  animation: rise 0.45s var(--ease-pop) both;
+}
+.welcome p {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.welcome-close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin: -4px 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 24px;
+  line-height: 1;
+}
+
 .tabs {
   display: flex;
   gap: 8px;
@@ -356,6 +387,32 @@ button {
   font-size: 14px;
   color: var(--muted);
 }
+/* A guest's vote: shown in the results, counted once they sign in. */
+.guest-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 8px 8px 12px;
+  border: 2px dashed var(--ink);
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.guest-note-btn {
+  flex: none;
+  height: 34px;
+  padding: 0 14px;
+  border: var(--outline);
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--cream);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .poll-error {
   margin: 0;
   padding: 8px 12px;

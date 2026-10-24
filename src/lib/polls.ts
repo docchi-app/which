@@ -1,4 +1,4 @@
-import { canVote, currentUser, SignInRequired } from "./auth";
+import { currentOrGuest, rememberGuestPick, SignInRequired } from "./auth";
 import { getSupabase } from "./supabase";
 import type { FeedTab, Poll, PollKind, PollOption, Visibility, VoteResult } from "./types";
 
@@ -113,7 +113,9 @@ export async function castVote(pollId: string, optionId: string): Promise<VoteRe
   const supabase = getSupabase();
   if (!supabase) return demoVote(pollId, optionId);
 
-  if (!canVote(await currentUser())) throw new SignInRequired();
+  // No account yet: vote as a guest. If guests are switched off, ask for Google.
+  const user = await currentOrGuest();
+  if (!user) throw new SignInRequired();
 
   const { data, error } = await supabase.rpc("cast_vote", {
     target_poll: pollId,
@@ -121,6 +123,7 @@ export async function castVote(pollId: string, optionId: string): Promise<VoteRe
   });
   if (error) throw error;
   const row = (data as VoteRow[])[0];
+  if (user.is_anonymous) rememberGuestPick({ pollId, optionId: row.my_option_id });
   return { myOptionId: row.my_option_id, voteCount: row.vote_count, options: row.options, question: row.question ?? "" };
 }
 
