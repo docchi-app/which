@@ -11,6 +11,7 @@ import type { Poll, VoteResult } from "@/lib/types";
 import { ArrowIcon, CommentIcon, ShareIcon } from "./icons";
 import { CirclePicks, FriendsVotedRow, LockedCircle } from "./CircleBits";
 import { CommentsSheet } from "./CommentsSheet";
+import { NotificationPrompt } from "./Notifications";
 import { ReportSheet } from "./ReportSheet";
 
 const LIVE_REFRESH_MS = 5000;
@@ -217,6 +218,15 @@ export function PollCard({
             Share
           </button>
         </div>
+      )}
+      {justCreated && (
+        <NotificationPrompt
+          pitch={
+            <>
+              <strong>Get a ping</strong> when votes come in.
+            </>
+          }
+        />
       )}
       <div className="poll-meta">
         <span className={`chip ${poll.kind === "classic" || poll.featuredToday ? "chip-sun" : "chip-white"}`}>

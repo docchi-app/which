@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import Link from "next/link";
 import { guestPicks, isSignedIn, onUserChange, savePendingVote, takePendingVote } from "@/lib/auth";
 import { countVoteForNudge } from "@/lib/install";
+import { announceVote } from "@/lib/streak";
 import { warmShareCard } from "@/lib/share";
 import { showTip, tipsAfterVote } from "@/lib/tips";
 import { FEED_PAGE_SIZE, fetchFeed, fetchPoll, recordOpen } from "@/lib/polls";
@@ -17,6 +18,7 @@ import { ShareSheet } from "./ShareSheet";
 import { BottomNav } from "./BottomNav";
 import { InstallSheet } from "./InstallSheet";
 import { Bell } from "./Bell";
+import { StreakChip } from "./StreakChip";
 
 const TABS: { id: FeedTab; label: string }[] = [
   { id: "trending", label: "For you" },
@@ -191,6 +193,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
 
   const onVoted = useCallback((pollId: string, r: VoteResult) => {
     dismissWelcome();
+    announceVote();
     if (signedInRef.current === false) {
       // A guest's 3rd vote: ask them to sign in so their votes count (once).
       if (guestPicks().length >= SAVE_VOTES_AFTER && !stored(SAVE_ASKED_KEY)) {
@@ -374,7 +377,10 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
           <LogoMark />
           <Wordmark />
         </Link>
-        <Bell />
+        <div className="header-actions">
+          <StreakChip />
+          <Bell />
+        </div>
       </header>
 
       {welcome && (

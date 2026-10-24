@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { activityText, fetchActivity, markActivitySeen, type Activity } from "@/lib/activity";
 import { continueWithGoogle, isSignedIn, onUserChange, saveReturnTo } from "@/lib/auth";
 import { announceCircleChange, circleErrorText, getMyCircle, respondRequest, type MyCircle } from "@/lib/circle";
+import { fetchRecentResults, type RecentResult } from "@/lib/streak";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { BottomNav } from "./BottomNav";
 import { PersonLink } from "./FriendsPanel";
@@ -14,6 +15,7 @@ export function ActivityScreen() {
   const [signedIn, setSignedIn] = useState<boolean | undefined>(isSupabaseConfigured ? undefined : false);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [circle, setCircle] = useState<MyCircle | null>(null);
+  const [results, setResults] = useState<RecentResult[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,6 +32,9 @@ export function ActivityScreen() {
   useEffect(() => {
     if (!signedIn) return;
     loadRequests();
+    fetchRecentResults()
+      .then(setResults)
+      .catch(() => {});
     let timer = 0;
     fetchActivity().then((a) => {
       setActivity(a);
@@ -61,7 +66,7 @@ export function ActivityScreen() {
 
   const requests = circle?.requests ?? [];
   const loaded = activity !== null && circle !== null;
-  const quiet = loaded && requests.length === 0 && activity.list.length === 0;
+  const quiet = loaded && requests.length === 0 && activity.list.length === 0 && results.length === 0;
 
   return (
     <div className="screen activity-screen">
@@ -122,6 +127,39 @@ export function ActivityScreen() {
                     </Link>
                   </li>
                 ))}
+              </ul>
+            </section>
+          )}
+
+          {results.length > 0 && (
+            <section className="circle-section">
+              <h2 className="circle-title">Results are in</h2>
+              <ul className="activity-list">
+                {results.map((r) => {
+                  const won = r.myPick !== null && r.myPick === r.winner;
+                  return (
+                    <li key={r.pollId}>
+                      <Link href={`/p/${r.pollId}`} className="activity-row press">
+                        <span className="activity-q">{r.question}</span>
+                        <span className="result-line">
+                          {r.voteCount === 0 ? (
+                            "No votes this time"
+                          ) : (
+                            <>
+                              <strong>{r.winner}</strong> won with {r.winnerPct}%
+                            </>
+                          )}
+                        </span>
+                        {r.myPick !== null && r.voteCount > 0 && (
+                          <span className={`activity-chip${won ? " chip-won" : ""}`}>
+                            {won ? "You called it 🎯" : `You picked ${r.myPick}`}
+                          </span>
+                        )}
+                        {r.mine && r.myPick === null && <span className="activity-chip">Your poll · {r.voteCount} votes</span>}
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           )}

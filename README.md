@@ -62,7 +62,7 @@ The first slice of the build order:
   "Your poll is live!" banner stays on the card after it's closed. Share cards with fewer than 10
   votes say "Be the first to vote" / "Be one of the first" instead of a tiny count.
 - **Profile:** lilac banner, avatar (Google photo or initial), @username with Edit (live
-  availability check and suggestions; once a week), stat tiles (polls made, votes got, shares), and
+  availability check and suggestions; once a week), stat tiles (Polls, Votes got, Friends, 🔥 Streak), and
   **My polls / Voted** tabs with mini result bars. Your own polls have Share, Make link-only / Show
   in feed, and Delete (with a confirm).
 - **Usernames:** every Google account gets a starting username made from its Google name (or
@@ -132,10 +132,19 @@ The first slice of the build order:
   marked seen after a moment on screen (`my_activity()` / `mark_activity_seen()`, stored per account).
 - **Settings (⚙︎ on Profile):** notifications, the app (Home Screen), account (Admin, Sign out) and
   the policies, so Profile stays about your polls.
-- **Phone notifications (web push):** a slim "Get notified → Turn on" row on Profile while they're
-  off on that phone (✕ hides it for a month); once on, it disappears. Settings → Notifications has a
+- **Streaks:** 🔥 N next to the bell: days in a row (India time) you've voted on at least one poll.
+  It's grey until you vote today (the streak lives until midnight); tap it for your best. Hitting
+  3, 7, 14, 30… days pops a "🔥 7-day streak!" bubble. Guests' votes count, so signing in keeps it
+  (`my_streak()` / `streak_of()`, from the votes table).
+- **Results are in:** Activity lists polls you voted on or made that closed in the last 3 days:
+  the winning answer and its share, and "You called it 🎯" or what you picked (`recent_results()`).
+- **Phone notifications (web push):** a slim "Get notified → Turn on" row on Profile, and "Get a ping
+  when votes come in" on a poll you just posted, while they're off on that phone (✕ hides it for a
+  month); once on, it disappears. Settings → Notifications has a
   switch for each kind: **votes** on your polls (at 10, 25, 50, 100…), **friends** (friend requests, new friends,
-  friends-only polls), **results** (when a poll you voted on or made closes) and **Poll of the Day** (9am).
+  friends-only polls), **results** (when a poll you voted on or made closes) and **Poll of the Day** (9am, with "Keep
+  your 🔥 5-day streak going" when you're on one; the same switch covers an 8pm "Your 🔥 6-day
+  streak ends at midnight" for streaks of 3+ days not yet kept today).
   Quiet 11pm–8am India time, at most 8 a day, and tapping one opens the poll. Works on Android and
   desktop browsers; on iPhone, only after adding Docchi to the Home Screen (iOS 16.4+), and the
   app says so. Signing out stops that phone getting your notifications.
@@ -189,7 +198,8 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261102000000_scale.sql`, `20261103000000_feed_voted_last.sql`,
    `20261104000000_safety_metrics.sql`, `20261105000000_push.sql`, `20261106000000_push_fixes.sql`, `20261107000000_leaders_schedule.sql`,
    `20261108000000_comments.sql`, `20261109000000_rate_limits.sql`,
-   `20261110000000_activity.sql`, `20261111000000_guest_votes.sql`, `20261112000000_friends.sql`, …),
+   `20261110000000_activity.sql`, `20261111000000_guest_votes.sql`, `20261112000000_friends.sql`,
+   `20261113000000_streaks.sql`, …),
    in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter

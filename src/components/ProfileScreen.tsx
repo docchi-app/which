@@ -14,7 +14,8 @@ import { BottomNav } from "./BottomNav";
 import { NotificationPrompt } from "./Notifications";
 import { ANSWER_COLORS, VerifiedTick } from "./PollCard";
 import { ShareSheet } from "./ShareSheet";
-import { audienceLabel } from "@/lib/circle";
+import { audienceLabel, getMyCircle } from "@/lib/circle";
+import { fetchStreak, type Streak } from "@/lib/streak";
 
 type Tab = "mine" | "voted";
 
@@ -32,6 +33,8 @@ export function ProfileScreen() {
   // undefined: still checking; null: signed out.
   const [signedIn, setSignedIn] = useState<boolean | undefined>(isSupabaseConfigured ? undefined : false);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [friends, setFriends] = useState<number | null>(null);
+  const [streak, setStreak] = useState<Streak | null>(null);
   // Polls voted on as a guest (not counted until they sign in).
   const [guestVotes, setGuestVotes] = useState(0);
   const [tab, setTab] = useState<Tab>("mine");
@@ -69,6 +72,12 @@ export function ProfileScreen() {
   useEffect(() => {
     if (!signedIn) return;
     loadProfile();
+    getMyCircle()
+      .then((c) => setFriends(c.members.length))
+      .catch(() => {});
+    fetchStreak()
+      .then(setStreak)
+      .catch(() => {});
     let timer = 0;
     fetchActivity().then((a) => {
       setActivity(a);
@@ -146,18 +155,26 @@ export function ProfileScreen() {
         <>
           <ProfileHead profile={profile} onRenamed={loadProfile} />
 
-          <dl className="stat-tiles">
+          <dl className="stat-tiles stat-tiles-4">
             <div className="stat" style={{ background: "var(--sky)" }}>
-              <dt>Polls made</dt>
+              <dt>Polls</dt>
               <dd>{profile ? compactCount(profile.pollsMade) : "–"}</dd>
             </div>
             <div className="stat" style={{ background: "var(--mint)" }}>
               <dt>Votes got</dt>
               <dd>{profile ? compactCount(profile.votesReceived) : "–"}</dd>
             </div>
-            <div className="stat" style={{ background: "var(--sun)" }}>
-              <dt>Shares</dt>
-              <dd>{profile ? compactCount(profile.shares) : "–"}</dd>
+            <div className="stat stat-link" style={{ background: "var(--sun)" }}>
+              <dt>
+                <Link href="/friends" className="stat-cover">
+                  Friends
+                </Link>
+              </dt>
+              <dd>{friends === null ? "–" : compactCount(friends)}</dd>
+            </div>
+            <div className="stat" style={{ background: "var(--coral)" }} title={streak ? `Best: ${streak.best} days` : undefined}>
+              <dt>Streak</dt>
+              <dd>{streak ? `🔥${streak.current}` : "–"}</dd>
             </div>
           </dl>
 
