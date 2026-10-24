@@ -306,6 +306,17 @@ export function CreatePoll() {
           </div>
         )}
 
+        <Link href="/snap" className="snap-entry press">
+          <span className="snap-entry-icon" aria-hidden="true">
+            📸
+          </span>
+          <span>
+            <strong>Quick snap</strong>
+            <span>Photo poll, gone in 24 hours</span>
+          </span>
+          <ArrowIcon size={20} strokeWidth={2.6} />
+        </Link>
+
         <div className="field">
           <label htmlFor="question" className="field-label">
             {isTake ? "Your hot take" : isMystery ? "The hidden question" : "Ask anything"}

@@ -14,6 +14,7 @@ export function shareText(poll: Poll): string {
   if (poll.visibility === "circle") return `A poll for my friends on Docchi:`;
   if (poll.kind === "mystery") return `Mystery poll: ${poll.teaser} Pick on gut, the question shows after:`;
   if (poll.kind === "hot_take") return `Hot take: "${poll.question}" Agree or disagree?`;
+  if (poll.kind === "snap") return `📸 ${poll.question} Vote before it disappears:`;
   return voted ? `I picked my side on "${poll.question}" Which one are you?` : `${poll.question} Pick a side:`;
 }
 
@@ -30,7 +31,8 @@ export function recordShare(pollId: string, channel: ShareChannel) {
 /** The poll as the share card needs it (same shape the server image uses). */
 export function cardInput(poll: Poll): CardInput {
   return {
-    kind: poll.kind,
+    // A snap's photo is private, so its card is drawn like a classic poll.
+    kind: poll.kind === "snap" ? "classic" : poll.kind,
     question: poll.question,
     teaser: poll.teaser,
     circle: poll.visibility === "circle",
