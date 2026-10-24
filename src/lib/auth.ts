@@ -27,7 +27,7 @@ export function onUserChange(callback: (user: User | null) => void): () => void 
   return () => data.subscription.unsubscribe();
 }
 
-const callbackUrl = () =>`${window.location.origin}/auth/callback`;
+const callbackUrl = () => `${window.location.origin}/auth/callback`;
 
 /**
  * Sends the viewer to Google. A guest account gets Google linked to it, so it
@@ -47,10 +47,18 @@ export async function continueWithGoogle(): Promise<void> {
   return signInWithGoogle();
 }
 
-/** Plain Google sign-in, used when that Google account already has a Docchi account. */
+/**
+ * Plain Google sign-in. With our own Google client set up it runs through
+ * /auth/google, so Google's screen names this site; otherwise Supabase hosts it.
+ */
 export async function signInWithGoogle(): Promise<void> {
   const supabase = getSupabase();
   if (!supabase) throw new Error("Supabase is not configured");
+  if (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a route handler, not a page
+    window.location.assign("/auth/google");
+    return;
+  }
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: { redirectTo: callbackUrl() },
