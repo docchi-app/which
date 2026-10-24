@@ -48,7 +48,14 @@ export function cardModel(poll: CardInput | null) {
   // A long question plus 3–4 answers wraps to two answer rows: shrink the
   // question so the footer still fits inside the card.
   if (answersCount > 2 && question.length > 45) questionSize = Math.min(questionSize, question.length > 70 ? 44 : 52);
-  const votes = poll ? `${poll.voteCount.toLocaleString("en-US")} ${poll.voteCount === 1 ? "vote" : "votes"}` : null;
+  // A tiny count looks like nobody's there; invite them to be early instead (as on the feed).
+  const votes = !poll
+    ? null
+    : poll.voteCount === 0 && !poll.closed
+      ? "Be the first to vote"
+      : poll.voteCount < 10 && !poll.closed
+        ? "Be one of the first"
+        : `${poll.voteCount.toLocaleString("en-US")} ${poll.voteCount === 1 ? "vote" : "votes"}`;
   const votesNote = kind === "mystery" ? "the question shows after you vote" : "results after you vote";
   return { kind, question, cardBg, badge, cta, compact, questionSize, votes, votesNote };
 }

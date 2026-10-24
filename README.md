@@ -51,11 +51,16 @@ The first slice of the build order:
   it's close) and **mystery polls** (people see a teaser like "Pick a colour" and the answers; the
   real question stays on the server until they vote, then it's revealed). Anyone can post one of
   these a day. Docchi's own polls show a **verified** tick, in the app and on link previews.
-- **Create poll:** question (up to 140 characters), 2 to 4 answers (up to 40 each), closes after
-  1, 3 or 7 days, with a live preview. Anyone signed in can post up to 5 polls in 24 hours. The
-  first poll also picks a username: a free one is prefilled from the Google name, it's checked as
-  you type, and a taken name comes with free suggestions to tap. Unfinished drafts survive a
-  reload or a trip through sign-in. After posting you land on your poll with a nudge to share it.
+- **Create poll:** opens on just the question (up to 140 characters) and 2 to 4 answers (up to 40
+  each), with a live preview. Format (each shown as a tiny example card), closing time (1, 3 or 7
+  days) and who can see it sit behind **More options**, whose row shows the current choice
+  ("Classic · 3 days · Everyone"); a restored draft with other choices opens it. Anyone signed in
+  can post up to 5 polls in 24 hours. The first poll also picks a username: a free one is prefilled
+  from the Google name, it's checked as you type, and a taken name comes with free suggestions to
+  tap. Unfinished drafts survive a reload or a trip through sign-in. After posting you land on your
+  poll and the share sheet opens by itself ("Your poll is live 🎉 Drop it in the group chat"); the
+  "Your poll is live!" banner stays on the card after it's closed. Share cards with fewer than 10
+  votes say "Be the first to vote" / "Be one of the first" instead of a tiny count.
 - **Profile:** lilac banner, avatar (Google photo or initial), @username with Edit (live
   availability check and suggestions; once a week), stat tiles (polls made, votes got, shares), and
   **My polls / Voted** tabs with mini result bars. Your own polls have Share, Make link-only / Show

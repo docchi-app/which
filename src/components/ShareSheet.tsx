@@ -14,6 +14,8 @@ export function ShareSheet({ poll, onClose }: Props) {
   const [copied, setCopied] = useState(false);
   const [canNativeShare] = useState(() => typeof navigator !== "undefined" && "share" in navigator);
   const voted = poll.myOptionId !== null;
+  // Your own poll that nobody has voted on yet: it was just posted.
+  const fresh = poll.isMine && poll.voteCount === 0;
   const text = shareText(poll);
 
   useEffect(() => {
@@ -60,9 +62,13 @@ export function ShareSheet({ poll, onClose }: Props) {
       <section role="dialog" aria-modal="true" aria-labelledby="share-title" className="sheet share-sheet">
         <div className="sheet-handle" aria-hidden="true" />
         <h2 id="share-title" className="sheet-title">
-          {voted || poll.kind === "hot_take" ? "Challenge a friend" : "Share this poll"}
+          {fresh ? "Your poll is live 🎉" : voted || poll.kind === "hot_take" ? "Challenge a friend" : "Share this poll"}
         </h2>
-        <p className="sheet-text">Friends see the question, not the result. They vote to find out.</p>
+        <p className="sheet-text">
+          {fresh
+            ? "Drop it in the group chat. Friends vote to see the results."
+            : "Friends see the question, not the result. They vote to find out."}
+        </p>
 
         {/* The same card WhatsApp and X will show, drawn here so it's instant. */}
         <SharePreview card={cardInput(poll)} />
