@@ -374,6 +374,7 @@ export function PollCard({
           type="button"
           className="ghost-action"
           aria-label={`${poll.commentCount} ${poll.commentCount === 1 ? "comment" : "comments"}`}
+          data-tip="comments"
           onClick={() => setCommenting(true)}
         >
           <CommentIcon />

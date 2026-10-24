@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import Link from "next/link";
 import { canVote as userCanVote, onUserChange, savePendingVote, takePendingVote } from "@/lib/auth";
 import { countVoteForNudge } from "@/lib/install";
+import { showTip, tipsAfterVote } from "@/lib/tips";
 import { FEED_PAGE_SIZE, fetchFeed, fetchPoll } from "@/lib/polls";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useLiveInterval } from "@/lib/useLiveInterval";
@@ -33,6 +34,11 @@ const SWIPE_VELOCITY = 0.5;
 export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   const [tab, setTab] = useState<FeedTab>("trending");
   const [polls, setPolls] = useState<Poll[] | null>(null);
+  // For callbacks that shouldn't change identity when the list does.
+  const pollsRef = useRef(polls);
+  useEffect(() => {
+    pollsRef.current = polls;
+  });
   const [hasMore, setHasMore] = useState(false);
   const [index, setIndex] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -89,7 +95,10 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
       }
       if (shared && (url.searchParams.has("voted") || url.searchParams.has("created"))) {
         if (url.searchParams.has("voted")) setCelebrateId(shared);
-        if (url.searchParams.has("created")) setCreatedId(shared);
+        if (url.searchParams.has("created")) {
+          setCreatedId(shared);
+          showTip("leaders");
+        }
         url.searchParams.delete("voted"); // no replay on reload
         url.searchParams.delete("created");
         window.history.replaceState(window.history.state, "", url);
@@ -137,6 +146,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   const onVoted = useCallback((pollId: string, r: VoteResult) => {
     // After the 3rd vote here, once a week at most: offer the Home Screen.
     if (countVoteForNudge()) window.setTimeout(() => setInstallNudge(true), 1800);
+    tipsAfterVote((pollsRef.current?.find((p) => p.id === pollId)?.commentCount ?? 0) > 0);
     setPolls((list) =>
       list?.map((p) =>
         p.id === pollId
@@ -332,6 +342,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
             type="button"
             aria-selected={tab === t.id}
             className="tab press"
+            data-tip={t.id === "circle" ? "circle" : undefined}
             onClick={() => setTab(t.id)}
           >
             {t.label}
