@@ -40,6 +40,12 @@ export function AuthCallback() {
         return;
       }
 
+      // Backed out of Google's picker: just go back to where they were.
+      if (errorCode === "cancelled") {
+        takePendingVote();
+        return router.replace(takeReturnTo() ?? "/");
+      }
+
       if (errorCode || query.get("error") || hash.get("error")) {
         console.error("Sign-in error", errorCode, query.get("error_description") ?? hash.get("error_description"));
         takePendingVote();

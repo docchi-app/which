@@ -221,6 +221,25 @@ count from the day you run it. To write your own, copy a row in the `pack` list.
 4. Once Google sign-in works, turn **off** **Allow anonymous sign-ins**. The app no longer creates
    guest accounts, and the database refuses votes from them anyway.
 
+**Show "Docchi", not the Supabase address, on Google's screen.** By default Google sends people
+back to Supabase, so its screen says "Sign in to <project-ref>.supabase.co". To run sign-in
+through this site instead:
+
+1. On the same OAuth client in Google Cloud, add the redirect URI
+   `https://dochhi.vercel.app/auth/google/callback` (keep the Supabase one too; guest
+   linking still uses it). Add `http://localhost:3000/auth/google/callback` for local development.
+2. In Vercel, add `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (the Client ID; it's public) and
+   `GOOGLE_CLIENT_SECRET` (the Client secret; server-only, mark it **Sensitive**). Redeploy.
+3. In Google Auth Platform → **Branding**, fill in the app name, logo, home page, privacy and terms
+   links. Google shows "Sign in to dochhi.vercel.app" straight away, and the app name **Docchi**
+   once the brand is verified.
+
+The sign-in button then opens `/auth/google`, which sends the viewer to Google; Google returns to
+`/auth/google/callback`, which swaps the code for an ID token, signs in to Supabase with it
+(`signInWithIdToken`) and lands on `/auth/callback` as before. Leave the two variables empty and
+sign-in goes through Supabase as it always has. Preview deployments use the Supabase route unless
+their address is also added as a redirect URI.
+
 **CAPTCHA.** Google sign-in is protected by Google, so CAPTCHA isn't needed while Google is the
 only way in and anonymous sign-ins are off. Add it before phone sign-in ships. Turning on
 **Authentication → Attack Protection → CAPTCHA** also needs a small app change (a Turnstile
@@ -392,7 +411,7 @@ weeks are kept, so last week's champ is a lookup.
 
 ```
 src/app/            routes, layout (fonts, metadata), globals.css (tokens + motion), manifest, icon
-src/app/auth/       callback: where Google sends people back; casts the pick made before sign-in
+src/app/auth/       google: sign in with Google on this domain; callback: casts the pick made before sign-in
 src/components/     Feed, PollCard, SignInSheet, AuthCallback, AccountCard, BottomNav, Logo, icons
 src/lib/            polls.ts (Supabase calls + demo mode), auth.ts, supabase.ts, format.ts, types.ts
 supabase/           migrations/ (schema, row level security, functions), seed.sql
