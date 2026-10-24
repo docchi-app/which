@@ -2713,81 +2713,205 @@ button.ghost-action { cursor: pointer; }
 
 /* ─── Quick snap ─────────────────────────────────────────────────────────── */
 
-.snap-photo {
+/* The snap card: an exact 3:4 photo (photos are made 3:4, so nothing is cut),
+   who posted it on top, the question and answers on the bottom of the photo. */
+.poll-snap { gap: 10px; padding: 10px; }
+.poll-snap > .poll-foot-note,
+.poll-snap > .with-you,
+.poll-snap > .circle-note,
+.poll-snap > .count-strip,
+.poll-snap > .poll-error { margin-right: 6px; margin-left: 6px; }
+.poll-snap > .poll-actions { padding: 0 6px 6px; }
+.snapc {
   position: relative;
-  display: flex;
   flex: none;
-  aspect-ratio: 4 / 5;
-  max-height: 38dvh;
-  align-items: center;
-  justify-content: center;
+  width: 100%;
+  aspect-ratio: 3 / 4;
   overflow: hidden;
   border: var(--outline-bold);
   border-radius: 20px;
   background: linear-gradient(170deg, var(--lilac), var(--sky));
+  color: var(--white);
 }
-.snap-photo img { width: 100%; height: 100%; object-fit: cover; }
-.snap-photo-empty { aspect-ratio: auto; min-height: 140px; }
-.snap-gone { padding: 20px; font-weight: 700; text-align: center; }
-.snap-live {
+/* In the feed, keep the whole card on screen on short phones. */
+.screen-feed .snapc { width: min(100%, calc((100dvh - 330px) * 0.75)); align-self: center; }
+.snapc-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.snapc-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 20px 40%;
+  color: var(--ink);
+  font-weight: 700;
+  text-align: center;
+}
+.snapc-shade-top,
+.snapc-shade-bottom { position: absolute; right: 0; left: 0; pointer-events: none; }
+.snapc-shade-top { top: 0; height: 26%; background: linear-gradient(rgb(10 6 25 / 0.55), transparent); }
+.snapc-shade-bottom { bottom: 0; height: 52%; background: linear-gradient(transparent, rgb(10 6 25 / 0.82)); }
+.snapc-top {
   position: absolute;
   top: 10px;
+  right: 10px;
   left: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.snapc-who { display: flex; min-width: 0; align-items: center; gap: 8px; color: inherit; text-decoration: none; }
+.snapc-av {
+  display: grid;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 2px solid var(--white);
+  border-radius: 50%;
+  background: var(--sun);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 800;
+}
+.snapc-name { display: flex; min-width: 0; flex-direction: column; font-size: 14px; font-weight: 800; line-height: 1.15; text-shadow: 0 1px 3px rgb(0 0 0 / 0.5); }
+.snapc-name small { overflow: hidden; font-size: 11.5px; font-weight: 600; opacity: 0.9; text-overflow: ellipsis; white-space: nowrap; }
+.snapc-live {
+  flex: none;
   padding: 4px 10px;
   border: 2px solid var(--ink);
   border-radius: 999px;
   background: var(--coral);
+  color: var(--ink);
   font-size: 12px;
   font-weight: 800;
 }
-.snap-question {
+.snapc-bottom {
   position: absolute;
-  right: 0;
-  bottom: 14px;
-  left: 0;
-  margin: 0;
-  padding: 8px 14px;
-  background: rgb(27 21 48 / 0.62);
-  color: var(--cream);
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 800;
-  line-height: 1.2;
-  text-align: center;
-}
-.emoji-answers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-.emoji-answer {
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
   display: flex;
-  height: 64px;
+  flex-direction: column;
+  gap: 10px;
+}
+.snapc-q {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.15;
+  text-shadow: 0 2px 8px rgb(0 0 0 / 0.45);
+  overflow-wrap: anywhere;
+}
+.snapc-answers { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 8px; }
+.snapc-answer {
+  position: relative;
+  display: flex;
+  min-height: 48px;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+  overflow: hidden;
+  padding: 0 10px;
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 0.94);
+  box-shadow: var(--shadow-sm);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 800;
+  isolation: isolate;
+}
+.snapc-emoji { min-height: 58px; padding: 0 4px; font-size: 28px; }
+/* Results: each answer fills with its share. */
+.snapc-results .snapc-answer::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: -1;
+  width: var(--pct);
+  background: var(--sky);
+  content: "";
+  transition: width 0.7s var(--ease-pop);
+}
+.snapc-results .snapc-mine::before { background: var(--sun); }
+.snapc-mine { box-shadow: 0 0 0 3px var(--sun), var(--shadow-sm); }
+.snapc-results .snapc-emoji { flex-direction: column; gap: 0; min-height: 62px; font-size: 24px; }
+.snapc-label { white-space: nowrap; }
+/* On a narrow card the share drops under the answer instead of squashing it. */
+.snapc-results .snapc-answer { flex-wrap: wrap; row-gap: 0; padding: 4px 8px; }
+.snapc-pct { flex: none; font-family: var(--font-display); font-size: 15px; }
+.snapc-results .snapc-emoji .snapc-pct { font-size: 13px; }
+.snap-voted .snapc-answer:not(.snapc-mine) { opacity: 0.9; }
+
+/* Create: the snap tile above the typed poll. */
+.snap-tile {
+  position: relative;
+  display: flex;
+  min-height: 96px;
+  align-items: center;
+  gap: 14px;
+  overflow: hidden;
+  padding: 16px;
+  border: var(--outline-bold);
+  border-radius: 22px;
+  background: linear-gradient(135deg, var(--coral), var(--lilac));
+  box-shadow: var(--shadow-md);
+  color: var(--ink);
+  text-decoration: none;
+}
+.snap-tile-cam {
+  display: grid;
+  flex: none;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border: var(--outline);
+  border-radius: 18px;
+  background: var(--white);
+  font-size: 30px;
+}
+.snap-tile-text { display: flex; flex: 1; flex-direction: column; gap: 3px; }
+.snap-tile-text strong { font-family: var(--font-display); font-size: 19px; font-weight: 800; }
+.snap-tile-text span { font-size: 13px; font-weight: 600; }
+.create-or { margin: -4px 0 -6px; color: var(--muted); font-size: 13px; font-weight: 700; text-align: center; }
+
+/* The "all caught up" card: your turn. */
+.your-turn { display: flex; flex-direction: column; gap: 8px; }
+.your-turn > strong { font-family: var(--font-display); font-size: 17px; }
+.your-turn-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.your-turn-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
   border: var(--outline);
   border-radius: 18px;
   background: var(--cream);
   box-shadow: var(--shadow-sm);
-  font-size: 32px;
+  color: var(--ink);
+  font-weight: 800;
+  text-decoration: none;
 }
-.snap-pick, .snap-intro { display: flex; flex-direction: column; gap: 14px; margin: 10px 20px; }
-.snap-pitch { margin: 0 0 6px; font-size: 16px; line-height: 1.4; }
-.snap-big-btn {
-  display: flex;
-  height: 88px;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  border: var(--outline-bold);
-  border-radius: 22px;
+.your-turn-tile span { font-size: 26px; }
+.your-turn-snap { background: var(--coral); }
+
+/* Snap screens. */
+.snap-intro { display: flex; flex-direction: column; gap: 14px; margin: 10px 20px; }
+.snap-retake-btn {
+  height: 40px;
+  padding: 0 14px;
+  border: var(--outline);
+  border-radius: 999px;
   background: var(--white);
-  box-shadow: var(--shadow-md);
-  font-family: var(--font-display);
-  font-size: 20px;
+  box-shadow: var(--shadow-sm);
   font-weight: 800;
 }
-.snap-big-btn span { font-size: 30px; }
-.snap-big-camera { background: var(--coral); }
-.snap-compose { gap: 16px; }
-.snap-preview { max-height: 40dvh; }
-.snap-retake { display: flex; justify-content: center; gap: 8px; margin-top: -6px; }
+.snap-preview-wrap { display: flex; justify-content: center; padding: 4px 20px 0; }
+.snap-preview-wrap .snapc { width: min(100%, 39dvh); }
+.snap-preview-controls { display: flex; flex-direction: column; gap: 12px; padding: 14px 20px 0; }
 .snap-templates { display: flex; flex-wrap: wrap; gap: 8px; }
 .snap-template {
   height: 38px;
@@ -2799,21 +2923,195 @@ button.ghost-action { cursor: pointer; }
   font-weight: 700;
 }
 .snap-template[aria-checked="true"] { background: var(--sun); box-shadow: var(--shadow-sm); }
-.snap-audience { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.snap-aud {
+/* A two-way segmented control. */
+.snap-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: var(--outline); border-radius: 16px; background: var(--white); }
+.snap-seg button {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 12px;
-  border: var(--outline);
-  border-radius: 16px;
-  background: var(--white);
-  text-align: left;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 6px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
 }
-.snap-aud strong { font-size: 15px; }
-.snap-aud span { color: var(--muted); font-size: 12px; line-height: 1.3; }
-.snap-aud[aria-pressed="true"] { background: var(--ink); color: var(--cream); box-shadow: 2px 2px 0 var(--coral); }
-.snap-aud[aria-pressed="true"] span { color: rgb(255 248 236 / 0.75); }
+.snap-seg small { color: var(--muted); font-size: 11.5px; font-weight: 600; }
+.snap-seg [aria-checked="true"] { background: var(--ink); color: var(--cream); }
+.snap-seg [aria-checked="true"] small { color: rgb(255 248 236 / 0.75); }
+
+/* The camera: full screen, a 3:4 frame that is exactly the card. */
+.cam-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top)) 12px calc(18px + env(safe-area-inset-bottom));
+  background: #0d0a18;
+  color: var(--white);
+}
+.cam-top { display: flex; width: 100%; max-width: 520px; align-items: center; justify-content: space-between; gap: 8px; }
+.cam-icon {
+  display: grid;
+  flex: none;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.14);
+  color: var(--white);
+}
+.cam-spacer { visibility: hidden; }
+.cam-aud { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: rgb(255 255 255 / 0.14); }
+.cam-aud button { height: 34px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--white); font-size: 13px; font-weight: 800; }
+.cam-aud [aria-checked="true"] { background: var(--white); color: var(--ink); }
+.cam-frame {
+  position: relative;
+  flex: 0 1 auto;
+  width: min(100%, 520px, calc((100dvh - 210px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * 0.75));
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #1c1730;
+}
+.cam-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cam-mirror { transform: scaleX(-1); }
+.cam-off {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px 24px 40%;
+  text-align: center;
+}
+.cam-off p { margin: 0 0 4px; font-size: 14px; line-height: 1.4; }
+.cam-corner { position: absolute; width: 26px; height: 26px; border: 0 solid var(--sun); pointer-events: none; }
+.cam-tl { top: 10px; left: 10px; border-width: 4px 0 0 4px; border-top-left-radius: 10px; }
+.cam-tr { top: 10px; right: 10px; border-width: 4px 4px 0 0; border-top-right-radius: 10px; }
+.cam-bl { bottom: 10px; left: 10px; border-width: 0 0 4px 4px; border-bottom-left-radius: 10px; }
+.cam-br { right: 10px; bottom: 10px; border-width: 0 4px 4px 0; border-bottom-right-radius: 10px; }
+.cam-question {
+  position: absolute;
+  right: 16px;
+  bottom: 72px;
+  left: 16px;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.15;
+  text-shadow: 0 2px 8px rgb(0 0 0 / 0.6);
+}
+.cam-chips {
+  position: absolute;
+  right: 0;
+  bottom: 26px;
+  left: 0;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 0 16px;
+  scrollbar-width: none;
+}
+.cam-chips::-webkit-scrollbar { display: none; }
+.cam-chips button {
+  flex: none;
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(13 10 24 / 0.6);
+  color: var(--white);
+  font-size: 13px;
+  font-weight: 800;
+  backdrop-filter: blur(6px);
+}
+.cam-chips [aria-checked="true"] { background: var(--sun); color: var(--ink); }
+.cam-note { margin: 0; color: rgb(255 255 255 / 0.7); font-size: 12px; text-align: center; }
+.cam-bar { display: flex; width: 100%; max-width: 360px; align-items: center; justify-content: space-between; margin-top: auto; }
+.cam-round {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.14);
+  font-size: 22px;
+}
+.cam-round:disabled { opacity: 0.35; }
+.cam-shutter {
+  width: 76px;
+  height: 76px;
+  border: 5px solid var(--white);
+  border-radius: 50%;
+  background: var(--coral);
+  box-shadow: 0 0 0 3px #0d0a18 inset;
+}
+.cam-shutter:disabled { opacity: 0.4; }
+.cam-error {
+  position: fixed;
+  right: 16px;
+  bottom: calc(110px + env(safe-area-inset-bottom));
+  left: 16px;
+  z-index: 41;
+  padding: 10px 14px;
+  border: var(--outline);
+  border-radius: 14px;
+  background: var(--white);
+}
+
+/* Frame a photo that isn't upright: drag and pinch, or show it whole. */
+.framer { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 4px 20px 24px; }
+.framer-box {
+  position: relative;
+  width: min(100%, 420px, 42dvh);
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border: var(--outline-bold);
+  border-radius: 20px;
+  background: var(--ink);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.framer-img { position: absolute; max-width: none; pointer-events: none; }
+.framer-whole { cursor: default; }
+.framer-whole .framer-img { inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.framer-blur { position: absolute; inset: -10%; width: 120%; height: 120%; object-fit: cover; filter: blur(22px) brightness(0.72); }
+.framer-grid {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent calc(33.33% - 0.5px), rgb(255 255 255 / 0.35) 33.33%, transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), rgb(255 255 255 / 0.35) 66.66%, transparent calc(66.66% + 0.5px)),
+    linear-gradient(transparent calc(33.33% - 0.5px), rgb(255 255 255 / 0.35) 33.33%, transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), rgb(255 255 255 / 0.35) 66.66%, transparent calc(66.66% + 0.5px));
+  pointer-events: none;
+}
+.framer-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgb(13 10 24 / 0.7);
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.framer .snap-seg { width: min(100%, 420px); }
+.framer-actions { display: flex; width: min(100%, 420px); align-items: center; gap: 10px; }
+.framer-actions .post-btn { flex: 1; }
 .check-card {
   display: flex;
   flex-direction: column;
@@ -2830,21 +3128,6 @@ button.ghost-action { cursor: pointer; }
 .check-bar span { display: block; width: 40%; height: 100%; background: var(--mint); animation: check-slide 1.2s ease-in-out infinite alternate; }
 @keyframes check-slide { from { transform: translateX(-60%); } to { transform: translateX(210%); } }
 .check-rejected { background: #ffe3e3; }
-.snap-entry {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border: var(--outline);
-  border-radius: 18px;
-  background: var(--coral);
-  box-shadow: var(--shadow-sm);
-  color: var(--ink);
-  text-decoration: none;
-}
-.snap-entry > span:nth-child(2) { display: flex; flex: 1; flex-direction: column; gap: 2px; }
-.snap-entry > span:nth-child(2) span { font-size: 13px; font-weight: 600; }
-.snap-entry-icon { font-size: 26px; }
 .admin-snaps { display: flex; flex-direction: column; gap: 12px; margin: 0 20px 120px; }
 .admin-snaps-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .review-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: var(--outline); border-radius: 18px; background: var(--white); box-shadow: var(--shadow-sm); }

@@ -2,53 +2,100 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { continueWithGoogle, isSignedIn, onUserChange, saveReturnTo } from "@/lib/auth";
 import {
   checkSnap,
   postSnap,
+  saveSnapPrefs,
   SNAP_TEMPLATES,
   snapErrorText,
   snapInfo,
+  snapPrefs,
   type SnapAudience,
   type SnapStatus,
   type SnapTemplate,
 } from "@/lib/snap";
+import { drawFill, encode, isUpright, loadPhoto } from "@/lib/snap-photo";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { SignInNote } from "./SignInSheet";
+import { SnapCamera } from "./SnapCamera";
+import { SnapCardShell } from "./SnapCard";
+import { SnapFramer } from "./SnapFramer";
 
-type Phase = "pick" | "compose" | "checking" | "review" | "rejected";
+type Phase = "camera" | "frame" | "preview" | "checking" | "review" | "rejected";
 
-/** /snap: take or pick a photo, choose a question and who sees it, send. Gone in 24 hours. */
+/**
+ * /snap: the camera opens straight away (3:4, exactly the card), you pick the
+ * question and who sees it on the camera, snap, check the preview, send.
+ * Gallery photos that aren't upright get a quick "frame your photo" step.
+ */
 export function SnapScreen() {
   const router = useRouter();
   const [signedIn, setSignedIn] = useState<boolean | null>(isSupabaseConfigured ? null : false);
-  const [phase, setPhase] = useState<Phase>("pick");
+  const [phase, setPhase] = useState<Phase>("camera");
+  const [template, setTemplate] = useState<SnapTemplate>("rate");
+  const [audience, setAudience] = useState<SnapAudience>("circle");
+  const [own, setOwn] = useState("");
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [live, setLive] = useState(false);
-  const [template, setTemplate] = useState<SnapTemplate>("rate");
-  const [own, setOwn] = useState("");
-  const [audience, setAudience] = useState<SnapAudience>("circle");
+  const [framing, setFraming] = useState<{ bitmap: ImageBitmap; url: string; live: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
-  const galleryRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     return onUserChange((user) => setSignedIn(isSignedIn(user)));
   }, []);
 
-  // Free the preview when the photo changes or the screen closes.
-  useEffect(() => () => void (preview && URL.revokeObjectURL(preview)), [preview]);
+  // The last question and audience (localStorage, so after hydration).
+  useEffect(() => {
+    const p = snapPrefs();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTemplate(p.template);
+    setAudience(p.audience);
+  }, []);
 
-  function choose(file: File | undefined, fromCamera: boolean) {
-    if (!file) return;
-    setPhoto(file);
-    setPreview(URL.createObjectURL(file));
+  useEffect(() => () => void (preview && URL.revokeObjectURL(preview)), [preview]);
+  useEffect(() => () => void (framing && URL.revokeObjectURL(framing.url)), [framing]);
+
+  function pickTemplate(t: SnapTemplate) {
+    setTemplate(t);
+    saveSnapPrefs(t, audience);
+  }
+  function pickAudience(a: SnapAudience) {
+    setAudience(a);
+    saveSnapPrefs(template, a);
+  }
+
+  function showPreview(blob: Blob, fromCamera: boolean) {
+    setPhoto(blob);
+    setPreview(URL.createObjectURL(blob));
     setLive(fromCamera);
     setError(null);
-    setPhase("compose");
+    setPhase("preview");
+  }
+
+  async function shot(frame: HTMLCanvasElement) {
+    try {
+      showPreview(await encode(frame), true);
+    } catch (e) {
+      setError(snapErrorText(e));
+    }
+  }
+
+  async function picked(file: File, fromCamera: boolean) {
+    setError(null);
+    try {
+      const bitmap = await loadPhoto(file);
+      // Upright (3:4-ish): it fills the card as it is. Otherwise the person frames it.
+      if (isUpright(bitmap.width, bitmap.height)) return showPreview(await encode(drawFill(bitmap)), fromCamera);
+      setFraming({ bitmap, url: URL.createObjectURL(file), live: fromCamera });
+      setPhase("frame");
+    } catch (e) {
+      console.error(e);
+      setError(snapErrorText(e));
+    }
   }
 
   const tpl = SNAP_TEMPLATES.find((t) => t.id === template)!;
@@ -71,8 +118,13 @@ export function SnapScreen() {
       else setPhase(status === "rejected" ? "rejected" : "review");
     } catch (e) {
       setError(snapErrorText(e));
-      setPhase("compose");
+      setPhase("preview");
     }
+  }
+
+  function retake() {
+    setPhoto(null);
+    setPhase("camera");
   }
 
   async function signIn() {
@@ -84,26 +136,10 @@ export function SnapScreen() {
     }
   }
 
-  const inputs = (
-    <>
-      <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => choose(e.target.files?.[0], true)} />
-      <input ref={galleryRef} type="file" accept="image/*" hidden onChange={(e) => choose(e.target.files?.[0], false)} />
-    </>
-  );
-
-  return (
-    <div className="create-screen snap-screen">
-      <header className="create-header">
-        <Link href="/" aria-label="Close" className="icon-btn icon-btn-white press">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
-            <path d="M6 6l12 12M18 6L6 18" />
-          </svg>
-        </Link>
-        <h1 className="create-title">Quick snap</h1>
-        <span className="create-spacer" />
-      </header>
-
-      {signedIn === false ? (
+  if (signedIn === false) {
+    return (
+      <div className="create-screen snap-screen">
+        <SnapHeader title="Quick snap" />
         <section className="poll-card soon profile-signin snap-intro">
           <h2 className="poll-question">Snap it, ask your friends</h2>
           <p className="poll-foot-note">A photo poll that disappears in 24 hours. Sign in to send one.</p>
@@ -115,80 +151,113 @@ export function SnapScreen() {
               <SignInNote />
             </>
           )}
+          {error && (
+            <p className="poll-error" role="alert">
+              {error}
+            </p>
+          )}
         </section>
-      ) : phase === "pick" ? (
-        <section className="snap-pick">
-          {inputs}
-          <p className="snap-pitch">
-            <strong>Snap it, ask your friends.</strong> A photo poll that disappears in 24 hours.
-          </p>
-          <button type="button" className="snap-big-btn snap-big-camera press" onClick={() => cameraRef.current?.click()}>
-            <span aria-hidden="true">📸</span>
-            Take a photo
-          </button>
-          <button type="button" className="snap-big-btn press" onClick={() => galleryRef.current?.click()}>
-            <span aria-hidden="true">🖼️</span>
-            Choose from gallery
-          </button>
-          <p className="create-note">Photos are shrunk on your phone (about 60–100 KB), location data removed, and checked before anyone sees them.</p>
-        </section>
-      ) : phase === "compose" ? (
-        <div className="create-form snap-compose">
-          {inputs}
-          <div className="snap-photo snap-preview">
-            {/* A local preview of the photo being posted. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {preview && <img src={preview} alt="Your photo" />}
-            {live && <span className="snap-live">📸 Live</span>}
-            <span className="snap-question">{question || "Type your question"}</span>
-          </div>
-          <div className="snap-retake">
-            <button type="button" className="mini-btn" onClick={() => cameraRef.current?.click()}>
-              📸 Retake
-            </button>
-            <button type="button" className="mini-btn" onClick={() => galleryRef.current?.click()}>
-              🖼️ Gallery
-            </button>
-          </div>
+      </div>
+    );
+  }
 
-          <fieldset className="field">
-            <legend className="field-label">Ask</legend>
-            <div className="snap-templates" role="radiogroup" aria-label="Question">
-              {SNAP_TEMPLATES.map((t) => (
-                <button key={t.id} type="button" role="radio" aria-checked={template === t.id} className="snap-template press" onClick={() => setTemplate(t.id)}>
-                  {t.label}
-                </button>
+  if (phase === "camera") {
+    return (
+      <>
+        <SnapCamera template={template} audience={audience} onTemplate={pickTemplate} onAudience={pickAudience} onShot={shot} onPick={picked} />
+        {error && (
+          <p className="poll-error cam-error" role="alert">
+            {error}
+          </p>
+        )}
+      </>
+    );
+  }
+
+  if (phase === "frame" && framing) {
+    return (
+      <div className="create-screen snap-screen">
+        <SnapHeader title="Frame your photo" />
+        <SnapFramer
+          bitmap={framing.bitmap}
+          url={framing.url}
+          onDone={(blob) => showPreview(blob, framing.live)}
+          onCancel={() => setPhase("camera")}
+        />
+      </div>
+    );
+  }
+
+  if (phase === "preview") {
+    return (
+      <div className="create-screen snap-screen">
+        <SnapHeader
+          title="Your snap"
+          right={
+            <button type="button" className="snap-retake-btn" onClick={retake}>
+              Retake
+            </button>
+          }
+        />
+        <div className="snap-preview-wrap">
+          <SnapCardShell src={preview} live={live} who="You" sub="⏳ Gone in 24 hours">
+            <p className="snapc-q">{question || "Type your question below"}</p>
+            <div className="snapc-answers">
+              {tpl.answers.map((a) => (
+                <span key={a} className={`snapc-answer${tpl.answers.length > 2 ? " snapc-emoji" : ""}`}>
+                  {a}
+                </span>
               ))}
             </div>
-            {template === "own" && (
-              <input
-                className="answer-input"
-                aria-label="Your question"
-                maxLength={80}
-                placeholder="Too much for a first date?"
-                value={own}
-                onChange={(e) => setOwn(e.target.value)}
-                autoFocus
-              />
-            )}
-            <span className="format-blurb">Answers: {tpl.answers.join("  ")}</span>
-          </fieldset>
-
-          <fieldset className="field">
-            <legend className="field-label">Who sees it</legend>
-            <div className="snap-audience">
-              <button type="button" className="snap-aud press" aria-pressed={audience === "circle"} onClick={() => setAudience("circle")}>
-                <strong>👥 Friends</strong>
-                <span>They see who voted what</span>
-              </button>
-              <button type="button" className="snap-aud press" aria-pressed={audience === "public"} onClick={() => setAudience("public")}>
-                <strong>🌍 Everyone</strong>
-                <span>Counts only, extra safety check</span>
-              </button>
-            </div>
-          </fieldset>
+          </SnapCardShell>
         </div>
-      ) : phase === "checking" ? (
+        <div className="snap-preview-controls">
+          <div className="snap-templates" role="radiogroup" aria-label="Question">
+            {SNAP_TEMPLATES.map((t) => (
+              <button key={t.id} type="button" role="radio" aria-checked={template === t.id} className="snap-template press" onClick={() => pickTemplate(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {template === "own" && (
+            <input
+              className="answer-input"
+              aria-label="Your question"
+              maxLength={80}
+              placeholder="Too much for a first date?"
+              value={own}
+              onChange={(e) => setOwn(e.target.value)}
+              autoFocus
+            />
+          )}
+          <div className="snap-seg" role="radiogroup" aria-label="Who sees it">
+            <button type="button" role="radio" aria-checked={audience === "circle"} onClick={() => pickAudience("circle")}>
+              👥 Friends <small>see who picked what</small>
+            </button>
+            <button type="button" role="radio" aria-checked={audience === "public"} onClick={() => pickAudience("public")}>
+              🌍 Everyone <small>counts only</small>
+            </button>
+          </div>
+        </div>
+        <div className="create-footer">
+          {error && (
+            <p className="poll-error" role="alert">
+              {error}
+            </p>
+          )}
+          <button type="button" className="post-btn press" onClick={send} disabled={!ready}>
+            Send snap →
+          </button>
+          <p className="create-note">Checked for safety, live in seconds · 3 snaps a day</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="create-screen snap-screen">
+      <SnapHeader title="Quick snap" />
+      {phase === "checking" ? (
         <section className="check-card" role="status">
           <span className="chip chip-white">🛡️ Safety check</span>
           <h2 className="poll-question">Checking your photo…</h2>
@@ -213,37 +282,25 @@ export function SnapScreen() {
           <p className="poll-foot-note">
             It may break the <Link href="/guidelines">community guidelines</Link>. Try another photo.
           </p>
-          <button
-            type="button"
-            className="btn btn-coral press"
-            onClick={() => {
-              setPhoto(null);
-              setPhase("pick");
-            }}
-          >
+          <button type="button" className="btn btn-coral press" onClick={retake}>
             Try another photo
           </button>
         </section>
       )}
-
-      {phase === "compose" && (
-        <div className="create-footer">
-          {error && (
-            <p className="poll-error" role="alert">
-              {error}
-            </p>
-          )}
-          <button type="button" className="post-btn press" onClick={send} disabled={!ready}>
-            Send snap →
-          </button>
-          <p className="create-note">⏳ Gone in 24 hours · 3 snaps a day</p>
-        </div>
-      )}
-      {phase === "pick" && error && (
-        <p className="poll-error" role="alert">
-          {error}
-        </p>
-      )}
     </div>
+  );
+}
+
+function SnapHeader({ title, right }: { title: string; right?: React.ReactNode }) {
+  return (
+    <header className="create-header">
+      <Link href="/" aria-label="Close" className="icon-btn icon-btn-white press">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </Link>
+      <h1 className="create-title">{title}</h1>
+      {right ?? <span className="create-spacer" />}
+    </header>
   );
 }

@@ -11,7 +11,7 @@ import type { Poll, VoteResult } from "@/lib/types";
 import { ArrowIcon, CommentIcon, ShareIcon } from "./icons";
 import { CirclePicks, FriendsVotedRow, LockedCircle } from "./CircleBits";
 import { CommentsSheet } from "./CommentsSheet";
-import { SnapPhoto } from "./SnapPhoto";
+import { SnapPoll } from "./SnapCard";
 import { NotificationPrompt } from "./Notifications";
 import { ReportSheet } from "./ReportSheet";
 
@@ -118,8 +118,6 @@ export function PollCard({
   const isTake = poll.kind === "hot_take";
   const isMystery = poll.kind === "mystery";
   const isSnap = poll.kind === "snap";
-  // "Rate my fit": four emoji, shown as big tap targets.
-  const emojiAnswers = isSnap && poll.options.every((o) => [...o.text].length <= 2);
   const colors = isTake ? TAKE_COLORS : ANSWER_COLORS;
 
   async function vote(optionId: string) {
@@ -232,40 +230,49 @@ export function PollCard({
           }
         />
       )}
-      <div className="poll-meta">
-        <span className={`chip ${poll.kind === "classic" || poll.featuredToday ? "chip-sun" : "chip-white"}`}>
-          {isTake ? (
-            <ChiliIcon />
-          ) : isMystery ? (
-            <span aria-hidden="true">?</span>
-          ) : isSnap ? (
-            <span aria-hidden="true">📸</span>
-          ) : (
-            <span className="live-dot" aria-hidden="true" />
-          )}
-          {tag}
-        </span>
-        <span className="poll-by">
-          {poll.visibility === "link" && <span className="chip chip-small chip-link">Link only</span>}
-          {isCircle && !(tag.includes("Friend") && !poll.isMine) && (
-            <span className="chip chip-small chip-circle" title={poll.audience ?? undefined}>
-              {poll.isMine ? audienceLabel(poll.audience) : "Friends"}
-            </span>
-          )}{" "}
-          by{" "}
-          {poll.isSystem ? (
-            <strong>@{poll.creator}</strong>
-          ) : (
-            <Link href={`/u/${poll.creator}`} className="creator-link">
-              @{poll.creator}
-            </Link>
-          )}
-          {poll.isSystem && <VerifiedTick />} · {timeLeft(poll.closesAt, now)}
-        </span>
-      </div>
+      {/* A snap shows who posted it on its photo. */}
+      {!isSnap && (
+        <div className="poll-meta">
+          <span className={`chip ${poll.kind === "classic" || poll.featuredToday ? "chip-sun" : "chip-white"}`}>
+            {isTake ? (
+              <ChiliIcon />
+            ) : isMystery ? (
+              <span aria-hidden="true">?</span>
+            ) : (
+              <span className="live-dot" aria-hidden="true" />
+            )}
+            {tag}
+          </span>
+          <span className="poll-by">
+            {poll.visibility === "link" && <span className="chip chip-small chip-link">Link only</span>}
+            {isCircle && !(tag.includes("Friend") && !poll.isMine) && (
+              <span className="chip chip-small chip-circle" title={poll.audience ?? undefined}>
+                {poll.isMine ? audienceLabel(poll.audience) : "Friends"}
+              </span>
+            )}{" "}
+            by{" "}
+            {poll.isSystem ? (
+              <strong>@{poll.creator}</strong>
+            ) : (
+              <Link href={`/u/${poll.creator}`} className="creator-link">
+                @{poll.creator}
+              </Link>
+            )}
+            {poll.isSystem && <VerifiedTick />} · {timeLeft(poll.closesAt, now)}
+          </span>
+        </div>
+      )}
 
       {isSnap ? (
-        <SnapPhoto poll={poll} closed={closed} />
+        <SnapPoll
+          poll={poll}
+          sub={`${isCircle ? (poll.isMine ? audienceLabel(poll.audience) : "Friends") : poll.visibility === "link" ? "Link only" : "Everyone"} · ${timeLeft(poll.closesAt, now)}`}
+          closed={closed}
+          showResults={showResults}
+          pcts={pcts}
+          mineId={mineId}
+          onVote={vote}
+        />
       ) : isMystery && !poll.question ? (
         <>
           {/* The real question stays on the server until you vote. */}
@@ -293,37 +300,36 @@ export function PollCard({
 
       {!showResults && !lockingId ? (
         <>
-          <div className={isTake ? "take-answers" : emojiAnswers ? "emoji-answers" : "answers"}>
-            {poll.options.map((o, i) =>
-              emojiAnswers ? (
-                <button key={o.id} type="button" className="emoji-answer press" aria-label={`Vote ${o.text}`} onClick={() => vote(o.id)}>
-                  {o.text}
-                </button>
-              ) : isTake ? (
-                <button
-                  key={o.id}
-                  type="button"
-                  className={`take-btn press${i === 1 ? " take-btn-dark" : ""}`}
-                  onClick={() => vote(o.id)}
-                >
-                  {o.text}
-                </button>
-              ) : (
-                <button
-                  key={o.id}
-                  type="button"
-                  className="answer press"
-                  style={{ animationDelay: `${i * 0.08}s` }}
-                  onClick={() => vote(o.id)}
-                >
-                  <span className="answer-letter" style={{ background: colors[i] }}>
-                    {"ABCD"[i]}
-                  </span>
-                  {o.text}
-                </button>
-              ),
-            )}
-          </div>
+          {/* A snap's answers are on its photo. */}
+          {!isSnap && (
+            <div className={isTake ? "take-answers" : "answers"}>
+              {poll.options.map((o, i) =>
+                isTake ? (
+                  <button
+                    key={o.id}
+                    type="button"
+                    className={`take-btn press${i === 1 ? " take-btn-dark" : ""}`}
+                    onClick={() => vote(o.id)}
+                  >
+                    {o.text}
+                  </button>
+                ) : (
+                  <button
+                    key={o.id}
+                    type="button"
+                    className="answer press"
+                    style={{ animationDelay: `${i * 0.08}s` }}
+                    onClick={() => vote(o.id)}
+                  >
+                    <span className="answer-letter" style={{ background: colors[i] }}>
+                      {"ABCD"[i]}
+                    </span>
+                    {o.text}
+                  </button>
+                ),
+              )}
+            </div>
+          )}
           <p className="poll-foot-note">
             {beforeVoteLabel} · {isTake ? "vote to see how spicy it is" : "vote to see the results"}
           </p>
@@ -368,38 +374,40 @@ export function PollCard({
               <strong>{spice.label}</strong>
             </div>
           )}
-          <ul className="results" aria-label="Results">
-            {poll.options.map((o, i) => {
-              const mine = o.id === mineId;
-              return (
-                <li key={o.id} className={`result${mine ? " result-mine" : ""}`}>
-                  {showResults && (
-                    <span
-                      className="result-bar"
-                      aria-hidden="true"
-                      style={{
-                        width: `${pcts[i]}%`,
-                        background: colors[i],
-                        borderRightWidth: pcts[i] === 0 ? 0 : undefined,
-                        animationDelay: `${i * 0.08}s`,
-                      }}
-                    />
-                  )}
-                  <span className="result-row">
-                    <span className="result-text">
-                      {o.text}
-                      {mine && <span className="chip chip-small">{guestVote && !closed ? "Your pick · not counted yet" : "Your pick"}</span>}
-                    </span>
+          {!isSnap && (
+            <ul className="results" aria-label="Results">
+              {poll.options.map((o, i) => {
+                const mine = o.id === mineId;
+                return (
+                  <li key={o.id} className={`result${mine ? " result-mine" : ""}`}>
                     {showResults && (
-                      <span className="result-pct" style={{ animationDelay: `${0.5 + i * 0.08}s` }}>
-                        {pcts[i]}%
-                      </span>
+                      <span
+                        className="result-bar"
+                        aria-hidden="true"
+                        style={{
+                          width: `${pcts[i]}%`,
+                          background: colors[i],
+                          borderRightWidth: pcts[i] === 0 ? 0 : undefined,
+                          animationDelay: `${i * 0.08}s`,
+                        }}
+                      />
                     )}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+                    <span className="result-row">
+                      <span className="result-text">
+                        {o.text}
+                        {mine && <span className="chip chip-small">{guestVote && !closed ? "Your pick · not counted yet" : "Your pick"}</span>}
+                      </span>
+                      {showResults && (
+                        <span className="result-pct" style={{ animationDelay: `${0.5 + i * 0.08}s` }}>
+                          {pcts[i]}%
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
           {spice && spice.split >= 70 && voted && (
             <button type="button" className="btn btn-white press settle-btn" onClick={onShare}>
               <ShareIcon size={18} />

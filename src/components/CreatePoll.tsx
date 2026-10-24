@@ -306,16 +306,17 @@ export function CreatePoll() {
           </div>
         )}
 
-        <Link href="/snap" className="snap-entry press">
-          <span className="snap-entry-icon" aria-hidden="true">
+        <Link href="/snap" className="snap-tile press">
+          <span className="snap-tile-cam" aria-hidden="true">
             📸
           </span>
-          <span>
-            <strong>Quick snap</strong>
-            <span>Photo poll, gone in 24 hours</span>
+          <span className="snap-tile-text">
+            <strong>Snap a photo poll</strong>
+            <span>Opens the camera · gone in 24 hours</span>
           </span>
-          <ArrowIcon size={20} strokeWidth={2.6} />
+          <ArrowIcon size={22} strokeWidth={2.6} />
         </Link>
+        <p className="create-or">or type a poll</p>
 
         <div className="field">
           <label htmlFor="question" className="field-label">
