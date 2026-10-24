@@ -1,8 +1,9 @@
 import { getSupabase } from "./supabase";
 
-// Quick snap: a photo poll that disappears after 24 hours. Photos are shrunk
-// on the phone (720px, ~60–100 KB), uploaded to the private "snaps" bucket,
-// and the poll only goes live once /api/snap/check has passed the photo.
+// Quick snap: a photo poll that disappears after 24 hours. Photos are made on
+// the phone as exact 3:4 images (1080 × 1440, see snap-photo.ts), uploaded to
+// the private "snaps" bucket, and the poll only goes live once
+// /api/snap/check has passed the photo.
 
 export type SnapTemplate = "rate" | "buy" | "go" | "own";
 export type SnapAudience = "circle" | "public";
@@ -21,34 +22,7 @@ export class SnapError extends Error {
   }
 }
 
-const MAX_SIDE = 720;
-const MAX_BYTES = 280 * 1024;
-
-const toBlob = (canvas: HTMLCanvasElement, type: string, quality: number) =>
-  new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
-
-/**
- * Shrinks a photo to 720px on its longest side as WebP (JPEG where the browser
- * can't make WebP). Redrawing it drops the hidden data too, like GPS location.
- */
-export async function shrinkPhoto(file: Blob): Promise<Blob> {
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-  let side = MAX_SIDE;
-  for (const quality of [0.72, 0.6, 0.5]) {
-    const scale = Math.min(1, side / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    let blob = await toBlob(canvas, "image/webp", quality);
-    if (!blob || blob.type !== "image/webp") blob = await toBlob(canvas, "image/jpeg", quality);
-    if (blob && blob.size <= MAX_BYTES) return blob;
-    side = 600;
-  }
-  throw new SnapError("too_big");
-}
-
-/** Shrinks, uploads and posts a snap. Returns the new poll's id (still waiting for its check). */
+/** Uploads and posts a snap (`photo` is already a 3:4 snap photo). Returns the new poll's id (still waiting for its check). */
 export async function postSnap(input: {
   photo: Blob;
   template: SnapTemplate;
@@ -62,11 +36,15 @@ export async function postSnap(input: {
   const user = data.session?.user;
   if (!user || user.is_anonymous) throw new SnapError("sign_in");
 
-  const blob = await shrinkPhoto(input.photo);
+  const blob = input.photo;
   const ext = blob.type === "image/webp" ? "webp" : "jpg";
   const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
   const up = await supabase.storage.from("snaps").upload(path, blob, { contentType: blob.type, cacheControl: "86400", upsert: false });
-  if (up.error) throw new SnapError("upload");
+  if (up.error) {
+    console.error("snap upload:", up.error.message);
+    // The bucket comes with the Quick snap migration; without it nothing can upload.
+    throw new SnapError(/bucket not found/i.test(up.error.message) ? "not_set_up" : "upload");
+  }
 
   const { data: id, error } = await supabase.rpc("create_snap", {
     photo_path: path,
@@ -155,8 +133,32 @@ export const SNAP_ERRORS: Record<string, string> = {
   question_length: "Questions need 3 to 80 characters.",
   blocked_words: "Let's keep it friendly: some of those words aren't allowed.",
   too_big: "That photo is too big. Try another one.",
+  not_set_up: "Snaps aren't set up yet. (Whoever runs Docchi: run the Quick snap migrations.)",
   upload: "Couldn't upload the photo. Check your connection and try again.",
   no_photo: "The photo didn't upload. Try again.",
   demo: "Demo mode: snaps need Supabase.",
 };
 export const snapErrorText = (e: unknown) => (e instanceof SnapError && SNAP_ERRORS[e.code]) || "Couldn't post your snap. Try again?";
+
+// The last question and audience, so the next snap is one tap shorter.
+const PREFS_KEY = "docchi.snapPrefs";
+
+export function snapPrefs(): { template: SnapTemplate; audience: SnapAudience } {
+  try {
+    const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") as { template?: SnapTemplate; audience?: SnapAudience };
+    return {
+      template: SNAP_TEMPLATES.some((t) => t.id === p.template) ? p.template! : "rate",
+      audience: p.audience === "public" ? "public" : "circle",
+    };
+  } catch {
+    return { template: "rate", audience: "circle" };
+  }
+}
+
+export function saveSnapPrefs(template: SnapTemplate, audience: SnapAudience) {
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ template, audience }));
+  } catch {
+    // Not remembered this time.
+  }
+}

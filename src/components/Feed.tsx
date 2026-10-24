@@ -543,7 +543,20 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
               <section className="poll-card empty-card">
                 <span className="chip chip-mint">All caught up</span>
                 <h1 className="poll-question">That&apos;s every poll for now.</h1>
-                <p className="poll-foot-note">New ones drop every day. Or make your own.</p>
+                <p className="poll-foot-note">New ones drop every day.</p>
+                <div className="your-turn">
+                  <strong>Your turn</strong>
+                  <div className="your-turn-tiles">
+                    <Link href="/snap" className="your-turn-tile your-turn-snap press">
+                      <span aria-hidden="true">📸</span>
+                      Snap one
+                    </Link>
+                    <Link href="/create" className="your-turn-tile press">
+                      <span aria-hidden="true">✍️</span>
+                      Type a poll
+                    </Link>
+                  </div>
+                </div>
                 <div className="empty-actions">
                   <button
                     type="button"
@@ -555,9 +568,6 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
                   >
                     Start over
                   </button>
-                  <Link href="/create" className="btn btn-coral press">
-                    Make a poll
-                  </Link>
                 </div>
               </section>
               )
