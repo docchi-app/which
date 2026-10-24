@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { installPlatform } from "@/lib/install";
 import {
   getPushKinds,
@@ -97,10 +97,11 @@ function statusText(support: PushSupport, state: State) {
 }
 
 /**
- * Profile: a slim "turn on notifications" row, only while they're off on this
- * phone. ✕ hides it for a month; once they're on, it says so and goes away.
+ * A slim "turn on notifications" row, only while they're off on this phone:
+ * on Profile, and on a poll you just posted (with its own pitch). ✕ hides it
+ * for a month; once they're on, it says so and goes away.
  */
-export function NotificationPrompt() {
+export function NotificationPrompt({ pitch }: { pitch?: ReactNode } = {}) {
   const { support, state, busy, note, on } = usePush();
   const [hidden, setHidden] = useState(true);
   const [justOn, setJustOn] = useState(false);
@@ -159,7 +160,11 @@ export function NotificationPrompt() {
         <BellIcon />
       </span>
       <span className="notif-prompt-text">
-        <strong>Get notified</strong> when your poll takes off or results land.
+        {pitch ?? (
+          <>
+            <strong>Get notified</strong> when your poll takes off or results land.
+          </>
+        )}
       </span>
       {support === "install" ? (
         <button type="button" className="mini-btn mini-btn-coral" onClick={() => setHowTo(true)}>

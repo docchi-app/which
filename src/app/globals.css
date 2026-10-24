@@ -2589,3 +2589,51 @@ button.ghost-action { cursor: pointer; }
   margin: 0;
   font-size: 14px;
 }
+
+/* ─── Streak ─────────────────────────────────────────────────────────────── */
+
+.header-actions { display: flex; align-items: center; gap: 10px; }
+.streak { position: relative; }
+.streak-chip {
+  display: flex;
+  height: 44px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  border: var(--outline);
+  border-radius: 999px;
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 800;
+}
+/* Not voted today yet: the flame waits. */
+.streak-chip-waiting { background: var(--cream); color: var(--muted); }
+.streak-chip-waiting span { filter: grayscale(0.7); }
+.streak-bubble {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: -54px;
+  z-index: 20;
+  width: 230px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--cream);
+  font-size: 13px;
+  line-height: 1.4;
+  animation: rise 0.3s var(--ease-pop) both;
+}
+/* Profile: Polls · Votes got · Friends · Streak */
+.stat-tiles-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.stat-tiles-4 .stat { padding: 10px 8px; }
+.stat-tiles-4 dt { font-size: 11px; }
+.stat-link { position: relative; }
+.stat-cover { color: inherit; text-decoration: none; }
+.stat-cover::after { position: absolute; inset: 0; content: ""; }
+.result-line { font-size: 14px; }
+.activity-chip.chip-won { background: var(--mint); }
+/* On a just-posted poll, the ping prompt sits flush in the card. */
+.poll-card .notif-prompt { margin: 0; }
