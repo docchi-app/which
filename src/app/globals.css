@@ -1340,6 +1340,63 @@ button.ghost-action { cursor: pointer; }
 .format-hot_take[aria-checked="true"] { background: var(--coral); }
 .format-mystery[aria-checked="true"] { background: var(--lilac); }
 .format-blurb { color: var(--muted); font-size: 13px; }
+/* Format cards: a tiny example above each name. */
+.format-card {
+  display: flex;
+  height: auto;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 16px;
+  text-align: left;
+}
+.format-name { text-align: center; }
+.format-example {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px;
+  overflow: hidden;
+  border: 1.5px solid var(--ink);
+  border-radius: 10px;
+  background: var(--cream);
+}
+.fx-q { font-size: 10px; font-weight: 800; line-height: 1.2; }
+.fx-row { display: flex; gap: 4px; }
+.fx-chip {
+  flex: 1;
+  padding: 2px 0;
+  border: 1.5px solid var(--ink);
+  border-radius: 6px;
+  background: var(--white);
+  font-size: 9px;
+  font-weight: 800;
+  text-align: center;
+}
+.fx-chip-dark { background: var(--ink); color: var(--cream); }
+.fx-blur { height: 6px; border-radius: 3px; background: rgb(27 21 48 / 0.25); filter: blur(1px); }
+
+/* Create: "More options" (format, closing time, who can see it). */
+.more-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: var(--outline);
+  border-radius: 16px;
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+  text-align: left;
+}
+.more-toggle > span:first-child { display: flex; flex-direction: column; gap: 2px; }
+.more-summary { color: var(--muted); font-size: 13px; font-weight: 600; }
+.more-chevron { font-size: 24px; font-weight: 700; line-height: 1; }
+.more-panel { display: flex; flex-direction: column; gap: 18px; padding: 16px 2px 0; }
 .teaser-input { flex: none; font-weight: 700; }
 .preview-card.preview-hot_take { background: var(--coral); }
 .preview-card.preview-mystery { background: var(--lilac); }

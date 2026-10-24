@@ -121,6 +121,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
       // A shared link (?poll=…) puts that poll on top, even if it has closed.
       const url = new URL(window.location.href);
       const shared = initialPollId ?? url.searchParams.get("poll");
+      const justPosted = !!shared && url.searchParams.has("created");
       if (shared) {
         const at = list.findIndex((p) => p.id === shared);
         const sharedPoll = at >= 0 ? list.splice(at, 1)[0] : await fetchPoll(shared).catch(() => null);
@@ -150,6 +151,8 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
       setVotedBefore(new Set(list.filter((p) => p.myOptionId && p.id !== shared).map((p) => p.id)));
       setHasMore(list.length >= FEED_PAGE_SIZE);
       setPolls(list);
+      // Just posted: open the share sheet once the card is in, so it goes to the group chat in one tap.
+      if (justPosted && list[0]?.id === shared) window.setTimeout(() => setSharing((s) => s ?? list[0]), 700);
     } catch (e) {
       console.error(e);
       if (token === loadToken.current) setFailed(true);
