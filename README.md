@@ -139,6 +139,16 @@ The first slice of the build order:
   marked seen after a moment on screen (`my_activity()` / `mark_activity_seen()`, stored per account).
 - **Settings (⚙︎ on Profile):** notifications, the app (Home Screen), account (Admin, Sign out) and
   the policies, so Profile stays about your polls.
+- **Quick snap (📸 at the top of +, or `/snap`):** take a photo (📸 Live badge) or pick one from
+  the gallery, choose a ready-made question (Rate my fit 🔥😍😐🙅 / Buy or skip / Should I go / your
+  own, Yes or No) and who sees it: **👥 Friends** (they see who picked what) or **🌍 Everyone**
+  (counts only). It disappears after 24 hours. Photos are shrunk on the phone to 720px WebP
+  (about 60–100 KB, location data removed) and uploaded to the private `snaps` bucket. The snap
+  stays hidden until `/api/snap/check` passes the photo through OpenAI's free moderation:
+  clean → live (and the share sheet opens), unsure → **Admin → Snaps** for you to approve or
+  reject (turned down after 12 hours), clearly bad → rejected. Everyone snaps get a stricter bar;
+  accounts under a day old can only send to Friends; 3 snaps a day. Snaps stay off profiles, and
+  their photos are deleted once they close (by the owner's app, or Admin → Snaps → Clean up).
 - **Streaks:** 🔥 N next to the bell: days in a row (India time) you've voted on at least one poll.
   It's grey until you vote today (the streak lives until midnight); tap it for your best. Hitting
   3, 7, 14, 30… days pops a "🔥 7-day streak!" bubble. Guests' votes count, so signing in keeps it
@@ -206,7 +216,7 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261104000000_safety_metrics.sql`, `20261105000000_push.sql`, `20261106000000_push_fixes.sql`, `20261107000000_leaders_schedule.sql`,
    `20261108000000_comments.sql`, `20261109000000_rate_limits.sql`,
    `20261110000000_activity.sql`, `20261111000000_guest_votes.sql`, `20261112000000_friends.sql`,
-   `20261113000000_streaks.sql`, …),
+   `20261113000000_streaks.sql`, `20261114000000_quick_snap.sql`, …),
    in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
@@ -364,6 +374,19 @@ the values are baked in at build time. Then set up the Supabase URL Configuratio
 
 The card on Profile only appears once `NEXT_PUBLIC_VAPID_PUBLIC_KEY` is set. Losing the private key
 means everyone has to turn notifications on again, so keep a copy.
+
+### 7. Quick snap (photo polls)
+
+1. Run `20261114000000_quick_snap.sql` (it creates the private `snaps` Storage bucket, 300 KB a
+   photo, and its access rules).
+2. Create an API key at https://platform.openai.com/api-keys (the moderation check it's used for is
+   free) and add it in Vercel as `OPENAI_API_KEY`, marked **Sensitive**. Redeploy.
+3. Snaps record their check result with `PUSH_CRON_SECRET` (the same value as for notifications,
+   step 6), so that has to be set too.
+
+Without `OPENAI_API_KEY` every snap waits for you in **Admin → Snaps**; without `PUSH_CRON_SECRET`
+the check can't record its result, and snaps show there as "check didn't run". Either way nothing
+goes live unchecked.
 
 ### Free tier limits to know about
 

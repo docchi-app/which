@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import Link from "next/link";
 import { guestPicks, isSignedIn, onUserChange, savePendingVote, takePendingVote } from "@/lib/auth";
 import { countVoteForNudge } from "@/lib/install";
+import { cleanUpSnapPhotos } from "@/lib/snap";
 import { announceVote } from "@/lib/streak";
 import { warmShareCard } from "@/lib/share";
 import { showTip, tipsAfterVote } from "@/lib/tips";
@@ -107,6 +108,11 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
     if (!isSupabaseConfigured) return;
     return onUserChange((user) => setSignedIn(isSignedIn(user)));
   }, []);
+
+  // Photos of my snaps that have disappeared: delete them (at most once a day).
+  useEffect(() => {
+    if (signedIn) cleanUpSnapPhotos().catch(() => {});
+  }, [signedIn]);
 
   useEffect(() => {
     // Reads localStorage, so it can only run after hydration.
@@ -399,6 +405,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
     if (tab === "circle") return p.visibility === "circle" ? "Friends only" : "From a friend";
     if (p.featuredToday) return "Poll of the Day";
     if (votedBefore.has(p.id)) return "You voted";
+    if (p.kind === "snap") return "Quick snap";
     if (p.kind === "hot_take") return "Hot take";
     if (p.kind === "mystery") return "Mystery poll";
     if (tab === "new") return "New";

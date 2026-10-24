@@ -10,8 +10,9 @@ export type PollOption = {
 export type Visibility = "public" | "link" | "circle";
 
 /** classic: question + 2–4 answers · hot_take: a statement, Agree / Disagree ·
- *  mystery: a teaser and answers; the question shows after you vote. */
-export type PollKind = "classic" | "hot_take" | "mystery";
+ *  mystery: a teaser and answers; the question shows after you vote ·
+ *  snap: a photo with a ready-made question, gone after 24 hours. */
+export type PollKind = "classic" | "hot_take" | "mystery" | "snap";
 
 export type Poll = {
   id: string;

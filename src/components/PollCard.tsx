@@ -11,6 +11,7 @@ import type { Poll, VoteResult } from "@/lib/types";
 import { ArrowIcon, CommentIcon, ShareIcon } from "./icons";
 import { CirclePicks, FriendsVotedRow, LockedCircle } from "./CircleBits";
 import { CommentsSheet } from "./CommentsSheet";
+import { SnapPhoto } from "./SnapPhoto";
 import { NotificationPrompt } from "./Notifications";
 import { ReportSheet } from "./ReportSheet";
 
@@ -116,6 +117,9 @@ export function PollCard({
   const showResults = voted || closed;
   const isTake = poll.kind === "hot_take";
   const isMystery = poll.kind === "mystery";
+  const isSnap = poll.kind === "snap";
+  // "Rate my fit": four emoji, shown as big tap targets.
+  const emojiAnswers = isSnap && poll.options.every((o) => [...o.text].length <= 2);
   const colors = isTake ? TAKE_COLORS : ANSWER_COLORS;
 
   async function vote(optionId: string) {
@@ -230,7 +234,15 @@ export function PollCard({
       )}
       <div className="poll-meta">
         <span className={`chip ${poll.kind === "classic" || poll.featuredToday ? "chip-sun" : "chip-white"}`}>
-          {isTake ? <ChiliIcon /> : isMystery ? <span aria-hidden="true">?</span> : <span className="live-dot" aria-hidden="true" />}
+          {isTake ? (
+            <ChiliIcon />
+          ) : isMystery ? (
+            <span aria-hidden="true">?</span>
+          ) : isSnap ? (
+            <span aria-hidden="true">📸</span>
+          ) : (
+            <span className="live-dot" aria-hidden="true" />
+          )}
           {tag}
         </span>
         <span className="poll-by">
@@ -252,7 +264,9 @@ export function PollCard({
         </span>
       </div>
 
-      {isMystery && !poll.question ? (
+      {isSnap ? (
+        <SnapPhoto poll={poll} closed={closed} />
+      ) : isMystery && !poll.question ? (
         <>
           {/* The real question stays on the server until you vote. */}
           <div className="mystery-blur" aria-hidden="true">
@@ -279,9 +293,13 @@ export function PollCard({
 
       {!showResults && !lockingId ? (
         <>
-          <div className={isTake ? "take-answers" : "answers"}>
+          <div className={isTake ? "take-answers" : emojiAnswers ? "emoji-answers" : "answers"}>
             {poll.options.map((o, i) =>
-              isTake ? (
+              emojiAnswers ? (
+                <button key={o.id} type="button" className="emoji-answer press" aria-label={`Vote ${o.text}`} onClick={() => vote(o.id)}>
+                  {o.text}
+                </button>
+              ) : isTake ? (
                 <button
                   key={o.id}
                   type="button"

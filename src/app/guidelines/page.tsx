@@ -21,6 +21,7 @@ export default function GuidelinesPage() {
       <ul>
         <li><strong>Hate or harassment:</strong> attacking people for religion, caste, gender, sexuality, race, region, disability or looks; bullying, mocking or “rate this person” polls about someone who didn&apos;t agree to it.</li>
         <li><strong>Real names and private details</strong> of anyone else: phone numbers, addresses, photos, school or workplace.</li>
+        <li><strong>Snaps of other people</strong> without their OK, nudity or anything sexual, and photos of anyone who looks under 18 in a revealing way.</li>
         <li><strong>Sexual content</strong>, and anything at all sexualising minors (reported to the authorities).</li>
         <li><strong>Violence or threats</strong>, glorifying violence, or encouraging self-harm.</li>
         <li><strong>Spam and scams:</strong> ads, links to make money, fake giveaways, repeated or copy-paste polls.</li>

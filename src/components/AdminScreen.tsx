@@ -18,9 +18,10 @@ import { REPORT_REASONS } from "@/lib/safety";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { Avatar } from "./Avatar";
 import { Schedule } from "./AdminSchedule";
+import { AdminSnaps } from "./AdminSnaps";
 import { LogoMark, Wordmark } from "./Logo";
 
-type Tab = "reports" | "schedule" | "done" | "metrics";
+type Tab = "reports" | "snaps" | "schedule" | "done" | "metrics";
 
 const REASON_LABEL: Record<string, string> = Object.fromEntries(
   REPORT_REASONS.map((r) => [r.id, r.label.split(/[,(]/)[0].replace(/ or .*$/, "")]),
@@ -74,6 +75,7 @@ export function AdminScreen() {
             {(
               [
                 ["reports", "Reports"],
+                ["snaps", "Snaps"],
                 ["schedule", "Schedule"],
                 ["done", "Done"],
                 ["metrics", "Metrics"],
@@ -85,6 +87,7 @@ export function AdminScreen() {
             ))}
           </div>
           {tab === "reports" && <Queue />}
+          {tab === "snaps" && <AdminSnaps />}
           {tab === "schedule" && <Schedule />}
           {tab === "done" && <Done />}
           {tab === "metrics" && <Metrics />}

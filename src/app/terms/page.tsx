@@ -22,6 +22,7 @@ export default function TermsPage() {
         <li>You own what you post. You let Docchi show, share and make link previews of it, as the app does, for as long as it&apos;s on Docchi.</li>
         <li>What you pick is anonymous to other people. Your friends can see that you voted on a poll they also voted on, but not your pick. On a friends-only poll, the friends it&apos;s shared with can see who picked what.</li>
         <li>Follow the <Link href="/guidelines">Community guidelines</Link>. We can remove any poll and suspend any account that breaks them or the law, with or without notice.</li>
+        <li>Snaps disappear from Docchi after 24 hours. People can still screenshot them, so only post what you&apos;re fine with others keeping. Snap photos are checked automatically, and sometimes by a person, before they go live.</li>
         <li>Deleting a poll hides it for everyone. We keep a copy for a while for safety reviews (see <Link href="/privacy">Privacy</Link>).</li>
       </ul>
 

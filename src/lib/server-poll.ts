@@ -33,7 +33,7 @@ export async function getSharedPoll(id: string): Promise<SharedPoll | null> {
     if (!res.ok) return null;
     const [row] = (await res.json()) as {
       id: string;
-      kind?: SharedPoll["kind"];
+      kind?: SharedPoll["kind"] | "snap";
       question: string | null;
       teaser?: string | null;
       is_system: boolean;
@@ -46,7 +46,8 @@ export async function getSharedPoll(id: string): Promise<SharedPoll | null> {
     if (!row) return null;
     return {
       id: row.id,
-      kind: row.kind ?? "classic",
+      // A snap's photo is private: its card is drawn like a classic poll.
+      kind: !row.kind || row.kind === "snap" ? "classic" : row.kind,
       question: row.question,
       teaser: row.teaser ?? null,
       verified: row.is_system,
