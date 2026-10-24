@@ -96,6 +96,15 @@ The first slice of the build order:
   **Done** lists recent actions with Undo. **Metrics** shows visitors, votes, % of
   visitors who vote, votes per session, share rate and D1/D7 retention against the launch targets,
   plus a table by day.
+- **Tips, one at a time:** a small dark bubble beside the thing it explains, shown once, at the
+  moment it's useful: + after your 2nd vote, 💬 when you vote on a poll that has comments, Leaders
+  after your first poll (or 6 votes), the Circle tab after 8 votes, Profile when your polls have
+  news. Never more than one every 2 minutes, never while a sheet is open, never blocks a tap; any
+  tap, scroll or 7 seconds hides it (`src/lib/tips.ts`, `TipLayer`).
+- **What's new on your polls:** a dot on the Profile tab when your polls got votes or comments
+  since you last looked (circle requests keep their number), then on Profile → My polls a
+  "Since your last visit: +14 votes · 3 comments" line and a chip on each poll with news. It's
+  marked seen after a moment on screen (`my_activity()` / `mark_activity_seen()`, stored per account).
 - **Settings (⚙︎ on Profile):** notifications, the app (Home Screen), account (Admin, Sign out) and
   the policies, so Profile stays about your polls.
 - **Phone notifications (web push):** a slim "Get notified → Turn on" row on Profile while they're
@@ -154,7 +163,8 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261030000000_circles.sql`, `20261031000000_usernames.sql`, `20261101000000_circle_polls.sql`,
    `20261102000000_scale.sql`, `20261103000000_feed_voted_last.sql`,
    `20261104000000_safety_metrics.sql`, `20261105000000_push.sql`, `20261106000000_push_fixes.sql`, `20261107000000_leaders_schedule.sql`,
-   `20261108000000_comments.sql`, `20261109000000_rate_limits.sql`, …), in date order,
+   `20261108000000_comments.sql`, `20261109000000_rate_limits.sql`,
+   `20261110000000_activity.sql`, …), in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips

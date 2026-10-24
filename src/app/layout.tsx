@@ -4,6 +4,7 @@ import { siteUrl } from "@/lib/server-poll";
 import { UsernameGate } from "@/components/UsernameGate";
 import { VisitTracker } from "@/components/VisitTracker";
 import { PushSync } from "@/components/PushSync";
+import { TipLayer } from "@/components/TipLayer";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -50,6 +51,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <UsernameGate />
         <VisitTracker />
         <PushSync />
+        <TipLayer />
       </body>
     </html>
   );

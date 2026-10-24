@@ -17,20 +17,20 @@ export function BottomNav({ current }: { current?: Section }) {
       <nav aria-label="Main" className="nav-pill">
         {ITEMS.map(({ id, href, label, Icon }) =>
           id === current ? (
-            <Link key={id} href={href} aria-current="page" className="nav-item nav-item-active">
+            <Link key={id} href={href} aria-current="page" className="nav-item nav-item-active" data-tip={id === "feed" ? undefined : id}>
               <Icon />
               {label}
               {id === "profile" && <NavBadge />}
             </Link>
           ) : (
-            <Link key={id} href={href} aria-label={label} className="nav-item">
+            <Link key={id} href={href} aria-label={label} className="nav-item" data-tip={id === "feed" ? undefined : id}>
               <Icon size={22} />
               {id === "profile" && <NavBadge />}
             </Link>
           ),
         )}
       </nav>
-      <Link href="/create" aria-label="Create a poll" className="create-btn press">
+      <Link href="/create" aria-label="Create a poll" className="create-btn press" data-tip="create">
         <PlusIcon size={28} />
       </Link>
     </div>

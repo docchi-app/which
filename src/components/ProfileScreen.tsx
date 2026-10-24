@@ -6,6 +6,7 @@ import { continueWithGoogle, onUserChange, saveReturnTo, canVote } from "@/lib/a
 import { checkUsername, type UsernameProblem } from "@/lib/create";
 import { formatCount, percentages, timeLeft } from "@/lib/format";
 import { deletePoll, fetchMyPolls, setPollVisibility } from "@/lib/polls";
+import { activityText, fetchActivity, markActivitySeen, type Activity } from "@/lib/activity";
 import { compactCount, getMyProfile, PROFILE_CHANGED, updateUsername, type Profile } from "@/lib/profile";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import type { Poll, Visibility } from "@/lib/types";
@@ -37,6 +38,8 @@ export function ProfileScreen() {
   const [sharing, setSharing] = useState<Poll | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [requests, setRequests] = useState(0);
+  // New votes / comments since the last visit; shown for this visit, then marked seen.
+  const [activity, setActivity] = useState<Activity | null>(null);
 
   const loadBadge = useCallback(() => {
     getCircleBadge()
@@ -69,6 +72,13 @@ export function ProfileScreen() {
     if (!signedIn) return;
     loadProfile();
     loadBadge();
+    let timer = 0;
+    fetchActivity().then((a) => {
+      setActivity(a);
+      // Give it a moment on screen before it counts as seen.
+      if (a.votes + a.comments > 0) timer = window.setTimeout(markActivitySeen, 2500);
+    });
+    return () => window.clearTimeout(timer);
   }, [signedIn, loadProfile, loadBadge]);
 
   // The "Pick your @name" sheet can change the name while this screen is open.
@@ -186,6 +196,12 @@ export function ProfileScreen() {
             </p>
           )}
 
+          {tab === "mine" && activity && activity.votes + activity.comments > 0 && (
+            <p className="activity-summary" role="status">
+              <span aria-hidden="true">✨</span> Since your last visit: {activityText(activity)}
+            </p>
+          )}
+
           {tab === "circle" ? (
             <CirclePanel username={profile?.username ?? null} onChanged={loadBadge} />
           ) : (
@@ -216,6 +232,7 @@ export function ProfileScreen() {
                     key={p.id}
                     poll={p}
                     index={i}
+                    news={tab === "mine" ? activity?.polls[p.id] : undefined}
                     onShare={() => setSharing(p)}
                     onChange={(patch) => {
                       updatePoll(p.id, patch);
@@ -372,9 +389,12 @@ export function ProfilePoll({
   index,
   onShare,
   onChange,
+  news,
 }: {
   poll: Poll;
   index: number;
+  /** New votes / comments on this poll since the last visit (My polls only). */
+  news?: { votes: number; comments: number };
   onShare: () => void;
   /** New fields, or null when the poll was deleted. */
   onChange: (patch: Partial<Poll> | null) => void;
@@ -412,7 +432,7 @@ export function ProfilePoll({
 
 
   return (
-    <li className="profile-poll" style={{ animationDelay: `${0.05 + index * 0.06}s` }}>
+    <li className="profile-poll" data-news={news || undefined} style={{ animationDelay: `${0.05 + index * 0.06}s` }}>
       <Link href={`/p/${poll.id}`} className="profile-poll-link">
         <span className="profile-poll-top">
           <span className="profile-poll-q">{poll.question ?? poll.teaser}</span>
@@ -437,7 +457,9 @@ export function ProfilePoll({
             {pcts.map((w, i) => (w > 0 ? <span key={i} style={{ width: `${w}%`, background: colors[i] }} /> : null))}
           </span>
         )}
-        <span className="profile-poll-meta">{meta.filter(Boolean).join(" · ")}</span>
+        <span className="profile-poll-meta">
+          {news && <span className="activity-chip">{activityText(news)}</span>} {meta.filter(Boolean).join(" · ")}
+        </span>
       </Link>
 
       {poll.isMine && (
