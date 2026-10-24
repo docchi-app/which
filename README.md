@@ -350,6 +350,13 @@ cards before the end). On Trending and New, polls you haven't voted on come firs
 Poll of the Day on top of Trending; ones you've voted on follow at the end. **Trending** ranks by `polls.hot_score`, votes with a time
 decay (Hacker News style). **New** is newest first.
 
+**Share previews are instant.** The share sheet draws the link-preview card itself from data the
+phone already has (`SharePreview`, same layout rules as the server image via `src/lib/preview.ts`),
+so it appears the moment the sheet opens. Meanwhile it quietly asks the server to build that poll's
+link page and preview image (`warmShareCard`), so they're cached before WhatsApp or X fetch them.
+The image route draws each poll once on first request and caches it (redrawn every 5 minutes):
+first request ~200–400 ms, cached ~5–10 ms, the same at any number of polls.
+
 **Comments stay fast too:** `comments_live_idx` (poll, newest first, not hidden) means a card's
 comment count reads only the index, and `get_comments` takes the newest 120 from it before the
 block filter. With 1M comments (20 polls with 5,000 live each), opening a busy poll's comments went

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import Link from "next/link";
 import { canVote as userCanVote, onUserChange, savePendingVote, takePendingVote } from "@/lib/auth";
 import { countVoteForNudge } from "@/lib/install";
+import { warmShareCard } from "@/lib/share";
 import { showTip, tipsAfterVote } from "@/lib/tips";
 import { FEED_PAGE_SIZE, fetchFeed, fetchPoll } from "@/lib/polls";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -98,6 +99,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
         if (url.searchParams.has("created")) {
           setCreatedId(shared);
           showTip("leaders");
+          warmShareCard(shared); // a new poll is about to be shared
         }
         url.searchParams.delete("voted"); // no replay on reload
         url.searchParams.delete("created");
