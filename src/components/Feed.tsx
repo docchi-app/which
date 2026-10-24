@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { canVote as userCanVote, onUserChange, savePendingVote, takePendingVote } from "@/lib/auth";
+import { guestPicks, isSignedIn, onUserChange, savePendingVote, takePendingVote } from "@/lib/auth";
 import { countVoteForNudge } from "@/lib/install";
 import { warmShareCard } from "@/lib/share";
 import { showTip, tipsAfterVote } from "@/lib/tips";
@@ -27,6 +27,27 @@ const TABS: { id: FeedTab; label: string }[] = [
 // How often to look for polls posted since the feed loaded.
 const NEW_POLLS_CHECK_MS = 45_000;
 
+// A guest's 3rd vote is when we ask them to sign in so their votes count.
+const SAVE_VOTES_AFTER = 3;
+const SAVE_ASKED_KEY = "docchi.saveVotesAsked";
+const WELCOMED_KEY = "docchi.welcomed";
+
+function stored(key: string) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return "1"; // storage blocked: skip one-time prompts rather than repeat them
+  }
+}
+
+function store(key: string) {
+  try {
+    localStorage.setItem(key, "1");
+  } catch {
+    // Storage blocked: the prompt may show again. Harmless.
+  }
+}
+
 // A drag this far (px), or a flick this fast (px/ms), moves to the next card.
 const SWIPE_DISTANCE = 90;
 const SWIPE_VELOCITY = 0.5;
@@ -43,8 +64,15 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   const [hasMore, setHasMore] = useState(false);
   const [index, setIndex] = useState(0);
   const [failed, setFailed] = useState(false);
-  const [canVote, setCanVote] = useState<boolean | null>(isSupabaseConfigured ? null : true);
-  const [sheet, setSheet] = useState<SheetPick | null>(null);
+  const [signedIn, setSignedIn] = useState<boolean | null>(isSupabaseConfigured ? null : true);
+  // A pick waiting for sign-in (guest voting is off), or "save": a guest asked to make their votes count.
+  const [sheet, setSheet] = useState<SheetPick | "save" | null>(null);
+  // First visit: a line saying what Docchi is, until dismissed or the first vote.
+  const [welcome, setWelcome] = useState(false);
+  const signedInRef = useRef(signedIn);
+  useEffect(() => {
+    signedInRef.current = signedIn;
+  });
   const [sharing, setSharing] = useState<Poll | null>(null);
   const [installNudge, setInstallNudge] = useState(false);
   const [commentsFor, setCommentsFor] = useState<string | null>(null);
@@ -68,7 +96,18 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
-    return onUserChange((user) => setCanVote(userCanVote(user)));
+    return onUserChange((user) => setSignedIn(isSignedIn(user)));
+  }, []);
+
+  useEffect(() => {
+    // Reads localStorage, so it can only run after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (signedIn === false && !stored(WELCOMED_KEY)) setWelcome(true);
+  }, [signedIn]);
+
+  const dismissWelcome = useCallback(() => {
+    store(WELCOMED_KEY);
+    setWelcome(false);
   }, []);
 
   const load = useCallback(async (which: FeedTab) => {
@@ -146,8 +185,17 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   }, [index, polls, hasMore, tab]);
 
   const onVoted = useCallback((pollId: string, r: VoteResult) => {
-    // After the 3rd vote here, once a week at most: offer the Home Screen.
-    if (countVoteForNudge()) window.setTimeout(() => setInstallNudge(true), 1800);
+    dismissWelcome();
+    if (signedInRef.current === false) {
+      // A guest's 3rd vote: ask them to sign in so their votes count (once).
+      if (guestPicks().length >= SAVE_VOTES_AFTER && !stored(SAVE_ASKED_KEY)) {
+        store(SAVE_ASKED_KEY);
+        window.setTimeout(() => setSheet((s) => s ?? "save"), 1800);
+      }
+    } else if (countVoteForNudge()) {
+      // After the 3rd vote here, once a week at most: offer the Home Screen.
+      window.setTimeout(() => setInstallNudge(true), 1800);
+    }
     tipsAfterVote((pollsRef.current?.find((p) => p.id === pollId)?.commentCount ?? 0) > 0);
     setPolls((list) =>
       list?.map((p) =>
@@ -156,7 +204,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
           : p,
       ) ?? null,
     );
-  }, []);
+  }, [dismissWelcome]);
 
   const onRefresh = useCallback((fresh: Poll) => {
     setPolls((list) => list?.map((p) => (p.id === fresh.id ? fresh : p)) ?? null);
@@ -326,6 +374,17 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
         </Link>
       </header>
 
+      {welcome && (
+        <div className="welcome" role="note">
+          <p>
+            <strong>Vote on what everyone argues about.</strong> See where you land.
+          </p>
+          <button type="button" className="welcome-close" aria-label="Got it" onClick={dismissWelcome}>
+            ×
+          </button>
+        </div>
+      )}
+
       {!isSupabaseConfigured && (
         <p className="demo-banner">Demo mode: sample polls, votes aren&apos;t saved. Add Supabase keys to go live.</p>
       )}
@@ -384,12 +443,13 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
                 key={poll.id}
                 poll={poll}
                 tag={tagFor(poll, index)}
-                canVote={canVote}
+                signedIn={signedIn}
                 celebrate={poll.id === celebrateId}
                 justCreated={poll.id === createdId}
                 onVoted={onVoted}
                 onRefresh={onRefresh}
                 onNeedSignIn={onNeedSignIn}
+                onSaveVotes={() => setSheet("save")}
                 onShare={() => setSharing(poll)}
                 onNext={() => go(1)}
                 onReported={(id) => setPolls((list) => list?.filter((p) => p.id !== id) ?? null)}
@@ -440,7 +500,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
 
       <BottomNav current="feed" />
 
-      {sheet && <SignInSheet pick={sheet} onClose={closeSheet} />}
+      {sheet && <SignInSheet pick={sheet === "save" ? undefined : sheet} onClose={closeSheet} />}
       {sharing && <ShareSheet poll={sharing} onClose={() => setSharing(null)} />}
       {installNudge && !sheet && !sharing && <InstallSheet reason="nudge" onClose={() => setInstallNudge(false)} />}
     </div>

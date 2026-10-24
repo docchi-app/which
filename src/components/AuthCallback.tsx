@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithGoogle, takePendingVote, takeReturnTo } from "@/lib/auth";
+import { forgetGuestPicks, guestPicks, signInWithGoogle, takePendingVote, takeReturnTo } from "@/lib/auth";
 import { castVote } from "@/lib/polls";
 import { getSupabase } from "@/lib/supabase";
 import { LogoMark } from "./Logo";
@@ -58,6 +58,14 @@ export function AuthCallback() {
         takePendingVote();
         setError("Sign-in didn't finish.");
         return;
+      }
+
+      // Picks made as a guest. Usually they're already on this account (Google
+      // was linked to it); if this Google account had Docchi before, cast them here.
+      if (!data.session.user.is_anonymous) {
+        const picks = guestPicks();
+        forgetGuestPicks();
+        await Promise.allSettled(picks.map((p) => castVote(p.pollId, p.optionId)));
       }
 
       const pending = takePendingVote();

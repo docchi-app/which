@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { canVote, onUserChange } from "@/lib/auth";
+import { useEffect, useRef, useState } from "react";
+import { isSignedIn, onUserChange } from "@/lib/auth";
 import { fetchLeaderboard, type Board, type Leaderboard, type LeaderRow } from "@/lib/leaders";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { Avatar } from "./Avatar";
@@ -31,10 +31,13 @@ export function LeadersScreen() {
   const [failed, setFailed] = useState(false);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [retry, setRetry] = useState(0);
+  // This week was still empty on arrival, so we're showing last week instead.
+  const [fellBack, setFellBack] = useState(false);
+  const firstLoad = useRef(true);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
-    return onUserChange((u) => setSignedIn(canVote(u)));
+    return onUserChange((u) => setSignedIn(isSignedIn(u)));
   }, []);
 
   useEffect(() => {
@@ -44,6 +47,14 @@ export function LeadersScreen() {
       .then((d) => {
         if (!live) return;
         setFailed(false);
+        // Arriving to an empty week: show last week's board rather than an empty one.
+        if (firstLoad.current && which === "this" && !d?.rows.length) {
+          firstLoad.current = false;
+          setFellBack(true);
+          setWhich("last");
+          return;
+        }
+        firstLoad.current = false;
         setData(d);
       })
       .catch(() => live && setFailed(true));
@@ -68,7 +79,14 @@ export function LeadersScreen() {
       <section className="leaders-hero">
         <div className="leaders-head">
           <h1 className="leaders-title">{which === "this" ? "This week" : "Last week"}</h1>
-          <button type="button" className="leaders-week" onClick={() => setWhich(which === "this" ? "last" : "this")}>
+          <button
+            type="button"
+            className="leaders-week"
+            onClick={() => {
+              setFellBack(false);
+              setWhich(which === "this" ? "last" : "this");
+            }}
+          >
             {which === "this" ? "Last week →" : "← This week"}
           </button>
         </div>
@@ -76,6 +94,7 @@ export function LeadersScreen() {
           {data ? `${shortDate(data.weekStart)} – ${shortDate(data.weekEnd)}` : " "}
           {which === "this" && data?.updatedAt ? ` · updated ${ago(data.updatedAt)}` : ""}
         </p>
+        {fellBack && which === "last" && <p className="leaders-sub">Nobody&apos;s on this week&apos;s board yet. Here&apos;s how last week ended.</p>}
         {which === "this" && data?.lastChamp && (
           <p className="leaders-champ">
             <span aria-hidden="true">👑</span> Last week&apos;s champ{" "}
@@ -143,9 +162,7 @@ export function LeadersScreen() {
 
       {board === "creators" && which === "this" && data && (
         <div className="leaders-me" role="status">
-          {signedIn === false ? (
-            <>Sign in and post a poll to get on the board.</>
-          ) : data.me?.rank ? (
+          {data.me?.rank ? (
             <>
               You&apos;re <strong>#{data.me.rank}</strong> this week · {votes(data.me.score)}
             </>

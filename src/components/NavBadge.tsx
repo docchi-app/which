@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ACTIVITY_SEEN, fetchActivity } from "@/lib/activity";
-import { canVote, onUserChange } from "@/lib/auth";
+import { isSignedIn, onUserChange } from "@/lib/auth";
 import { CIRCLE_CHANGED, getCircleBadge } from "@/lib/circle";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { showTip } from "@/lib/tips";
@@ -36,7 +36,7 @@ export function NavBadge() {
         .catch(() => {});
     };
     const stop = onUserChange((user) => {
-      signedIn = canVote(user);
+      signedIn = isSignedIn(user);
       refresh();
     });
     const cleared = () => setNews(false);

@@ -7,12 +7,12 @@ import type { Poll } from "@/lib/types";
 import { Avatar } from "./Avatar";
 
 /** What someone outside the circle sees instead of the poll. */
-export function LockedCircle({ poll, canVote }: { poll: Poll; canVote: boolean | null }) {
+export function LockedCircle({ poll, signedIn }: { poll: Poll; signedIn: boolean | null }) {
   const [state, setState] = useState<"idle" | "busy" | "sent">("idle");
   const [error, setError] = useState<string | null>(null);
 
   async function ask() {
-    if (canVote === false) {
+    if (signedIn === false) {
       saveReturnTo(window.location.pathname + window.location.search);
       try {
         await continueWithGoogle();
@@ -49,7 +49,7 @@ export function LockedCircle({ poll, canVote }: { poll: Poll; canVote: boolean |
         <span className="chip chip-white">Request sent</span>
       ) : (
         <button type="button" className="post-btn press" onClick={ask} disabled={state === "busy"}>
-          {canVote === false ? `Sign in to ask @${poll.creator}` : `Ask to join @${poll.creator}'s circle`}
+          {signedIn === false ? `Sign in to ask @${poll.creator}` : `Ask to join @${poll.creator}'s circle`}
         </button>
       )}
       {error && (

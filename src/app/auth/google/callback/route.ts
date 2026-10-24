@@ -5,8 +5,9 @@ import { exchangeCode, GOOGLE_STATE_COOKIE, googleRedirectUri, googleServerConfi
 
 /**
  * Step 2: Google sends the viewer back here with a one-time code. We swap it
- * for an ID token, hand that to Supabase, and write the session cookies the
- * browser client reads. /auth/callback then casts any pending pick.
+ * for an ID token, hand that to Supabase (linking it to a guest account, or
+ * signing in), and write the session cookies the browser client reads.
+ * /auth/callback then casts any pending pick.
  */
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -45,12 +46,20 @@ export async function GET(request: NextRequest) {
       setAll: (cookies) => cookies.forEach(({ name, value, options }) => response.cookies.set(name, value, options)),
     },
   });
-  const { error } = await supabase.auth.signInWithIdToken({
-    provider: "google",
-    token: tokens.idToken,
-    access_token: tokens.accessToken,
-    nonce,
-  });
+  const credentials = { provider: "google", token: tokens.idToken, access_token: tokens.accessToken, nonce };
+
+  // A guest (anonymous account): link Google to it, so it keeps its id and its
+  // votes start counting. If this Google account already has Docchi (or
+  // linking is switched off), sign in to that account instead; /auth/callback
+  // then casts the guest's picks again there.
+  const { data } = await supabase.auth.getSession();
+  if (data.session?.user.is_anonymous) {
+    const { error } = await supabase.auth.linkIdentity(credentials);
+    if (!error) return response;
+    console.warn("linking Google to the guest account failed, signing in instead:", error.message);
+  }
+
+  const { error } = await supabase.auth.signInWithIdToken(credentials);
   if (error) {
     console.error("supabase signInWithIdToken:", error.message);
     return fail("supabase_rejected");

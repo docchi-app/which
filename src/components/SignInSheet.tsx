@@ -2,17 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { continueWithGoogle } from "@/lib/auth";
+import { continueWithGoogle, guestPicks } from "@/lib/auth";
 
 export type SheetPick = { text: string; color: string };
 
 type Props = {
-  pick: SheetPick;
+  /** The pick waiting on sign-in (when guest voting is off). Without one, a guest is asked to make their votes count. */
+  pick?: SheetPick;
   onClose: () => void;
 };
 
-/** "Lock in your pick": slides up the first time a signed-out viewer votes. */
+/** Slides up when a vote needs Google, or after a guest's first few votes. */
 export function SignInSheet({ pick, onClose }: Props) {
+  const [votes] = useState(() => guestPicks().length);
   const googleRef = useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,16 +56,30 @@ export function SignInSheet({ pick, onClose }: Props) {
           </span>
         </div>
 
-        <h2 id="signin-title" className="sheet-title">
-          Lock in your pick
-        </h2>
-        <p className="sheet-text">
-          You picked{" "}
-          <strong className="sheet-pick" style={{ background: pick.color }}>
-            {pick.text}
-          </strong>
-          . One vote per person keeps Docchi fair. One tap and you&apos;re in.
-        </p>
+        {pick ? (
+          <>
+            <h2 id="signin-title" className="sheet-title">
+              Lock in your pick
+            </h2>
+            <p className="sheet-text">
+              You picked{" "}
+              <strong className="sheet-pick" style={{ background: pick.color }}>
+                {pick.text}
+              </strong>
+              . One vote per person keeps Docchi fair. One tap and you&apos;re in.
+            </p>
+          </>
+        ) : (
+          <>
+            <h2 id="signin-title" className="sheet-title">
+              Make your votes count
+            </h2>
+            <p className="sheet-text">
+              {votes > 1 ? `Your ${votes} picks aren't` : "Your pick isn't"} in the results yet. Sign in and{" "}
+              {votes > 1 ? "they count" : "it counts"}, plus you can comment and post your own polls.
+            </p>
+          </>
+        )}
 
         <button ref={googleRef} type="button" className="sheet-btn sheet-btn-google press" onClick={google} disabled={busy}>
           <GoogleG />

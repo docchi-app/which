@@ -2,15 +2,18 @@ import type { User } from "@supabase/supabase-js";
 import { forgetThisDevice } from "./push";
 import { getSupabase } from "./supabase";
 
-/** Thrown by castVote when the viewer needs to sign in first. */
+/** Thrown by castVote when guest voting isn't available and the viewer must sign in first. */
 export class SignInRequired extends Error {
   constructor() {
     super("sign in to vote");
   }
 }
 
-/** Guest (anonymous) accounts from the first release can browse but not vote. */
-export const canVote = (user: User | null | undefined) => Boolean(user && !user.is_anonymous);
+/**
+ * Signed in with Google. Guests (anonymous accounts) can vote too, but their
+ * votes only join the totals once they sign in; commenting and posting need this.
+ */
+export const isSignedIn = (user: User | null | undefined) => Boolean(user && !user.is_anonymous);
 
 export async function currentUser(): Promise<User | null> {
   const supabase = getSupabase();
@@ -36,6 +39,8 @@ const callbackUrl = () => `${window.location.origin}/auth/callback`;
 export async function continueWithGoogle(): Promise<void> {
   const supabase = getSupabase();
   if (!supabase) throw new Error("Supabase is not configured");
+  // Our own Google route links a guest account itself (see /auth/google/callback).
+  if (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) return signInWithGoogle();
   const user = await currentUser();
   if (user?.is_anonymous) {
     const { error } = await supabase.auth.linkIdentity({ provider: "google", options: { redirectTo: callbackUrl() } });
@@ -66,7 +71,25 @@ export async function signInWithGoogle(): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * The current user, starting a guest (anonymous) account if there's no one
+ * yet. Null when guest accounts are switched off in Supabase.
+ */
+export async function currentOrGuest(): Promise<User | null> {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+  const user = await currentUser();
+  if (user) return user;
+  const { data, error } = await supabase.auth.signInAnonymously();
+  if (error) {
+    console.warn("Guest voting is unavailable", error.message);
+    return null;
+  }
+  return data.user;
+}
+
 export async function signOut(): Promise<void> {
+  forgetGuestPicks();
   await forgetThisDevice();
   await getSupabase()?.auth.signOut();
 }
@@ -114,5 +137,38 @@ export function takeReturnTo(): string | null {
     return path?.startsWith("/") && !path.startsWith("//") ? path : null;
   } catch {
     return null;
+  }
+}
+
+// Picks made as a guest. Linking Google keeps them on the same account, but
+// if that Google account already had Docchi the guest is left behind, so
+// /auth/callback casts them again as the real account.
+
+const GUEST_PICKS_KEY = "docchi.guestPicks";
+const MAX_GUEST_PICKS = 50;
+
+export function guestPicks(): PendingVote[] {
+  try {
+    return JSON.parse(localStorage.getItem(GUEST_PICKS_KEY) ?? "[]") as PendingVote[];
+  } catch {
+    return [];
+  }
+}
+
+export function rememberGuestPick(vote: PendingVote) {
+  try {
+    const picks = guestPicks().filter((p) => p.pollId !== vote.pollId);
+    localStorage.setItem(GUEST_PICKS_KEY, JSON.stringify([...picks, vote].slice(-MAX_GUEST_PICKS)));
+  } catch {
+    // Storage blocked: linking Google still keeps them; only the rare
+    // "already had an account" case loses them.
+  }
+}
+
+export function forgetGuestPicks() {
+  try {
+    localStorage.removeItem(GUEST_PICKS_KEY);
+  } catch {
+    // Nothing stored.
   }
 }

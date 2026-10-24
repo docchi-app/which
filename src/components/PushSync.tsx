@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { canVote, onUserChange } from "@/lib/auth";
+import { isSignedIn, onUserChange } from "@/lib/auth";
 import { captureInstallPrompt } from "@/lib/install";
 import { registerWorker, syncPush } from "@/lib/push";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -15,7 +15,7 @@ export function PushSync() {
     if (!isSupabaseConfigured || !process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) return;
     let synced: string | null = null;
     return onUserChange((user) => {
-      if (user && canVote(user) && synced !== user.id) {
+      if (user && isSignedIn(user) && synced !== user.id) {
         synced = user.id;
         syncPush();
       }
