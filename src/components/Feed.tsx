@@ -6,7 +6,7 @@ import { guestPicks, isSignedIn, onUserChange, savePendingVote, takePendingVote 
 import { countVoteForNudge } from "@/lib/install";
 import { warmShareCard } from "@/lib/share";
 import { showTip, tipsAfterVote } from "@/lib/tips";
-import { FEED_PAGE_SIZE, fetchFeed, fetchPoll } from "@/lib/polls";
+import { FEED_PAGE_SIZE, fetchFeed, fetchPoll, recordOpen } from "@/lib/polls";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useLiveInterval } from "@/lib/useLiveInterval";
 import type { FeedTab, Poll, VoteResult } from "@/lib/types";
@@ -16,12 +16,12 @@ import { SignInSheet, type SheetPick } from "./SignInSheet";
 import { ShareSheet } from "./ShareSheet";
 import { BottomNav } from "./BottomNav";
 import { InstallSheet } from "./InstallSheet";
-import { TrophyIcon } from "./icons";
+import { Bell } from "./Bell";
 
 const TABS: { id: FeedTab; label: string }[] = [
-  { id: "trending", label: "Trending" },
+  { id: "trending", label: "For you" },
   { id: "new", label: "New" },
-  { id: "circle", label: "Circle" },
+  { id: "circle", label: "Friends" },
 ];
 
 // How often to look for polls posted since the feed loaded.
@@ -126,6 +126,8 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
         const sharedPoll = at >= 0 ? list.splice(at, 1)[0] : await fetchPoll(shared).catch(() => null);
         if (sharedPoll) list.unshift(sharedPoll);
         else setMissingShared(true);
+        // A link-only poll you've opened shows in your feed from now on.
+        if (sharedPoll?.visibility === "link" && !sharedPoll.isMine) recordOpen(shared).catch(() => {});
       }
       // From a "new comments" notification: open that poll's comments.
       if (shared && url.searchParams.has("comments")) {
@@ -352,7 +354,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   const poll = polls?.[index];
 
   function tagFor(p: Poll, i: number) {
-    if (tab === "circle") return p.visibility === "circle" ? "Circle poll" : "From your circle";
+    if (tab === "circle") return p.visibility === "circle" ? "Friends only" : "From a friend";
     if (p.featuredToday) return "Poll of the Day";
     if (votedBefore.has(p.id)) return "You voted";
     if (p.kind === "hot_take") return "Hot take";
@@ -369,9 +371,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
           <LogoMark />
           <Wordmark />
         </Link>
-        <Link href="/leaders" aria-label="Leaderboard" className="icon-btn press">
-          <TrophyIcon size={22} className="wiggle" />
-        </Link>
+        <Bell />
       </header>
 
       {welcome && (
@@ -458,15 +458,14 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
             ) : (
               tab === "circle" && polls.length === 0 ? (
                 <section className="poll-card empty-card">
-                  <span className="chip chip-circle">Circle</span>
-                  <h1 className="poll-question">Nothing from your circles yet.</h1>
+                  <span className="chip chip-circle">Friends</span>
+                  <h1 className="poll-question">Nothing from your friends yet.</h1>
                   <p className="poll-foot-note">
-                    Ask friends to let you into their circle, or share your circle link so they can join yours. Polls
-                    shared with your circles show up here.
+                    Add friends and their polls land here, including the ones they share only with friends.
                   </p>
                   <div className="empty-actions">
-                    <Link href="/profile?tab=circle" className="btn btn-coral press">
-                      Find people
+                    <Link href="/friends" className="btn btn-coral press">
+                      Add friends
                     </Link>
                   </div>
                 </section>

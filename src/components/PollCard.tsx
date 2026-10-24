@@ -3,12 +3,13 @@
 import { useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { SignInRequired } from "@/lib/auth";
+import { audienceLabel } from "@/lib/circle";
 import { castVote, fetchPoll } from "@/lib/polls";
 import { useLiveInterval } from "@/lib/useLiveInterval";
 import { formatCount, percentages, timeLeft } from "@/lib/format";
 import type { Poll, VoteResult } from "@/lib/types";
 import { ArrowIcon, CommentIcon, ShareIcon } from "./icons";
-import { CirclePicks, LockedCircle } from "./CircleBits";
+import { CirclePicks, FriendsVotedRow, LockedCircle } from "./CircleBits";
 import { CommentsSheet } from "./CommentsSheet";
 import { ReportSheet } from "./ReportSheet";
 
@@ -178,7 +179,7 @@ export function PollCard({
     return (
       <article className="poll-card poll-locked" aria-labelledby={`q-${poll.id}`}>
         <div className="poll-meta">
-          <span className="chip chip-small chip-circle">Circle</span>
+          <span className="chip chip-small chip-circle">Friends</span>
           <span className="poll-by">
             by{" "}
             <Link href={`/u/${poll.creator}`} className="creator-link">
@@ -224,9 +225,9 @@ export function PollCard({
         </span>
         <span className="poll-by">
           {poll.visibility === "link" && <span className="chip chip-small chip-link">Link only</span>}
-          {isCircle && !(tag.includes("Circle") && !poll.isMine) && (
+          {isCircle && !(tag.includes("Friend") && !poll.isMine) && (
             <span className="chip chip-small chip-circle" title={poll.audience ?? undefined}>
-              {poll.isMine && poll.audience && poll.audience !== "Whole circle" ? poll.audience : "Circle"}
+              {poll.isMine ? audienceLabel(poll.audience) : "Friends"}
             </span>
           )}{" "}
           by{" "}
@@ -299,7 +300,7 @@ export function PollCard({
             {beforeVoteLabel} · {isTake ? "vote to see how spicy it is" : "vote to see the results"}
           </p>
           {isCircle && !poll.isMine && (
-            <p className="circle-note">Your pick is visible to @{poll.creator}&apos;s circle.</p>
+            <p className="circle-note">@{poll.creator}&apos;s friends can see your pick.</p>
           )}
         </>
       ) : (
@@ -329,6 +330,7 @@ export function PollCard({
             </div>
           )}
           {isCircle && showResults && (voted || poll.isMine) && <CirclePicks poll={poll} />}
+          {!isCircle && signedIn && (voted || poll.isMine || closed) && <FriendsVotedRow poll={poll} />}
           {spice && (
             <div className="spice-meter">
               <strong>Spice meter</strong>

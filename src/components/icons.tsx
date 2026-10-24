@@ -64,3 +64,18 @@ export const ArrowIcon = (p: P) => (
     <path d="M5 12h14M13 6l6 6-6 6" />
   </Icon>
 );
+
+export const FriendsIcon = (p: P) => (
+  <Icon {...p}>
+    <circle cx="9" cy="8" r="3.2" />
+    <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" />
+    <path d="M16 4.6a3.2 3.2 0 0 1 0 6.3M18 14.3c1.8.8 3 2.7 3 5.7" />
+  </Icon>
+);
+
+export const BellIcon = (p: P) => (
+  <Icon {...p}>
+    <path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z" />
+    <path d="M10 20a2 2 0 0 0 4 0" />
+  </Icon>
+);

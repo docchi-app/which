@@ -20,7 +20,7 @@ import { InstallSheet } from "./InstallSheet";
 const KINDS: { id: keyof PushKinds; label: string; hint: string }[] = [
   { id: "votes", label: "Votes on my polls", hint: "At 10, 25, 50, 100…" },
   { id: "comments", label: "Comments on my polls", hint: "A few at a time, not every one" },
-  { id: "circle", label: "Circle", hint: "Requests, yeses and circle polls" },
+  { id: "circle", label: "Friends", hint: "Friend requests, new friends and friends-only polls" },
   { id: "results", label: "Results", hint: "When a poll you voted on closes" },
   { id: "daily", label: "Poll of the Day", hint: "Once a day, 9am" },
 ];
@@ -92,8 +92,8 @@ function statusText(support: PushSupport, state: State) {
   }
   if (support === "unsupported") return "This browser can't show notifications. Try Chrome, or Safari on iPhone from the Home Screen.";
   if (state === "denied") return "Notifications are blocked for Docchi. Allow them in your browser or phone settings, then come back.";
-  if (state === "on") return "We'll tap you when your poll takes off, your circle moves, or results land.";
-  return "Know when your poll takes off, your circle moves, or results are in.";
+  if (state === "on") return "We'll tap you when your poll takes off, friends add you, or results land.";
+  return "Know when your poll takes off, friends add you, or results are in.";
 }
 
 /**

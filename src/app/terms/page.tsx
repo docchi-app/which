@@ -20,7 +20,7 @@ export default function TermsPage() {
       <h2>Your polls</h2>
       <ul>
         <li>You own what you post. You let Docchi show, share and make link previews of it, as the app does, for as long as it&apos;s on Docchi.</li>
-        <li>Votes are anonymous to other people. In a circle poll, the people in that circle can see who picked what.</li>
+        <li>What you pick is anonymous to other people. Your friends can see that you voted on a poll they also voted on, but not your pick. On a friends-only poll, the friends it&apos;s shared with can see who picked what.</li>
         <li>Follow the <Link href="/guidelines">Community guidelines</Link>. We can remove any poll and suspend any account that breaks them or the law, with or without notice.</li>
         <li>Deleting a poll hides it for everyone. We keep a copy for a while for safety reviews (see <Link href="/privacy">Privacy</Link>).</li>
       </ul>
@@ -28,7 +28,7 @@ export default function TermsPage() {
       <h2>Don&apos;t</h2>
       <ul>
         <li>Use bots, scripts or many accounts to vote, post or report.</li>
-        <li>Try to get around limits, bans, blocks or circle privacy.</li>
+        <li>Try to get around limits, bans, blocks or friends-only privacy.</li>
         <li>Copy Docchi&apos;s data in bulk, or attack or overload the service.</li>
       </ul>
 

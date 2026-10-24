@@ -5,14 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { isSignedIn, continueWithGoogle, onUserChange, saveReturnTo } from "@/lib/auth";
 import {
+  acceptInvite,
+  addFriend,
   announceCircleChange,
   blockUser,
   circleErrorText,
+  friendStatus,
   getPublicProfile,
-  leaveCircle,
-  requestCircle,
   respondRequest,
   unblockUser,
+  unfriend,
   type PublicProfile,
 } from "@/lib/circle";
 import { fetchProfilePolls } from "@/lib/polls";
@@ -25,7 +27,7 @@ import { ProfilePoll } from "./ProfileScreen";
 import { ReportSheet } from "./ReportSheet";
 import { ShareSheet } from "./ShareSheet";
 
-/** /u/<name>: someone's public polls, and asking to join their circle. */
+/** /u/<name>: someone's public polls, and adding them as a friend. ?invite=<code> makes you friends. */
 export function PublicProfileScreen({ username }: { username: string }) {
   const router = useRouter();
   const [signedIn, setSignedIn] = useState<boolean | null>(isSupabaseConfigured ? null : false);
@@ -37,6 +39,9 @@ export function PublicProfileScreen({ username }: { username: string }) {
   const [error, setError] = useState<string | null>(null);
   const [confirmBlock, setConfirmBlock] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const [confirmUnfriend, setConfirmUnfriend] = useState(false);
+  // Just became friends through their invite link.
+  const [welcomed, setWelcomed] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -54,7 +59,22 @@ export function PublicProfileScreen({ username }: { username: string }) {
 
   useEffect(() => {
     if (signedIn === null && isSupabaseConfigured) return; // wait to know who's looking
-    load();
+    const url = new URL(window.location.href);
+    const invite = url.searchParams.get("invite");
+    if (signedIn && invite) {
+      // Opened their invite link: friends straight away, then forget the code.
+      url.searchParams.delete("invite");
+      window.history.replaceState(window.history.state, "", url);
+      acceptInvite(username, invite)
+        .then((r) => {
+          if (r === "member") {
+            setWelcomed(true);
+            announceCircleChange();
+          }
+        })
+        .catch((e) => setError(circleErrorText(e)))
+        .finally(load);
+    } else load();
     fetchProfilePolls(username)
       .then(setPolls)
       .catch(() => setPolls([]));
@@ -72,11 +92,13 @@ export function PublicProfileScreen({ username }: { username: string }) {
     } finally {
       setBusy(false);
       setConfirmBlock(false);
+      setConfirmUnfriend(false);
     }
   }
 
   async function signIn() {
-    saveReturnTo(`/u/${username}`);
+    // Keep ?invite=… so the friendship happens on the way back.
+    saveReturnTo(window.location.pathname + window.location.search);
     try {
       await continueWithGoogle();
     } catch {
@@ -99,6 +121,8 @@ export function PublicProfileScreen({ username }: { username: string }) {
     );
   }
 
+  const status = person ? friendStatus(person.theirCircle, person.myCircle) : "none";
+  const invited = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("invite");
   const joined = person ? new Date(person.joined).toLocaleDateString("en-IN", { month: "short", year: "numeric" }) : "";
 
   return (
@@ -130,17 +154,23 @@ export function PublicProfileScreen({ username }: { username: string }) {
           <dd>{person ? compactCount(person.votesReceived) : "–"}</dd>
         </div>
         <div className="stat" style={{ background: "var(--sun)" }}>
-          <dt>In circle</dt>
+          <dt>Friends</dt>
           <dd>{person ? compactCount(person.circleSize) : "–"}</dd>
         </div>
       </dl>
 
       {person && (
         <section className="circle-cta">
-          {person.myCircle === "pending" && (
+          {welcomed && (
+            <p className="circle-welcome" role="status">
+              You and @{person.username} are friends now 🎉
+            </p>
+          )}
+
+          {status === "incoming" && !person.blockedByMe && (
             <div className="circle-incoming" role="status">
               <span>
-                <strong>@{person.username}</strong> wants to join your circle.
+                <strong>@{person.username}</strong> wants to be friends.
               </span>
               <div className="person-actions">
                 <button type="button" className="mini-btn mini-btn-mint" disabled={busy} onClick={() => act(() => respondRequest(person.username, true))}>
@@ -159,26 +189,41 @@ export function PublicProfileScreen({ username }: { username: string }) {
             </button>
           ) : !signedIn ? (
             <button type="button" className="post-btn post-btn-dark press" onClick={signIn} disabled={!isSupabaseConfigured}>
-              Sign in to join @{person.username}&apos;s circle
+              {invited ? `Sign in to be friends with @${person.username}` : `Sign in to add @${person.username}`}
             </button>
-          ) : person.theirCircle === "none" ? (
-            <button type="button" className="post-btn press" disabled={busy} onClick={() => act(() => requestCircle(person.username))}>
-              Ask to join @{person.username}&apos;s circle
+          ) : status === "none" ? (
+            <button type="button" className="post-btn press" disabled={busy} onClick={() => act(() => addFriend(person.username))}>
+              Add friend
             </button>
-          ) : (
+          ) : status === "incoming" ? null : (
             <div className="circle-state">
-              <span className={`chip ${person.theirCircle === "member" ? "chip-mint" : "chip-white"}`}>
-                {person.theirCircle === "member" ? `In @${person.username}'s circle` : "Request sent"}
+              <span className={`chip ${status === "friends" ? "chip-mint" : "chip-white"}`}>
+                {status === "friends" ? "✓ Friends" : "Request sent"}
               </span>
-              <button type="button" className="mini-btn" disabled={busy} onClick={() => act(() => leaveCircle(person.username))}>
-                {person.theirCircle === "member" ? "Leave circle" : "Cancel request"}
-              </button>
+              {status === "requested" ? (
+                <button type="button" className="mini-btn" disabled={busy} onClick={() => act(() => unfriend(person.username))}>
+                  Cancel request
+                </button>
+              ) : confirmUnfriend ? (
+                <span className="person-actions">
+                  <button type="button" className="mini-btn mini-btn-danger" disabled={busy} onClick={() => act(() => unfriend(person.username))}>
+                    Unfriend
+                  </button>
+                  <button type="button" className="mini-btn" onClick={() => setConfirmUnfriend(false)}>
+                    Keep
+                  </button>
+                </span>
+              ) : (
+                <button type="button" className="mini-btn" onClick={() => setConfirmUnfriend(true)}>
+                  Unfriend
+                </button>
+              )}
             </div>
           )}
           <p className="circle-hint">
-            {person.theirCircle === "member"
-              ? `You'll see the polls @${person.username} shares with their circle.`
-              : `Once @${person.username} accepts, you'll see the polls they share with their circle.`}
+            {status === "friends"
+              ? `You see each other's friends-only polls and show up in each other's "friends voted".`
+              : `Friends see each other's friends-only polls${status === "requested" ? ` once @${person.username} accepts` : ""}.`}
           </p>
           {error && (
             <p className="poll-error" role="alert">
@@ -203,7 +248,7 @@ export function PublicProfileScreen({ username }: { username: string }) {
         <div className="block-row">
           {confirmBlock && signedIn ? (
             <>
-              <span className="confirm-text">Block @{person.username}? They leave your circle, you leave theirs, and they can&apos;t ask again.</span>
+              <span className="confirm-text">Block @{person.username}? You stop being friends and they can&apos;t add you again.</span>
               <button type="button" className="mini-btn mini-btn-danger" onClick={() => act(() => blockUser(person.username))}>
                 Block
               </button>

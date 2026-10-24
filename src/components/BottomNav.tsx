@@ -1,16 +1,17 @@
 import Link from "next/link";
-import { HomeIcon, PlusIcon, TrophyIcon, UserIcon } from "./icons";
+import { FriendsIcon, HomeIcon, PlusIcon, TrophyIcon, UserIcon } from "./icons";
 import { NavBadge } from "./NavBadge";
 
-type Section = "feed" | "leaders" | "profile" | "create";
+type Section = "feed" | "friends" | "leaders" | "profile" | "create";
 
 const ITEMS = [
   { id: "feed", href: "/", label: "Feed", Icon: HomeIcon },
+  { id: "friends", href: "/friends", label: "Friends", Icon: FriendsIcon },
   { id: "leaders", href: "/leaders", label: "Leaders", Icon: TrophyIcon },
   { id: "profile", href: "/profile", label: "Profile", Icon: UserIcon },
 ] as const;
 
-/** Floating dark pill (Feed / Leaders / Profile) plus the coral create button. */
+/** Floating dark pill (Feed / Friends / Leaders / Profile) plus the coral create button. */
 export function BottomNav({ current }: { current?: Section }) {
   return (
     <div className="bottom-bar">
@@ -19,13 +20,13 @@ export function BottomNav({ current }: { current?: Section }) {
           id === current ? (
             <Link key={id} href={href} aria-current="page" className="nav-item nav-item-active" data-tip={id === "feed" ? undefined : id}>
               <Icon />
-              {label}
-              {id === "profile" && <NavBadge />}
+              <span className="nav-label">{label}</span>
+              {id === "friends" && <NavBadge />}
             </Link>
           ) : (
             <Link key={id} href={href} aria-label={label} className="nav-item" data-tip={id === "feed" ? undefined : id}>
               <Icon size={22} />
-              {id === "profile" && <NavBadge />}
+              {id === "friends" && <NavBadge />}
             </Link>
           ),
         )}

@@ -10,7 +10,7 @@ export const TIPS: Record<TipId, { text: string; anchor: string; skipOn?: string
   comments: { text: "See what everyone's saying.", anchor: '[data-tip="comments"]' },
   leaders: { text: "Votes on your polls count toward this week's leaderboard.", anchor: '[data-tip="leaders"]', skipOn: "/leaders" },
   circle: { text: "Polls just for your friends show up here.", anchor: '[data-tip="circle"]' },
-  activity: { text: "Your polls got new votes. Tap to see.", anchor: '[data-tip="profile"]', skipOn: "/profile" },
+  activity: { text: "Your polls got new votes. Tap to see.", anchor: '[data-tip="bell"]', skipOn: "/activity" },
 };
 
 export const TIP_EVENT = "docchi:tip";

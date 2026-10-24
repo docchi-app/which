@@ -109,6 +109,11 @@ export async function fetchPoll(id: string): Promise<Poll | null> {
   return row ? toPoll(row) : null;
 }
 
+/** Opened a link-only poll: it shows in my feed from now on. */
+export async function recordOpen(pollId: string): Promise<void> {
+  await getSupabase()?.rpc("record_open", { poll: pollId });
+}
+
 export async function castVote(pollId: string, optionId: string): Promise<VoteResult> {
   const supabase = getSupabase();
   if (!supabase) return demoVote(pollId, optionId);

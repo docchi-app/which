@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { continueWithGoogle, saveReturnTo } from "@/lib/auth";
-import { announceCircleChange, circleErrorText, getCirclePicks, requestCircle, type CirclePick } from "@/lib/circle";
+import { addFriend, announceCircleChange, circleErrorText, getCirclePicks, getFriendsVoted, type CirclePick, type FriendsVoted } from "@/lib/circle";
 import type { Poll } from "@/lib/types";
 import { Avatar } from "./Avatar";
 
-/** What someone outside the circle sees instead of the poll. */
+/** What someone who isn't a friend (or not in the chosen lists) sees instead of the poll. */
 export function LockedCircle({ poll, signedIn }: { poll: Poll; signedIn: boolean | null }) {
   const [state, setState] = useState<"idle" | "busy" | "sent">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +24,7 @@ export function LockedCircle({ poll, signedIn }: { poll: Poll; signedIn: boolean
     setState("busy");
     setError(null);
     try {
-      const status = await requestCircle(poll.creator);
+      const status = await addFriend(poll.creator);
       setState(status === "member" ? "idle" : "sent");
       announceCircleChange();
     } catch (e) {
@@ -42,14 +42,14 @@ export function LockedCircle({ poll, signedIn }: { poll: Poll; signedIn: boolean
         </svg>
       </span>
       <h1 className="poll-question" id={`q-${poll.id}`}>
-        This poll is for @{poll.creator}&apos;s circle
+        This poll is for @{poll.creator}&apos;s friends
       </h1>
-      <p className="poll-foot-note">Ask to join. Once @{poll.creator} accepts, you&apos;ll see the question and can vote.</p>
+      <p className="poll-foot-note">Add @{poll.creator} as a friend. Once they accept, you&apos;ll see the question and can vote.</p>
       {state === "sent" ? (
         <span className="chip chip-white">Request sent</span>
       ) : (
         <button type="button" className="post-btn press" onClick={ask} disabled={state === "busy"}>
-          {signedIn === false ? `Sign in to ask @${poll.creator}` : `Ask to join @${poll.creator}'s circle`}
+          {signedIn === false ? `Sign in to add @${poll.creator}` : `Add @${poll.creator} as a friend`}
         </button>
       )}
       {error && (
@@ -61,7 +61,7 @@ export function LockedCircle({ poll, signedIn }: { poll: Poll; signedIn: boolean
   );
 }
 
-/** "@priya and 2 more picked this too", plus who picked what. Circle polls only. */
+/** "@priya and 2 more picked this too", plus who picked what. Friends-only polls only. */
 export function CirclePicks({ poll }: { poll: Poll }) {
   const [picks, setPicks] = useState<CirclePick[] | null>(null);
   const [open, setOpen] = useState(false);
@@ -86,8 +86,8 @@ export function CirclePicks({ poll }: { poll: Poll }) {
     sameAsMe.length > 0
       ? `@${sameAsMe[0].username}${sameAsMe.length > 1 ? ` and ${sameAsMe.length - 1} more` : ""} picked this too`
       : poll.myOptionId
-        ? "Nobody in the circle picked what you did. Bold."
-        : `${others.length} of the circle voted`;
+        ? "No friend picked what you did. Bold."
+        : `${others.length} ${others.length === 1 ? "friend" : "friends"} voted`;
 
   return (
     <div className="circle-picks">
@@ -114,5 +114,38 @@ export function CirclePicks({ poll }: { poll: Poll }) {
         </ul>
       )}
     </div>
+  );
+}
+
+/** "@priya and 2 friends voted": who of your friends voted, never what they picked. Public and link polls. */
+export function FriendsVotedRow({ poll }: { poll: Poll }) {
+  const [data, setData] = useState<FriendsVoted | null>(null);
+  const voted = poll.myOptionId !== null;
+
+  useEffect(() => {
+    let stale = false;
+    getFriendsVoted(poll.id)
+      .then((d) => !stale && setData(d))
+      .catch(() => {});
+    return () => {
+      stale = true;
+    };
+  }, [poll.id, voted]);
+
+  if (!data || data.count === 0) return null;
+  const [first] = data.people;
+  const rest = data.count - 1;
+  return (
+    <p className="friends-voted">
+      <span className="avatar-stack" aria-hidden="true">
+        {data.people.slice(0, 3).map((p) => (
+          <Avatar key={p.username} name={p.username} url={p.avatarUrl} size={26} />
+        ))}
+      </span>
+      <span>
+        <strong>@{first.username}</strong>
+        {rest > 0 ? ` and ${rest} ${rest === 1 ? "friend" : "friends"} voted` : " voted"}
+      </span>
+    </p>
   );
 }

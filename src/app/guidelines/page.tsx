@@ -13,7 +13,7 @@ export default function GuidelinesPage() {
       <h2>Go for it</h2>
       <ul>
         <li>Everyday dilemmas, food fights, hot takes on movies, cricket, music, tech and life.</li>
-        <li>Questions about yourself (“Which haircut?”) and friendly ones for your circle.</li>
+        <li>Questions about yourself (“Which haircut?”) and friendly ones for your friends.</li>
         <li>Opinions people can disagree on, as long as nobody is being attacked.</li>
       </ul>
 

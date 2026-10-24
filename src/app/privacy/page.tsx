@@ -13,7 +13,7 @@ export default function PrivacyPage() {
       <h2>What we collect</h2>
       <ul>
         <li><strong>From Google, when you sign in:</strong> your name, email address and profile photo. Your name and photo help suggest a username; your email is never shown to anyone.</li>
-        <li><strong>What you do on Docchi:</strong> your username, the polls you post, your votes, shares, circle requests and groups, blocks and reports.</li>
+        <li><strong>What you do on Docchi:</strong> your username, the polls you post, your votes, shares, friends, friend requests and lists, link-only polls you&apos;ve opened, blocks and reports.</li>
         <li><strong>Visits:</strong> a random ID stored in your browser, which days you opened Docchi and how many times. We use it to count visitors and see whether people come back. It isn&apos;t linked to ads or other sites.</li>
         <li><strong>Technical logs</strong> kept by our hosting providers (like IP address and browser) for security, for a short time.</li>
       </ul>
@@ -21,7 +21,7 @@ export default function PrivacyPage() {
       <h2>Who sees what</h2>
       <ul>
         <li><strong>Everyone:</strong> your username, photo and public polls. Votes on public polls are only shown as totals.</li>
-        <li><strong>Your circle:</strong> your circle polls, and who picked what on them.</li>
+        <li><strong>Your friends:</strong> your friends list, your friends-only polls and who picked what on them, and that you voted on a poll they also voted on (never your pick).</li>
         <li><strong>Docchi&apos;s team:</strong> reports and the content they point to, to keep the app safe.</li>
         <li><strong>Service providers</strong> that run Docchi for us: Supabase (database and sign-in) and Vercel (hosting). They process data only to provide their service.</li>
         <li><strong>Authorities</strong>, only when Indian law requires it.</li>
