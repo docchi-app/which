@@ -14,10 +14,9 @@ import { BottomNav } from "./BottomNav";
 import { NotificationPrompt } from "./Notifications";
 import { ANSWER_COLORS, VerifiedTick } from "./PollCard";
 import { ShareSheet } from "./ShareSheet";
-import { CirclePanel } from "./CirclePanel";
-import { getCircleBadge } from "@/lib/circle";
+import { audienceLabel } from "@/lib/circle";
 
-type Tab = "mine" | "voted" | "circle";
+type Tab = "mine" | "voted";
 
 const NAME_PROBLEMS: Record<string, string> = {
   format: "3 to 20 letters, numbers or _",
@@ -39,21 +38,15 @@ export function ProfileScreen() {
   const [polls, setPolls] = useState<Poll[] | null>(null);
   const [sharing, setSharing] = useState<Poll | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [requests, setRequests] = useState(0);
   // New votes / comments since the last visit; shown for this visit, then marked seen.
   const [activity, setActivity] = useState<Activity | null>(null);
 
-  const loadBadge = useCallback(() => {
-    getCircleBadge()
-      .then(setRequests)
-      .catch(() => {});
-  }, []);
-
   useEffect(() => {
-    // Open straight on the Circle tab from links like /profile?tab=circle.
+    // Links like /profile?tab=voted open that tab; the old Circle tab is now /friends.
     const wanted = new URLSearchParams(window.location.search).get("tab");
+    if (wanted === "circle") window.location.replace("/friends");
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (wanted === "circle" || wanted === "voted") setTab(wanted);
+    else if (wanted === "voted") setTab(wanted);
   }, []);
 
   useEffect(() => {
@@ -76,7 +69,6 @@ export function ProfileScreen() {
   useEffect(() => {
     if (!signedIn) return;
     loadProfile();
-    loadBadge();
     let timer = 0;
     fetchActivity().then((a) => {
       setActivity(a);
@@ -84,7 +76,7 @@ export function ProfileScreen() {
       if (a.votes + a.comments > 0) timer = window.setTimeout(markActivitySeen, 2500);
     });
     return () => window.clearTimeout(timer);
-  }, [signedIn, loadProfile, loadBadge]);
+  }, [signedIn, loadProfile]);
 
   // The "Pick your @name" sheet can change the name while this screen is open.
   useEffect(() => {
@@ -93,9 +85,9 @@ export function ProfileScreen() {
   }, [loadProfile]);
 
   useEffect(() => {
-    if (!signedIn || tab === "circle") return;
+    if (!signedIn) return;
     let stale = false;
-    fetchMyPolls(tab as "mine" | "voted")
+    fetchMyPolls(tab)
       .then((list) => !stale && setPolls(list))
       .catch((e) => {
         console.error(e);
@@ -176,7 +168,6 @@ export function ProfileScreen() {
               [
                 ["mine", "My polls"],
                 ["voted", "Voted"],
-                ["circle", "Circle"],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -188,11 +179,6 @@ export function ProfileScreen() {
                 onClick={() => pickTab(id)}
               >
                 {label}
-                {id === "circle" && requests > 0 && (
-                  <span className="count-pill" aria-label={`${requests} requests`}>
-                    {requests}
-                  </span>
-                )}
               </button>
             ))}
           </div>
@@ -209,48 +195,43 @@ export function ProfileScreen() {
             </p>
           )}
 
-          {tab === "circle" ? (
-            <CirclePanel username={profile?.username ?? null} onChanged={loadBadge} />
-          ) : (
-            <ul className="profile-list">
-              {!polls ? (
-                [0, 1, 2].map((n) => <li key={n} className="skeleton profile-skeleton" />)
-              ) : polls.length === 0 ? (
-                <li className="profile-empty">
-                  {tab === "mine" ? (
-                    <>
-                      <strong>No polls yet.</strong> Ask something people can&apos;t resist.
-                      <Link href="/create" className="btn btn-coral press">
-                        Make a poll
-                      </Link>
-                    </>
-                  ) : (
-                    <>
-                      <strong>Nothing voted yet.</strong> Your picks will show up here.
-                      <Link href="/" className="btn btn-white press">
-                        Go vote
-                      </Link>
-                    </>
-                  )}
-                </li>
-              ) : (
-                polls.map((p, i) => (
-                  <ProfilePoll
-                    key={p.id}
-                    poll={p}
-                    index={i}
-                    news={tab === "mine" ? activity?.polls[p.id] : undefined}
-                    onShare={() => setSharing(p)}
-                    onChange={(patch) => {
-                      updatePoll(p.id, patch);
-                      if (!patch) loadProfile();
-                    }}
-                  />
-                ))
-              )}
-            </ul>
-          )}
-
+          <ul className="profile-list">
+            {!polls ? (
+              [0, 1, 2].map((n) => <li key={n} className="skeleton profile-skeleton" />)
+            ) : polls.length === 0 ? (
+              <li className="profile-empty">
+                {tab === "mine" ? (
+                  <>
+                    <strong>No polls yet.</strong> Ask something people can&apos;t resist.
+                    <Link href="/create" className="btn btn-coral press">
+                      Make a poll
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <strong>Nothing voted yet.</strong> Your picks will show up here.
+                    <Link href="/" className="btn btn-white press">
+                      Go vote
+                    </Link>
+                  </>
+                )}
+              </li>
+            ) : (
+              polls.map((p, i) => (
+                <ProfilePoll
+                  key={p.id}
+                  poll={p}
+                  index={i}
+                  news={tab === "mine" ? activity?.polls[p.id] : undefined}
+                  onShare={() => setSharing(p)}
+                  onChange={(patch) => {
+                    updatePoll(p.id, patch);
+                    if (!patch) loadProfile();
+                  }}
+                />
+              ))
+            )}
+          </ul>
         </>
       )}
 
@@ -450,7 +431,7 @@ export function ProfilePoll({
           {poll.kind === "mystery" && <span className="chip chip-small">Mystery</span>}
           {poll.visibility === "link" && <span className="chip chip-small chip-link">Link only</span>}
           {poll.visibility === "circle" && (
-            <span className="chip chip-small chip-circle">{poll.isMine && poll.audience ? poll.audience : "Circle"}</span>
+            <span className="chip chip-small chip-circle">{poll.isMine ? audienceLabel(poll.audience) : "Friends"}</span>
           )}
           {!poll.isMine && (
             <span className="profile-poll-by">
@@ -497,7 +478,7 @@ export function ProfilePoll({
                   }}
                 >
                   <option value="public">Everyone</option>
-                  <option value="circle">My circle</option>
+                  <option value="circle">Friends</option>
                   <option value="link">Only with link</option>
                 </select>
               </label>

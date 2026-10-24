@@ -32,7 +32,7 @@ type Draft = {
   days: Days;
   username: string;
   visibility: Visibility;
-  /** Circle polls: only these groups (empty = whole circle). */
+  /** Friends-only polls: only these lists (empty = all friends). */
   groups: string[];
 };
 const EMPTY_DRAFT: Draft = {
@@ -67,7 +67,7 @@ const ERRORS: Record<string, string> = {
   duplicate_answers: "Two answers are the same. Make each one different.",
   duration: "Pick when the poll closes.",
   blocked_words: "Let's keep it friendly: some of those words aren't allowed.",
-  empty_circle: "Nobody's in your circle (or those groups) yet. Share your circle link from your profile.",
+  empty_circle: "No friends yet (or in those lists). Share your invite link from the Friends tab.",
   special_limit: "One hot take or mystery poll a day. Post a classic, or come back tomorrow!",
   teaser_length: "Mystery polls need a teaser of 3 to 60 characters.",
   demo: "Demo mode: polls can't be posted until Supabase is connected.",
@@ -101,7 +101,7 @@ export function CreatePoll() {
   const restored = useRef(false);
   // Typing before the screen finishes loading must not be overwritten.
   const edited = useRef(false);
-  // Your circle and its groups, for "My circle".
+  // Your friends and their lists, for "Friends".
   const [circle, setCircle] = useState<MyCircle | null>(null);
 
   // Restore an unfinished draft (e.g. after signing in), then load who's posting.
@@ -210,7 +210,7 @@ export function CreatePoll() {
             : !nameOk
               ? "Pick a username"
               : circleEmpty
-                ? "Nobody's in your circle (or those groups) yet"
+                ? "No friends yet (or in those lists)"
                 : status && status.pollsLeft <= 0
                 ? `That's ${DAILY_POLL_LIMIT} polls today. Come back tomorrow!`
                 : null;
@@ -404,7 +404,7 @@ export function CreatePoll() {
             {(
               [
                 ["public", "Everyone"],
-                ["circle", "My circle"],
+                ["circle", "Friends"],
                 ["link", "Only with link"],
               ] as const
             ).map(([v, label]) => (
@@ -420,14 +420,14 @@ export function CreatePoll() {
             ))}
           </div>
           {draft.visibility === "circle" && circle && circleSize > 0 && (
-            <div className="audience-chips" role="group" aria-label="Which part of your circle">
+            <div className="audience-chips" role="group" aria-label="Which friends">
               <button
                 type="button"
                 className="member-group"
                 aria-pressed={draft.groups.length === 0}
                 onClick={() => set({ groups: [] })}
               >
-                Whole circle ({circleSize})
+                All friends ({circleSize})
               </button>
               {circle.groups.map((g) => {
                 const on = draft.groups.includes(g.id);
@@ -452,9 +452,9 @@ export function CreatePoll() {
               ? "Shows up in everyone's feed."
               : draft.visibility === "circle"
                 ? circle && circleSize === 0
-                  ? "Your circle is empty. Share your circle link (Profile → Circle) so friends can ask to join."
-                  : `Only ${audienceSize} ${audienceSize === 1 ? "person" : "people"} in your circle can see and vote. They'll see who picked what.`
-                : "Stays out of the feed. Only people you send the link to can vote. You can change this later on your profile."}
+                  ? "No friends yet. Share your invite link from the Friends tab."
+                  : `Only ${audienceSize} ${audienceSize === 1 ? "friend" : "friends"} can see and vote. They'll see who picked what.`
+                : "Not public. Whoever you send the link to can vote, and it shows in their feed after they open it."}
           </span>
         </fieldset>
 
@@ -522,7 +522,7 @@ export function CreatePoll() {
             <span className="preview-by">
               by @{author} · closes in {daysLabel}
               {draft.visibility === "link" && " · link only"}
-              {draft.visibility === "circle" && " · circle only"}
+              {draft.visibility === "circle" && " · friends only"}
             </span>
           </div>
         </div>

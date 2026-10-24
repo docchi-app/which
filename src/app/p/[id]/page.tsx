@@ -13,8 +13,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const votes = `${poll.voteCount.toLocaleString("en-US")} ${poll.voteCount === 1 ? "vote" : "votes"}`;
   // A mystery poll's question never goes into a preview: that's the surprise.
   if (poll.circle) {
-    const title = `A poll for @${poll.creator}'s circle`;
-    const description = "Only people in their circle can see it. Ask to join on Docchi.";
+    const title = `A poll for @${poll.creator}'s friends`;
+    const description = "Only their friends can see it. Add them on Docchi.";
     return {
       title: `${title} · Docchi`,
       description,

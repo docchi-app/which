@@ -11,7 +11,7 @@ linked in the handoff.
 
 The first slice of the build order:
 
-- **Feed:** Trending and New tabs, Poll of the Day pinned on top, a card stack with Next and Skip,
+- **Feed:** For you (trending), New and Friends tabs, Poll of the Day pinned on top, a card stack with Next and Skip,
   and an "all caught up" card at the end. A shared link (`/?poll=<id>`) puts that poll first.
 - **Swipe pager:** the feed is one fixed screen. Swipe up for the next poll, down for the
   previous one (the card follows your finger). A long poll scrolls inside its card first. The page
@@ -64,22 +64,31 @@ The first slice of the build order:
   email). The first time someone opens the app signed in, a **"Pick your @name"** sheet asks them
   to keep it or change it (live check, free suggestions). It can't be skipped. After that, names
   can be changed on the profile once a week. Anonymous guests from the first release keep
-  `guest_…` names and can't use circles.
-- **Circle (Instagram Close Friends style, with requests):** everyone has a profile at
-  `/u/<username>` with their public polls and an **Ask to join circle** button; that link is also
-  their circle invite link. You accept or decline requests (a badge on the Profile tab shows how
-  many are waiting), remove people, and sort your circle into **groups** such as Family or Office.
-  It's one-way: being in my circle lets you see my circle polls, not the other way round. Search people by username; block someone to cut both directions. Limits: 500 people and
-  10 groups per circle, 50 requests a day.
-- **Circle polls:** "Who can see it" on the + screen is **Everyone / My circle / Only with link**.
-  My circle goes to the whole circle or just the groups you tick (Family, Office…). Circle polls
-  stay out of Trending and New and show in the **Circle** tab (with public polls from the circles
-  you're in). Before voting: "Your pick is visible to @x's circle"; after voting: "@priya and 2 more
-  picked this too" and who picked what. Anyone else who opens the link sees a locked "This poll is
-  for @x's circle" card with Ask to join, and can't vote; link previews show only who it's from.
+  `guest_…` names and can't add friends.
+- **Friends (two-way):** a **Friends** tab in the bottom nav (`/friends`) with an **Invite friends**
+  link (`/u/<name>?invite=<code>`: whoever opens it, signed in, becomes your friend at once),
+  username search, friend requests (Accept / Decline), **People you might know** (mutual friends,
+  people whose polls you vote on, this week's top creators), your friends (Unfriend, and tick them
+  into **lists** such as Family or Office) and requests you sent. Every profile (`/u/<username>`)
+  has **Add friend** / Request sent / Accept / ✓ Friends. Adding someone who already asked you makes
+  you friends straight away. Block someone to unfriend and stop new requests. Limits: 500 friends,
+  10 lists, 50 requests a day. In the database friendships live in the old circle tables
+  (`circle_members`, stored both ways once accepted); the old circle RPC names still work.
+- **Friends-only polls:** "Who can see it" on the + screen is **Everyone / Friends / Only with
+  link**. Friends goes to all your friends or just the lists you tick. Before voting: "@x's friends
+  can see your pick"; after voting: "@priya and 2 more picked this too" and who picked what. Anyone
+  else who opens the link sees a locked "This poll is for @x's friends" card with **Add @x as a
+  friend**, and can't vote; link previews show only who it's from.
+- **One feed:** **For you** (trending) and **New** show every live poll you can see: public polls,
+  your friends' friends-only polls, your own, and link-only polls you've opened or voted on (opening
+  one records it in `poll_access`). The **Friends** tab narrows it to polls from friends.
+- **Friends voted:** after you vote on a public or link poll, "@priya and 2 friends voted" with
+  their faces. Never what they picked (`friends_voted()`).
+- **Bell:** top right of the feed, with the friend-request count or a dot for new votes and comments
+  on your polls. It opens **Activity** (`/activity`): requests to accept or decline, and each of
+  your polls with news ("+5 votes · 1 comment"), linking to the poll.
 - **Private polls:** a poll can be for **Everyone** (in the feed) or **Only with the link**. A
-  link-only poll never shows in the feed; it's on the creator's profile and in **Voted** for people
-  who voted on it, and anyone else can open it only from its link. Chosen on the + screen, changeable later.
+  link-only poll is never in anyone's feed until they open its link; then it shows in theirs. Chosen on the + screen, changeable later.
 - **Deleting:** the creator can delete a poll. It disappears everywhere (a shared link shows "That
   poll isn't available anymore"), but the row stays in the database for moderation review.
 - **Leaders (weekly):** Monday–Sunday, India time. **Top creators** by votes their public polls got
@@ -108,19 +117,20 @@ The first slice of the build order:
   plus a table by day.
 - **Tips, one at a time:** a small dark bubble beside the thing it explains, shown once, at the
   moment it's useful: + after your 2nd vote, 💬 when you vote on a poll that has comments, Leaders
-  after your first poll (or 6 votes), the Circle tab after 8 votes, Profile when your polls have
+  after your first poll (or 6 votes), the Friends tab after 8 votes, the bell when your polls have
   news. Never more than one every 2 minutes, never while a sheet is open, never blocks a tap; any
   tap, scroll or 7 seconds hides it (`src/lib/tips.ts`, `TipLayer`).
-- **What's new on your polls:** a dot on the Profile tab when your polls got votes or comments
-  since you last looked (circle requests keep their number), then on Profile → My polls a
+- **What's new on your polls:** a dot on the bell when your polls got votes or comments since you
+  last looked (friend requests show a number on the bell and the Friends tab), then Activity and
+  Profile → My polls show a
   "Since your last visit: +14 votes · 3 comments" line and a chip on each poll with news. It's
   marked seen after a moment on screen (`my_activity()` / `mark_activity_seen()`, stored per account).
 - **Settings (⚙︎ on Profile):** notifications, the app (Home Screen), account (Admin, Sign out) and
   the policies, so Profile stays about your polls.
 - **Phone notifications (web push):** a slim "Get notified → Turn on" row on Profile while they're
   off on that phone (✕ hides it for a month); once on, it disappears. Settings → Notifications has a
-  switch for each kind: **votes** on your polls (at 10, 25, 50, 100…), **circle** (requests, yeses, new circle
-  polls), **results** (when a poll you voted on or made closes) and **Poll of the Day** (9am).
+  switch for each kind: **votes** on your polls (at 10, 25, 50, 100…), **friends** (friend requests, new friends,
+  friends-only polls), **results** (when a poll you voted on or made closes) and **Poll of the Day** (9am).
   Quiet 11pm–8am India time, at most 8 a day, and tapping one opens the poll. Works on Android and
   desktop browsers; on iPhone, only after adding Docchi to the Home Screen (iOS 16.4+), and the
   app says so. Signing out stops that phone getting your notifications.
@@ -174,7 +184,8 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261102000000_scale.sql`, `20261103000000_feed_voted_last.sql`,
    `20261104000000_safety_metrics.sql`, `20261105000000_push.sql`, `20261106000000_push_fixes.sql`, `20261107000000_leaders_schedule.sql`,
    `20261108000000_comments.sql`, `20261109000000_rate_limits.sql`,
-   `20261110000000_activity.sql`, `20261111000000_guest_votes.sql`, …), in date order,
+   `20261110000000_activity.sql`, `20261111000000_guest_votes.sql`, `20261112000000_friends.sql`, …),
+   in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
@@ -353,12 +364,12 @@ per Supabase auth user, created automatically by a database trigger.
 | Usernames are unique, 3–20 of `a-z 0-9 _`, not reserved or rude | `username_problem()`, used by `check_username()` and `create_poll()` |
 | A mystery question stays hidden until you vote | `poll_cards()` returns `null` for it; `cast_vote()` reveals it |
 | One hot take or mystery poll per person per day | `create_poll()` |
-| Link-only polls stay out of feeds | `get_feed()` only picks public polls (Circle tab: circle polls you can see) |
+| Feeds only show polls you can see | `get_feed()` uses `in_feed()`: public polls, your own, friends-only polls `can_view_poll()` allows, and link polls in your `poll_access` |
 | Only the creator can change visibility or delete | `set_poll_visibility()`, `delete_poll()` (soft delete: `deleted_at`) |
 | Every Google account has a real username; circles refuse `guest_…` accounts | `handle_new_user()`, `pick_username()`, `request_circle()` |
-| Circle requests need the owner's OK; groups only hold accepted members | `request_circle()`, `respond_request()`, `set_group_member()` |
+| Friend requests need the other person's OK (or their invite link); friendships are two-way; lists only hold friends | `request_circle()`, `respond_request()`, `make_friends()`, `accept_invite()`, `set_group_member()` |
 | Blocking cuts both ways and stops new requests | `block_user()`, checked by `request_circle()`, `get_profile()`, `search_people()` |
-| Circle polls: only the circle (or its chosen groups) sees, votes on and sees picks | `can_view_poll()`, used by `get_feed()`, `poll_cards()`, `cast_vote()`, `circle_picks()` |
+| Friends-only polls: only friends (or the chosen lists) see, vote on and see picks; on other polls friends see only that you voted | `can_view_poll()`, used by `get_feed()`, `poll_cards()`, `cast_vote()`, `circle_picks()`; `friends_voted()` returns names, never picks |
 | No reading polls around the rules | direct `select` on `polls` / `poll_options` is revoked; everything goes through the functions |
 | Shares count once per person per poll | `shares` primary key + `record_share()`; signed-out shares aren't counted |
 | Word filter | `blocked_terms` table (whole words, English + Hindi); add rows to extend it |
@@ -377,7 +388,7 @@ per Supabase auth user, created automatically by a database trigger.
 | Data is deleted on schedule (as the Privacy page says) | `purge_old_records()` daily via pg_cron: removed polls, old comments and resolved reports after 180 days, visits after 2 years |
 
 **The feed** (`get_feed`) shows open polls, 30 per page ("load more" fetches the next page a few
-cards before the end). On Trending and New, polls you haven't voted on come first, with today's
+cards before the end). On For you and New, polls you haven't voted on come first, with today's
 Poll of the Day on top of Trending; ones you've voted on follow at the end. **Trending** ranks by `polls.hot_score`, votes with a time
 decay (Hacker News style). **New** is newest first.
 

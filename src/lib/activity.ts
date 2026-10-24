@@ -5,23 +5,30 @@ export type Activity = {
   votes: number;
   comments: number;
   polls: Record<string, { votes: number; comments: number }>;
+  /** The same polls, newest first, with their questions (for the Activity screen). */
+  list: { pollId: string; question: string | null; votes: number; comments: number }[];
 };
 
-/** Fired after activity is marked seen, so the Profile dot clears everywhere. */
+/** Fired after activity is marked seen, so the bell's dot clears everywhere. */
 export const ACTIVITY_SEEN = "docchi:activity-seen";
 
-const EMPTY: Activity = { votes: 0, comments: 0, polls: {} };
+const EMPTY: Activity = { votes: 0, comments: 0, polls: {}, list: [] };
 
 export async function fetchActivity(): Promise<Activity> {
   const supabase = getSupabase();
   if (!supabase) return EMPTY;
   const { data, error } = await supabase.rpc("my_activity");
   if (error || !data) return EMPTY;
-  const d = data as { votes: number; comments: number; polls: { poll_id: string; votes: number; comments: number }[] };
+  const d = data as {
+    votes: number;
+    comments: number;
+    polls: { poll_id: string; question?: string | null; votes: number; comments: number }[];
+  };
   return {
     votes: d.votes,
     comments: d.comments,
     polls: Object.fromEntries(d.polls.map((p) => [p.poll_id, { votes: p.votes, comments: p.comments }])),
+    list: d.polls.map((p) => ({ pollId: p.poll_id, question: p.question ?? null, votes: p.votes, comments: p.comments })),
   };
 }
 

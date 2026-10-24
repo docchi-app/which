@@ -3,51 +3,59 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  addFriend,
   announceCircleChange,
   circleErrorText,
   createGroup,
   deleteGroup,
+  friendStatus,
+  getInviteCode,
   getMyCircle,
-  leaveCircle,
-  removeFromCircle,
   renameGroup,
-  requestCircle,
   respondRequest,
   searchPeople,
   setGroupMember,
-  type CircleStatus,
+  suggestFriends,
+  unfriend,
+  type FriendStatus,
   type MyCircle,
   type Person,
+  type Suggestion,
 } from "@/lib/circle";
 import { Avatar } from "./Avatar";
 
-/** The Circle tab on your own profile. */
-export function CirclePanel({ username, onChanged }: { username: string | null; onChanged?: () => void }) {
+/** Everything on the Friends screen: invite, find, requests, suggestions, friends, lists. */
+export function FriendsPanel({ username }: { username: string | null }) {
   const [circle, setCircle] = useState<MyCircle | null>(null);
+  const [suggested, setSuggested] = useState<Suggestion[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     getMyCircle()
       .then(setCircle)
       .catch((e) => setError(circleErrorText(e)));
+    suggestFriends()
+      .then(setSuggested)
+      .catch(() => setSuggested([]));
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  /** Run a change, then reload the circle (and the badge). */
+  /** Run a change, then reload (and refresh the badges). */
   async function act(fn: () => Promise<unknown>) {
     setError(null);
     try {
       await fn();
       load();
       announceCircleChange();
-      onChanged?.();
     } catch (e) {
       setError(circleErrorText(e));
     }
   }
+
+  const sent = circle?.joined.filter((j) => j.status === "pending") ?? [];
 
   return (
     <div className="circle-panel">
@@ -59,18 +67,15 @@ export function CirclePanel({ username, onChanged }: { username: string | null; 
 
       {username && <InviteCard username={username} />}
 
-      <FindPeople onChanged={load} />
-
       {circle && circle.requests.length > 0 && (
         <section className="circle-section">
           <h2 className="circle-title">
-            Requests <span className="count-pill">{circle.requests.length}</span>
+            Friend requests <span className="count-pill">{circle.requests.length}</span>
           </h2>
           <ul className="people">
             {circle.requests.map((r) => (
               <li key={r.username} className="person">
                 <PersonLink person={r} />
-                <span className="person-note">wants to join</span>
                 <div className="person-actions">
                   <button type="button" className="mini-btn mini-btn-mint" onClick={() => act(() => respondRequest(r.username, true))}>
                     Accept
@@ -85,41 +90,65 @@ export function CirclePanel({ username, onChanged }: { username: string | null; 
         </section>
       )}
 
-      {circle && <Groups circle={circle} act={act} />}
+      <FindPeople onChanged={load} />
+
+      {suggested && suggested.length > 0 && (
+        <section className="circle-section">
+          <h2 className="circle-title">People you might know</h2>
+          <ul className="people">
+            {suggested.map((s) => (
+              <li key={s.username} className="person">
+                <PersonLink person={s} />
+                <span className="person-note">
+                  {s.mutual > 0
+                    ? `${s.mutual} mutual ${s.mutual === 1 ? "friend" : "friends"}`
+                    : s.voted > 0
+                      ? "You vote on their polls"
+                      : "Top creator this week"}
+                </span>
+                <div className="person-actions">
+                  <button type="button" className="mini-btn mini-btn-coral" onClick={() => act(() => addFriend(s.username))}>
+                    Add
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {circle && (
         <section className="circle-section">
           <h2 className="circle-title">
-            In your circle <span className="count-pill">{circle.members.length}</span>
+            Friends <span className="count-pill">{circle.members.length}</span>
           </h2>
           {circle.members.length === 0 ? (
             <p className="circle-empty">
-              Nobody yet. Send your link above: people ask to join, you accept. Then they see the polls you share with
-              your circle.
+              No friends yet. Share your invite link above: whoever opens it becomes your friend straight away. Friends see
+              the polls you share with friends, and you see theirs.
             </p>
           ) : (
             <ul className="people">
               {circle.members.map((m) => (
-                <Member key={m.username} member={m} circle={circle} act={act} />
+                <Friend key={m.username} member={m} circle={circle} act={act} />
               ))}
             </ul>
           )}
         </section>
       )}
 
-      {circle && circle.joined.length > 0 && (
+      {circle && circle.members.length > 0 && <Lists circle={circle} act={act} />}
+
+      {sent.length > 0 && (
         <section className="circle-section">
-          <h2 className="circle-title">Circles you&apos;re in</h2>
+          <h2 className="circle-title">Requests you sent</h2>
           <ul className="people">
-            {circle.joined.map((j) => (
+            {sent.map((j) => (
               <li key={j.username} className="person">
                 <PersonLink person={j} />
-                <span className={`chip chip-small ${j.status === "member" ? "chip-mint" : ""}`}>
-                  {j.status === "member" ? "In" : "Requested"}
-                </span>
                 <div className="person-actions">
-                  <button type="button" className="mini-btn" onClick={() => act(() => leaveCircle(j.username))}>
-                    {j.status === "member" ? "Leave" : "Cancel"}
+                  <button type="button" className="mini-btn" onClick={() => act(() => unfriend(j.username))}>
+                    Cancel
                   </button>
                 </div>
               </li>
@@ -142,13 +171,20 @@ export function PersonLink({ person }: { person: Person }) {
   );
 }
 
-/** "Your link": the way people find you and ask to join. */
+/** "Invite friends": a link that makes whoever opens it your friend. */
 function InviteCard({ username }: { username: string }) {
   const [copied, setCopied] = useState(false);
-  const [url] = useState(() => (typeof window === "undefined" ? `/u/${username}` : `${window.location.origin}/u/${username}`));
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    getInviteCode()
+      .then((code) => setUrl(`${window.location.origin}/u/${username}?invite=${code}`))
+      .catch(() => setUrl(`${window.location.origin}/u/${username}`));
+  }, [username]);
 
   async function share() {
-    const text = `Join my circle on Docchi. I'll share polls just for us.`;
+    if (!url) return;
+    const text = `Add me on Docchi, the app for settling arguments with polls.`;
     try {
       if (navigator.share) await navigator.share({ title: "Docchi", text, url });
       else {
@@ -164,40 +200,62 @@ function InviteCard({ username }: { username: string }) {
   return (
     <section className="invite-card">
       <div>
-        <strong>Your circle link</strong>
-        <span className="invite-url">{url.replace(/^https?:\/\//, "")}</span>
+        <strong>Invite friends</strong>
+        <span className="invite-url">Opening it adds you as friends.</span>
       </div>
-      <button type="button" className="btn btn-coral press" onClick={share}>
-        {copied ? "Copied!" : "Share"}
+      <button type="button" className="btn btn-coral press" onClick={share} disabled={!url}>
+        {copied ? "Copied!" : "Share link"}
       </button>
     </section>
   );
 }
 
-/** Search by username, and ask to join their circle. */
+/** The button for someone in a list of people, by where I stand with them. */
+function FriendButton({ status, onAdd, onAccept }: { status: FriendStatus; onAdd: () => void; onAccept: () => void }) {
+  if (status === "none")
+    return (
+      <button type="button" className="mini-btn mini-btn-coral" onClick={onAdd}>
+        Add
+      </button>
+    );
+  if (status === "incoming")
+    return (
+      <button type="button" className="mini-btn mini-btn-mint" onClick={onAccept}>
+        Accept
+      </button>
+    );
+  return (
+    <span className={`chip chip-small ${status === "friends" ? "chip-mint" : ""}`}>{status === "friends" ? "Friends" : "Requested"}</span>
+  );
+}
+
+/** Search by username. */
 function FindPeople({ onChanged }: { onChanged: () => void }) {
   const [q, setQ] = useState("");
-  const [results, setResults] = useState<{ q: string; people: (Person & { theirCircle: CircleStatus })[] } | null>(null);
+  const [results, setResults] = useState<{ q: string; people: (Person & { status: FriendStatus })[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const query = q.trim().toLowerCase().replace(/^@/, "");
 
+  const search = useCallback((term: string) => {
+    searchPeople(term)
+      .then((people) => setResults({ q: term, people: people.map((p) => ({ ...p, status: friendStatus(p.theirCircle, p.myCircle) })) }))
+      .catch(() => setResults({ q: term, people: [] }));
+  }, []);
+
   useEffect(() => {
     if (query.length < 2) return;
-    const timer = window.setTimeout(() => {
-      searchPeople(query)
-        .then((people) => setResults({ q: query, people }))
-        .catch(() => setResults({ q: query, people: [] }));
-    }, 300);
+    const timer = window.setTimeout(() => search(query), 300);
     return () => window.clearTimeout(timer);
-  }, [query]);
+  }, [query, search]);
 
   const shown = query.length >= 2 && results?.q === query ? results.people : null;
 
-  async function request(name: string) {
+  async function run(fn: () => Promise<unknown>) {
     setError(null);
     try {
-      const status = await requestCircle(name);
-      setResults((r) => r && { ...r, people: r.people.map((p) => (p.username === name ? { ...p, theirCircle: status } : p)) });
+      await fn();
+      search(query);
+      announceCircleChange();
       onChanged();
     } catch (e) {
       setError(circleErrorText(e));
@@ -230,15 +288,11 @@ function FindPeople({ onChanged }: { onChanged: () => void }) {
             <li key={p.username} className="person">
               <PersonLink person={p} />
               <div className="person-actions">
-                {p.theirCircle === "none" ? (
-                  <button type="button" className="mini-btn mini-btn-coral" onClick={() => request(p.username)}>
-                    Ask to join
-                  </button>
-                ) : (
-                  <span className={`chip chip-small ${p.theirCircle === "member" ? "chip-mint" : ""}`}>
-                    {p.theirCircle === "member" ? "In their circle" : "Requested"}
-                  </span>
-                )}
+                <FriendButton
+                  status={p.status}
+                  onAdd={() => run(() => addFriend(p.username))}
+                  onAccept={() => run(() => respondRequest(p.username, true))}
+                />
               </div>
             </li>
           ))}
@@ -250,8 +304,8 @@ function FindPeople({ onChanged }: { onChanged: () => void }) {
 
 type Act = (fn: () => Promise<unknown>) => Promise<void>;
 
-/** Group chips: Family (3), Office (5)… plus new / rename / delete. */
-function Groups({ circle, act }: { circle: MyCircle; act: Act }) {
+/** Lists: Family (3), Office (5)… plus new / rename / delete. */
+function Lists({ circle, act }: { circle: MyCircle; act: Act }) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
@@ -259,8 +313,8 @@ function Groups({ circle, act }: { circle: MyCircle; act: Act }) {
 
   return (
     <section className="circle-section">
-      <h2 className="circle-title">Groups</h2>
-      <p className="circle-hint">Sort your circle into groups, like Family or Office, to share a poll with just them.</p>
+      <h2 className="circle-title">Lists</h2>
+      <p className="circle-hint">Sort friends into lists, like Family or Office, to share a poll with just them.</p>
       <div className="group-chips">
         {circle.groups.map((g) =>
           editing === g.id ? (
@@ -272,12 +326,12 @@ function Groups({ circle, act }: { circle: MyCircle; act: Act }) {
                 act(() => renameGroup(g.id, rename)).then(() => setEditing(null));
               }}
             >
-              <input className="answer-input" aria-label="Group name" maxLength={24} value={rename} onChange={(e) => setRename(e.target.value)} autoFocus />
+              <input className="answer-input" aria-label="List name" maxLength={24} value={rename} onChange={(e) => setRename(e.target.value)} autoFocus />
               <button type="submit" className="mini-btn mini-btn-mint">
                 Save
               </button>
               <button type="button" className="mini-btn mini-btn-danger-text" onClick={() => act(() => deleteGroup(g.id)).then(() => setEditing(null))}>
-                Delete group
+                Delete list
               </button>
             </form>
           ) : (
@@ -289,7 +343,7 @@ function Groups({ circle, act }: { circle: MyCircle; act: Act }) {
                 setEditing(g.id);
                 setRename(g.name);
               }}
-              aria-label={`${g.name}, ${g.count} people. Edit group`}
+              aria-label={`${g.name}, ${g.count} people. Edit list`}
             >
               {g.name} <span className="group-count">{g.count}</span>
             </button>
@@ -310,7 +364,7 @@ function Groups({ circle, act }: { circle: MyCircle; act: Act }) {
             >
               <input
                 className="answer-input"
-                aria-label="New group name"
+                aria-label="New list name"
                 placeholder="Family"
                 maxLength={24}
                 value={name}
@@ -326,7 +380,7 @@ function Groups({ circle, act }: { circle: MyCircle; act: Act }) {
             </form>
           ) : (
             <button type="button" className="group-chip group-chip-new" onClick={() => setAdding(true)}>
-              + New group
+              + New list
             </button>
           ))}
       </div>
@@ -334,8 +388,8 @@ function Groups({ circle, act }: { circle: MyCircle; act: Act }) {
   );
 }
 
-/** Someone in my circle: their groups (tap to toggle) and Remove. */
-function Member({ member, circle, act }: { member: MyCircle["members"][number]; circle: MyCircle; act: Act }) {
+/** A friend: their lists (tap to toggle) and Unfriend. */
+function Friend({ member, circle, act }: { member: MyCircle["members"][number]; circle: MyCircle; act: Act }) {
   const [confirming, setConfirming] = useState(false);
   return (
     <li className="person person-member">
@@ -343,8 +397,8 @@ function Member({ member, circle, act }: { member: MyCircle["members"][number]; 
       <div className="person-actions">
         {confirming ? (
           <>
-            <button type="button" className="mini-btn mini-btn-danger" onClick={() => act(() => removeFromCircle(member.username))}>
-              Remove
+            <button type="button" className="mini-btn mini-btn-danger" onClick={() => act(() => unfriend(member.username))}>
+              Unfriend
             </button>
             <button type="button" className="mini-btn" onClick={() => setConfirming(false)}>
               Keep
@@ -352,12 +406,12 @@ function Member({ member, circle, act }: { member: MyCircle["members"][number]; 
           </>
         ) : (
           <button type="button" className="mini-btn mini-btn-danger-text" onClick={() => setConfirming(true)}>
-            Remove
+            Unfriend
           </button>
         )}
       </div>
       {circle.groups.length > 0 && (
-        <div className="member-groups" role="group" aria-label={`Groups for @${member.username}`}>
+        <div className="member-groups" role="group" aria-label={`Lists for @${member.username}`}>
           {circle.groups.map((g) => {
             const on = member.groups.includes(g.id);
             return (
