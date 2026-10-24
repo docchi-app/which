@@ -370,7 +370,7 @@ export function PollCard({
                   <span className="result-row">
                     <span className="result-text">
                       {o.text}
-                      {mine && <span className="chip chip-small">Your pick</span>}
+                      {mine && <span className="chip chip-small">{guestVote && !closed ? "Your pick · not counted yet" : "Your pick"}</span>}
                     </span>
                     {showResults && (
                       <span className="result-pct" style={{ animationDelay: `${0.5 + i * 0.08}s` }}>
@@ -390,17 +390,21 @@ export function PollCard({
           )}
           <p className="poll-foot-note">
             {!closed && showResults && <span className="live-dot live-dot-small" aria-hidden="true" />}
-            {votesLabel} · {closed ? "final results" : showResults ? "live" : "counting…"}
+            {guestVote && !closed
+              ? poll.voteCount === 0
+                ? "Only you so far · not counted yet"
+                : `${formatCount(poll.voteCount)} ${poll.voteCount === 1 ? "vote" : "votes"} · live (yours isn't in yet)`
+              : `${votesLabel} · ${closed ? "final results" : showResults ? "live" : "counting…"}`}
           </p>
           {guestVote && !closed && (
-            <p className="guest-note">
-              Your vote counts once you sign in.
+            <div className="count-strip">
+              <p>Your vote isn&apos;t in the total yet. One tap with Google and it counts.</p>
               {onSaveVotes && (
-                <button type="button" className="guest-note-btn press" onClick={onSaveVotes}>
-                  Sign in
+                <button type="button" className="count-strip-btn press" onClick={onSaveVotes}>
+                  Count my vote
                 </button>
               )}
-            </p>
+            </div>
           )}
         </>
       )}

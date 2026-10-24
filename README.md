@@ -25,6 +25,13 @@ The first slice of the build order:
   the same account, so their votes join the totals then (if that Google account already had
   Docchi, `/auth/callback` casts the guest's picks again as that account). Results show "Your vote
   counts once you sign in", and after a guest's 3rd vote a "Make your votes count" sheet asks once.
+  Guests are told plainly: a one-time "Voted as a guest" note after the first vote; a closable bar
+  under the logo, "🕒 3 votes not counted yet · Count them" (✕ hides it for a day); their pick reads
+  "Your pick · not counted yet", the count says "(yours isn't in yet)", and a yellow strip offers
+  **Count my vote**. Nothing blocks browsing or voting.
+- **What we get from Google, said up front:** the sign-in sheet lists it (name for a @username,
+  profile photo, email kept private) and what Docchi never does (post for you, read contacts or other
+  Google data, ads); other sign-in buttons carry a one-line version.
   If guest sign-ins are switched off, the first tap opens the old "Lock in your pick" sheet.
 - **First visit:** a one-line welcome above the tabs says what Docchi is, until it's dismissed or
   the first vote. An unvoted card with fewer than 10 votes says "Be the first to vote" / "Be one of

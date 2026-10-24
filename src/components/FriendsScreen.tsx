@@ -6,6 +6,7 @@ import { getMyProfile } from "@/lib/profile";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { BottomNav } from "./BottomNav";
 import { FriendsPanel } from "./FriendsPanel";
+import { SignInNote } from "./SignInSheet";
 
 /** /friends: invite, find people, requests and your friends. */
 export function FriendsScreen() {
@@ -48,9 +49,12 @@ export function FriendsScreen() {
             Sign in to add friends, share polls just with them, and see which friends voted.
           </p>
           {isSupabaseConfigured && (
-            <button type="button" className="post-btn post-btn-dark press" onClick={signIn}>
-              Sign in with Google
-            </button>
+            <>
+              <button type="button" className="post-btn post-btn-dark press" onClick={signIn}>
+                Sign in with Google
+              </button>
+              <SignInNote />
+            </>
           )}
           {error && (
             <p className="poll-error" role="alert">

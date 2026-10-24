@@ -16,6 +16,7 @@ import { ANSWER_COLORS, VerifiedTick } from "./PollCard";
 import { ShareSheet } from "./ShareSheet";
 import { audienceLabel, getMyCircle } from "@/lib/circle";
 import { fetchStreak, type Streak } from "@/lib/streak";
+import { SignInNote } from "./SignInSheet";
 
 type Tab = "mine" | "voted";
 
@@ -146,9 +147,12 @@ export function ProfileScreen() {
               : "Profiles need Supabase. Add the keys to try this screen."}
           </p>
           {isSupabaseConfigured && (
-            <button type="button" className="post-btn post-btn-dark press" onClick={signIn}>
-              Sign in with Google
-            </button>
+            <>
+              <button type="button" className="post-btn post-btn-dark press" onClick={signIn}>
+                Sign in with Google
+              </button>
+              <SignInNote />
+            </>
           )}
         </section>
       ) : (
