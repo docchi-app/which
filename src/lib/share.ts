@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import type { CardInput } from "./preview";
 import type { Poll } from "./types";
 
 export type ShareChannel = "native" | "whatsapp" | "x" | "copy";
@@ -24,4 +25,43 @@ export function recordShare(pollId: string, channel: ShareChannel) {
       () => {},
       () => {},
     );
+}
+
+/** The poll as the share card needs it (same shape the server image uses). */
+export function cardInput(poll: Poll): CardInput {
+  return {
+    kind: poll.kind,
+    question: poll.question,
+    teaser: poll.teaser,
+    circle: poll.visibility === "circle",
+    creator: poll.creator,
+    verified: poll.isSystem,
+    voteCount: poll.voteCount,
+    options: poll.options.map((o) => o.text),
+    closed: new Date(poll.closesAt).getTime() <= Date.now(),
+  };
+}
+
+const warmed = new Set<string>();
+
+/**
+ * Asks the server to build this poll's link page and preview image now, in
+ * the background, so they're cached by the time WhatsApp or X fetch the link.
+ * Reads the page first and warms the exact image URL it lists. Once per poll
+ * per visit.
+ */
+export function warmShareCard(pollId: string) {
+  if (warmed.has(pollId)) return;
+  warmed.add(pollId);
+  const quiet = { priority: "low" } as RequestInit;
+  fetch(`/p/${pollId}`, quiet)
+    .then((r) => r.text())
+    .then((html) => {
+      const img = /<meta[^>]+property="og:image"[^>]+content="([^"]+)"/.exec(html)?.[1];
+      const url = img ? new URL(img.replace(/&amp;/g, "&"), window.location.origin) : null;
+      // Same site only; fall back to the plain image path.
+      const path = url && url.origin === window.location.origin ? url.pathname + url.search : `/p/${pollId}/opengraph-image`;
+      return fetch(path, quiet);
+    })
+    .catch(() => {});
 }

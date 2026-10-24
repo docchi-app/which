@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { pollUrl, recordShare, shareText, type ShareChannel } from "@/lib/share";
+import { cardInput, pollUrl, recordShare, shareText, warmShareCard, type ShareChannel } from "@/lib/share";
 import type { Poll } from "@/lib/types";
 import { ShareIcon } from "./icons";
+import { SharePreview } from "./SharePreview";
 
 type Props = { poll: Poll; onClose: () => void };
 
@@ -14,6 +15,11 @@ export function ShareSheet({ poll, onClose }: Props) {
   const [canNativeShare] = useState(() => typeof navigator !== "undefined" && "share" in navigator);
   const voted = poll.myOptionId !== null;
   const text = shareText(poll);
+
+  useEffect(() => {
+    // Have the link preview ready before a friend's WhatsApp asks for it.
+    warmShareCard(poll.id);
+  }, [poll.id]);
 
   useEffect(() => {
     firstRef.current?.focus();
@@ -58,9 +64,8 @@ export function ShareSheet({ poll, onClose }: Props) {
         </h2>
         <p className="sheet-text">Friends see the question, not the result. They vote to find out.</p>
 
-        {/* The same card WhatsApp and X will show. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="share-preview" src={`/p/${poll.id}/opengraph-image`} alt="" width={1200} height={630} />
+        {/* The same card WhatsApp and X will show, drawn here so it's instant. */}
+        <SharePreview card={cardInput(poll)} />
 
         <div className="share-grid">
           <button

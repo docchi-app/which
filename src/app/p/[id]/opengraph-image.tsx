@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { cardModel } from "@/lib/preview";
 import { getSharedPoll } from "@/lib/server-poll";
 
 // The card WhatsApp, X and others show for a shared poll: the question, the
@@ -11,6 +12,13 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 // Counts in the card can be up to 5 minutes old (apps cache previews anyway).
 export const revalidate = 300;
+
+// No polls are drawn at build time; each poll's card is drawn the first time
+// it's asked for, then cached (and redrawn in the background every 5 minutes).
+// That keeps link previews fast however many polls there are.
+export async function generateStaticParams() {
+  return [];
+}
 
 const INK = "#1B1530";
 const CREAM = "#FFF7EC";
@@ -27,29 +35,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     font("DMSans-Bold.ttf"),
   ]);
 
-  const kind = poll?.kind ?? "classic";
-  // A mystery poll shows its teaser; the question is the surprise.
-  const question = poll?.circle
-    ? `A poll for @${poll.creator}'s circle`
-    : ((kind === "mystery" ? poll?.teaser : poll?.question) ?? "Which one? Tap a side, then see where everyone landed.");
-  const cardBg = poll?.circle ? "#52D6A8" : kind === "hot_take" ? "#FF7A59" : kind === "mystery" ? "#B79CFF" : "#FFFFFF";
-  const badge = poll?.circle ? "Circle only" : kind === "hot_take" ? "Hot take" : kind === "mystery" ? "Mystery poll" : null;
-  const cta = poll?.circle
-    ? "Ask to join"
-    : poll?.closed
-    ? "See the final result"
-    : kind === "hot_take"
-      ? "Agree or disagree?"
-      : kind === "mystery"
-        ? "Tap to find out"
-        : "Tap to vote";
-  // Long questions and 4-answer polls get a tighter layout so nothing overlaps.
-  // The format badge row takes space too.
-  const answersCount = poll?.options.length ?? 0;
-  const long = question.length > 80;
-  const compact = long || (answersCount > 2 && (question.length > 45 || kind !== "classic"));
-  const questionSize = Math.min(question.length <= 45 ? 76 : long ? 46 : 60, kind === "classic" ? 76 : 62);
-  const votes = poll ? `${poll.voteCount.toLocaleString("en-US")} ${poll.voteCount === 1 ? "vote" : "votes"}` : null;
+  const { kind, question, cardBg, badge, cta, compact, questionSize, votes, votesNote } = cardModel(poll);
 
   return new ImageResponse(
     (
@@ -221,7 +207,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
             </div>
             {votes && !poll?.circle && (
               <div style={{ display: "flex", fontSize: 30, color: kind === "classic" ? "#5A5370" : INK }}>
-                {votes} · {kind === "mystery" ? "the question shows after you vote" : "results after you vote"}
+                {votes} · {votesNote}
               </div>
             )}
           </div>
