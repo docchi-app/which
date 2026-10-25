@@ -431,8 +431,9 @@ export function ProfilePoll({
   onChange: (patch: Partial<Poll> | null) => void;
 }) {
   const [menu, setMenu] = useState(false);
+  // Deleted here and now; it comes back if the server says no.
+  const [hidden, setHidden] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
 
@@ -451,20 +452,31 @@ export function ProfilePoll({
       ]
     : [mine ? `You picked ${mine.text}` : null, votes];
 
-  async function run(action: () => Promise<void>, patch: Partial<Poll> | null) {
-    setBusy(true);
+  /** Applied at once; undone if the server refuses. */
+  function optimistic(action: () => Promise<void>, patch: Partial<Poll>, undo: Partial<Poll>) {
+    setMenu(false);
+    setConfirming(false);
     setFailed(null);
-    try {
-      await action();
-      onChange(patch);
-    } catch (e) {
+    onChange(patch);
+    action().catch((e) => {
       console.error(e);
+      onChange(undo);
       setFailed("That didn't work. Try again?");
-    } finally {
-      setBusy(false);
-      setConfirming(false);
-      setMenu(false);
-    }
+    });
+  }
+
+  function remove() {
+    setMenu(false);
+    setConfirming(false);
+    setFailed(null);
+    setHidden(true);
+    deletePoll(poll.id)
+      .then(() => onChange(null))
+      .catch((e) => {
+        console.error(e);
+        setHidden(false);
+        setFailed("Couldn't delete it. Try again?");
+      });
   }
 
   function closeMenu() {
@@ -474,11 +486,12 @@ export function ProfilePoll({
 
   return (
     <li
+      hidden={hidden}
       className={`profile-poll${poll.isMine ? " profile-poll-mine" : ""}${menu ? " profile-poll-open" : ""}`}
       data-news={news || undefined}
       style={{ animationDelay: `${0.05 + index * 0.06}s` }}
     >
-      <Link href={`/p/${poll.id}`} className="profile-poll-link">
+      <Link href={`/p/${poll.id}`} className="profile-poll-link" onClick={() => remember(`poll:${poll.id}`, poll)}>
         <span className="profile-poll-q">{poll.question ?? poll.teaser}</span>
         {hasCounts && (
           <span className="segments" aria-hidden="true">
@@ -528,7 +541,7 @@ export function ProfilePoll({
               <div className="poll-menu-confirm">
                 <strong>Delete this poll for everyone?</strong>
                 <span className="poll-menu-row">
-                  <button type="button" className="mini-btn mini-btn-danger" disabled={busy} onClick={() => run(() => deletePoll(poll.id), null)}>
+                  <button type="button" className="mini-btn mini-btn-danger" onClick={remove}>
                     Delete
                   </button>
                   <button type="button" className="mini-btn" onClick={() => setConfirming(false)}>
@@ -563,11 +576,14 @@ export function ProfilePoll({
                         type="button"
                         role="menuitemradio"
                         aria-checked={poll.visibility === v}
-                        disabled={busy}
                         className="poll-menu-pill"
                         onClick={() =>
                           poll.visibility !== v &&
-                          run(() => setPollVisibility(poll.id, v), { visibility: v as Visibility, audience: v === "circle" ? "Whole circle" : null })
+                          optimistic(
+                            () => setPollVisibility(poll.id, v),
+                            { visibility: v as Visibility, audience: v === "circle" ? "Whole circle" : null },
+                            { visibility: poll.visibility, audience: poll.audience },
+                          )
                         }
                       >
                         {label}

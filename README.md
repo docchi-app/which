@@ -47,7 +47,12 @@ The first slice of the build order:
 - **Instant screens:** Feed, Profile, Leaders, Friends and Activity remember what they last showed
   (in memory, for this visit only; cleared on sign-out). Coming back shows it straight away and
   refreshes quietly; the feed returns to the card you were on. Profile is loaded in the
-  background once the feed is in, so the first tap on it is instant too.
+  background once the feed is in, so the first tap on it is instant too; Friends, Activity and
+  Leaders are warmed the same way a moment later. A poll opened from a list shows at once, and
+  `/p/…` and `/u/…` have loading screens, so every tap answers right away.
+- **Optimistic actions:** comments appear as "Sending…" straight away; friend requests, who-sees-it
+  and deleting a poll change on tap and undo themselves if the server says no. The next Props
+  question is fetched while you look at the one you just answered.
 - **Design tokens:** colours, fonts (Bricolage Grotesque and DM Sans), outlines, hard shadows and
   corner radii are CSS variables in `src/app/globals.css`.
 - **PWA basics:** web app manifest, app icon, theme colour.

@@ -3537,3 +3537,21 @@ button.ghost-action { cursor: pointer; }
 .props-news-row { cursor: default; }
 .props-sent > :not(.props-heart) { position: relative; z-index: 1; }
 .props-sent .poll-actions { position: sticky; z-index: 2; }
+
+/* Loading screens for pages fetched on tap. */
+.skeleton-line { display: block; width: 60%; height: 28px; border-radius: 10px; }
+.skeleton-strip { height: 56px; margin: 14px 18px 12px; border-radius: 18px; }
+
+/* ─── Feel: instant press feedback and a soft screen entrance ──────────── */
+/* A tapped tab lights up at once, before the next screen is ready. */
+.nav-item { transition: background-color 0.12s ease, transform 0.12s ease; -webkit-tap-highlight-color: transparent; }
+.nav-item:active { background: rgb(255 210 63 / 0.35); transform: scale(0.92); }
+.nav-item-active:active { background: var(--sun); }
+/* Other screens fade in (opacity only, so the fixed bottom bar stays put). The feed keeps its own card animation. */
+.screen:not(.screen-feed) { animation: screen-in 0.18s ease-out both; }
+@keyframes screen-in { from { opacity: 0.35; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .screen:not(.screen-feed) { animation: none; }
+  .nav-item:active { transform: none; }
+}
+.comment-pending { opacity: 0.6; }
