@@ -11,7 +11,7 @@ import { showTip, tipsAfterVote } from "@/lib/tips";
 import { FEED_PAGE_SIZE, fetchFeed, fetchPoll, recordOpen } from "@/lib/polls";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { recall, remember } from "@/lib/screen-cache";
-import { warmProfile } from "@/lib/warm";
+import { warmProfile, warmTabs } from "@/lib/warm";
 import { isPropsSlot, propsSlot, propsState } from "@/lib/props";
 import { useLiveInterval } from "@/lib/useLiveInterval";
 import type { FeedTab, Poll, VoteResult } from "@/lib/types";
@@ -99,7 +99,12 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   // Props cards already slotted into this list (a restored list has them).
   const propsAdded = useRef(!!saved);
   const [tab, setTab] = useState<FeedTab>(saved?.tab ?? "trending");
-  const [polls, setPolls] = useState<Poll[] | null>(saved?.polls ?? null);
+  const [polls, setPolls] = useState<Poll[] | null>(() => {
+    if (saved) return saved.polls;
+    // A poll opened from a list (Profile): show it straight away.
+    const opened = initialPollId ? recall<Poll>(`poll:${initialPollId}`, 60_000) : undefined;
+    return opened ? [opened] : null;
+  });
   // For callbacks that shouldn't change identity when the list does.
   const pollsRef = useRef(polls);
   useEffect(() => {
@@ -189,20 +194,23 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
 
   const load = useCallback(async (which: FeedTab) => {
     const token = ++loadToken.current;
+    // A shared link (?poll=…) puts that poll on top, even if it has closed.
+    const url = new URL(window.location.href);
+    const shared = initialPollId ?? url.searchParams.get("poll");
+    const justPosted = !!shared && url.searchParams.has("created");
     propsAdded.current = false;
-    setPolls(null);
+    // Opened from a list that already had this poll: keep showing it while the rest loads.
+    setPolls((cur) => (shared && cur?.length === 1 && cur[0].id === shared ? cur : null));
     setFailed(false);
     setFreshPolls(false);
     setIndex(0);
     try {
+      // The shared poll and the feed load side by side.
+      const sharedReq = shared ? fetchPoll(shared).catch(() => null) : null;
       const list = await fetchFeed(which);
-      // A shared link (?poll=…) puts that poll on top, even if it has closed.
-      const url = new URL(window.location.href);
-      const shared = initialPollId ?? url.searchParams.get("poll");
-      const justPosted = !!shared && url.searchParams.has("created");
       if (shared) {
         const at = list.findIndex((p) => p.id === shared);
-        const sharedPoll = at >= 0 ? list.splice(at, 1)[0] : await fetchPoll(shared).catch(() => null);
+        const sharedPoll = at >= 0 ? list.splice(at, 1)[0] : await sharedReq;
         if (sharedPoll) list.unshift(sharedPoll);
         else setMissingShared(true);
         // A link-only poll you've opened shows in your feed from now on.
@@ -296,7 +304,9 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
 
   // Once the feed is in, get Profile ready in the background.
   useEffect(() => {
-    if (feedReady && signedIn) warmProfile();
+    if (!feedReady || !signedIn) return;
+    warmProfile();
+    warmTabs();
   }, [feedReady, signedIn]);
 
   // Remember where the feed is, for coming back from another screen.

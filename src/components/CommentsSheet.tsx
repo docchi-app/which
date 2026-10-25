@@ -34,6 +34,7 @@ function ago(iso: string) {
 export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount }: Props) {
   const [thread, setThread] = useState<Thread | null>(null);
   const [text, setText] = useState("");
+  const [pending, setPending] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reporting, setReporting] = useState<string | null>(null);
@@ -76,14 +77,18 @@ export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount }: Pr
     if (!t || busy) return;
     setBusy(true);
     setError(null);
+    // Shown in the list at once, marked as sending, until the server has it.
+    setPending(t);
+    setText("");
+    stick.current = true;
     try {
       await postComment(pollId, t);
-      setText("");
-      stick.current = true;
       await load();
     } catch (e) {
       setError((e as Error).message);
+      setText(t);
     } finally {
+      setPending(null);
       setBusy(false);
     }
   }
@@ -194,6 +199,18 @@ export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount }: Pr
                   </div>
                 </li>
               ))}
+              {pending && (
+                <li className="comment comment-pending" data-mine aria-live="polite">
+                  <Avatar name="you" size={34} />
+                  <div className="comment-body">
+                    <div className="comment-meta">
+                      <span className="comment-name">You</span>
+                      <span className="comment-time">Sending…</span>
+                    </div>
+                    <p className="comment-text">{pending}</p>
+                  </div>
+                </li>
+              )}
             </ol>
 
             {thread.canPost ? (

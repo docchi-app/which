@@ -32,6 +32,8 @@ export function FriendsPanel({ username }: { username: string | null }) {
   const [circle, setCircle] = useState<MyCircle | null>(() => recall<MyCircle>("friends:circle") ?? null);
   const [suggested, setSuggested] = useState<Suggestion[] | null>(() => recall<Suggestion[]>("friends:suggested") ?? null);
   const [error, setError] = useState<string | null>(null);
+  // Requests sent this moment: shown as sent straight away.
+  const [requested, setRequested] = useState<Set<string>>(new Set());
 
   const load = useCallback(() => {
     getMyCircle()
@@ -53,15 +55,17 @@ export function FriendsPanel({ username }: { username: string | null }) {
     load();
   }, [load]);
 
-  /** Run a change, then reload (and refresh the badges). */
-  async function act(fn: () => Promise<unknown>) {
+  /** Run a change, then reload (and refresh the badges). False if it failed. */
+  async function act(fn: () => Promise<unknown>): Promise<boolean> {
     setError(null);
     try {
       await fn();
       load();
       announceCircleChange();
+      return true;
     } catch (e) {
       setError(circleErrorText(e));
+      return false;
     }
   }
 
@@ -117,9 +121,20 @@ export function FriendsPanel({ username }: { username: string | null }) {
                       : "Top creator this week"}
                 </span>
                 <div className="person-actions">
-                  <button type="button" className="mini-btn mini-btn-coral" onClick={() => act(() => addFriend(s.username))}>
-                    Add
-                  </button>
+                  {requested.has(s.username) ? (
+                    <span className="chip chip-small">Requested</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="mini-btn mini-btn-coral"
+                      onClick={() => {
+                        setRequested((r) => new Set(r).add(s.username));
+                        act(() => addFriend(s.username)).then((ok) => !ok && setRequested((r) => (r.delete(s.username), new Set(r))));
+                      }}
+                    >
+                      Add
+                    </button>
+                  )}
                 </div>
               </li>
             ))}
@@ -260,8 +275,10 @@ function FindPeople({ onChanged }: { onChanged: () => void }) {
 
   const shown = query.length >= 2 && results?.q === query ? results.people : null;
 
-  async function run(fn: () => Promise<unknown>) {
+  async function run(fn: () => Promise<unknown>, name?: string, optimistic?: FriendStatus) {
     setError(null);
+    // Show the new state at once; the search refresh confirms it.
+    if (name && optimistic) setResults((r) => r && { ...r, people: r.people.map((p) => (p.username === name ? { ...p, status: optimistic } : p)) });
     try {
       await fn();
       search(query);
@@ -269,6 +286,7 @@ function FindPeople({ onChanged }: { onChanged: () => void }) {
       onChanged();
     } catch (e) {
       setError(circleErrorText(e));
+      search(query);
     }
   }
 
@@ -300,8 +318,8 @@ function FindPeople({ onChanged }: { onChanged: () => void }) {
               <div className="person-actions">
                 <FriendButton
                   status={p.status}
-                  onAdd={() => run(() => addFriend(p.username))}
-                  onAccept={() => run(() => respondRequest(p.username, true))}
+                  onAdd={() => run(() => addFriend(p.username), p.username, "requested")}
+                  onAccept={() => run(() => respondRequest(p.username, true), p.username, "friends")}
                 />
               </div>
             </li>
@@ -312,7 +330,7 @@ function FindPeople({ onChanged }: { onChanged: () => void }) {
   );
 }
 
-type Act = (fn: () => Promise<unknown>) => Promise<void>;
+type Act = (fn: () => Promise<unknown>) => Promise<unknown>;
 
 /** Lists: Family (3), Office (5)… plus new / rename / delete. */
 function Lists({ circle, act }: { circle: MyCircle; act: Act }) {

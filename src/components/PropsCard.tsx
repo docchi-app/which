@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   giveProp,
   isOffer,
@@ -33,10 +33,14 @@ export function PropsCard({ onNext }: { onNext?: () => void }) {
   const [sent, setSent] = useState<{ to: string; left: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The next question, fetched while "Props sent!" is on screen.
+  const upcoming = useRef<ReturnType<typeof nextProp> | null>(null);
 
   const load = useCallback(() => {
     setError(null);
-    nextProp()
+    const pending = upcoming.current ?? nextProp();
+    upcoming.current = null;
+    pending
       .then((d) => {
         setData(d);
         setSent(null);
@@ -144,7 +148,15 @@ export function PropsCard({ onNext }: { onNext?: () => void }) {
           @{sent.to} gets a ping that someone thinks so. <strong>Never who.</strong>
         </p>
         {sent.left > 0 ? (
-          <button type="button" className="post-btn press" onClick={load}>
+          <button
+            type="button"
+            className="post-btn press"
+            onClick={() => {
+              setSent(null);
+              setData(null);
+              load();
+            }}
+          >
             Next question <ArrowIcon size={18} />
           </button>
         ) : (
@@ -174,7 +186,15 @@ export function PropsCard({ onNext }: { onNext?: () => void }) {
             className="answer press props-answer"
             style={{ animationDelay: `${i * 0.06}s` }}
             disabled={busy}
-            onClick={() => act(() => giveProp(o.offer, p.username), (s) => setSent({ to: p.username, left: s.left ?? 0 }))}
+            onClick={() =>
+              act(
+                () => giveProp(o.offer, p.username),
+                (s) => {
+                  setSent({ to: p.username, left: s.left ?? 0 });
+                  if ((s.left ?? 0) > 0) upcoming.current = nextProp();
+                },
+              )
+            }
           >
             <Avatar name={p.username} url={p.avatarUrl} size={30} />@{p.username}
           </button>

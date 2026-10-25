@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { continueWithGoogle, isSignedIn, onUserChange, saveReturnTo } from "@/lib/auth";
 import { getMyProfile } from "@/lib/profile";
 import { propsState, type PropsState } from "@/lib/props";
+import { recall } from "@/lib/screen-cache";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import Link from "next/link";
 import { BottomNav } from "./BottomNav";
@@ -16,6 +17,8 @@ export function FriendsScreen() {
   const [username, setUsername] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [props, setProps] = useState<PropsState | null>(null);
+  // Seen this visit already: show it while sign-in is still being checked.
+  const [remembered] = useState(() => !!recall("friends:circle"));
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -68,7 +71,7 @@ export function FriendsScreen() {
             </p>
           )}
         </section>
-      ) : signedIn ? (
+      ) : signedIn || remembered ? (
         <>
           {props && props.state !== "sign_in" && (
             <Link href="/props" className="props-entry press">
