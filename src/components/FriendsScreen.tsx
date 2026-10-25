@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { continueWithGoogle, isSignedIn, onUserChange, saveReturnTo } from "@/lib/auth";
 import { getMyProfile } from "@/lib/profile";
+import { propsState, type PropsState } from "@/lib/props";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import Link from "next/link";
 import { BottomNav } from "./BottomNav";
 import { FriendsPanel } from "./FriendsPanel";
 import { SignInNote } from "./SignInSheet";
@@ -13,6 +15,7 @@ export function FriendsScreen() {
   const [signedIn, setSignedIn] = useState<boolean | undefined>(isSupabaseConfigured ? undefined : false);
   const [username, setUsername] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [props, setProps] = useState<PropsState | null>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -23,6 +26,9 @@ export function FriendsScreen() {
     if (!signedIn) return;
     getMyProfile()
       .then((p) => setUsername(p?.username ?? null))
+      .catch(() => {});
+    propsState()
+      .then(setProps)
       .catch(() => {});
   }, [signedIn]);
 
@@ -63,7 +69,27 @@ export function FriendsScreen() {
           )}
         </section>
       ) : signedIn ? (
-        <FriendsPanel username={username} />
+        <>
+          {props && props.state !== "sign_in" && (
+            <Link href="/props" className="props-entry press">
+              <span className="props-entry-icon" aria-hidden="true">
+                💜
+              </span>
+              <span className="props-entry-text">
+                <strong>Props</strong>
+                <span>
+                  {props.state === "ready"
+                    ? `${props.left} questions about your friends today`
+                    : props.state === "locked"
+                      ? `Add ${Math.max(1, 4 - (props.friends ?? 0))} more ${4 - (props.friends ?? 0) === 1 ? "friend" : "friends"} to unlock`
+                      : "All done for today. See what friends say about you"}
+                </span>
+              </span>
+              <span aria-hidden="true">→</span>
+            </Link>
+          )}
+          <FriendsPanel username={username} />
+        </>
       ) : null}
 
       <BottomNav current="friends" />

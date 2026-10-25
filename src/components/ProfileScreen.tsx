@@ -14,6 +14,7 @@ import type { Poll, Visibility } from "@/lib/types";
 import { BestRankBadge } from "./BestRankBadge";
 import { BottomNav } from "./BottomNav";
 import { NotificationPrompt } from "./Notifications";
+import { PropsAboutYou } from "./PropsAboutYou";
 import { ANSWER_COLORS, VerifiedTick } from "./PollCard";
 import { ShareIcon } from "./icons";
 import { ShareSheet } from "./ShareSheet";
@@ -198,6 +199,8 @@ export function ProfileScreen() {
               <dd>{streak ? `🔥${streak.current}` : "–"}</dd>
             </div>
           </dl>
+
+          {signedIn && <PropsAboutYou />}
 
           {signedIn && <NotificationPrompt />}
 

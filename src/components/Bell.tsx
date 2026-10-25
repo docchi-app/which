@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ACTIVITY_SEEN, fetchActivity } from "@/lib/activity";
+import { PROPS_CHANGED, propsNews } from "@/lib/props";
 import { isSignedIn, onUserChange } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { showTip } from "@/lib/tips";
@@ -22,9 +23,9 @@ export function Bell() {
     let signedIn = false;
     const check = () => {
       if (!signedIn) return setNews(false);
-      fetchActivity()
-        .then((a) => {
-          const any = a.votes + a.comments > 0;
+      Promise.all([fetchActivity(), propsNews().catch(() => 0)])
+        .then(([a, props]) => {
+          const any = a.votes + a.comments + props > 0;
           setNews(any);
           if (any) showTip("activity");
         })
@@ -38,10 +39,12 @@ export function Bell() {
     // Back in the app after a while: check again, so the dot is never stale.
     const back = () => document.visibilityState === "visible" && check();
     window.addEventListener(ACTIVITY_SEEN, cleared);
+    window.addEventListener(PROPS_CHANGED, check);
     document.addEventListener("visibilitychange", back);
     return () => {
       stop();
       window.removeEventListener(ACTIVITY_SEEN, cleared);
+      window.removeEventListener(PROPS_CHANGED, check);
       document.removeEventListener("visibilitychange", back);
     };
   }, []);

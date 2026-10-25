@@ -184,6 +184,18 @@ The first slice of the build order:
   can only send to Friends; 3 snaps a day (deleting one doesn't give it back). Snaps stay off
   profiles, and their photos are deleted once they close (by the owner's app, or Admin → Snaps →
   Clean up).
+- **Props (💜 compliment polls about your friends):** a purple "About your friends" card shows up
+  a few polls into **For you** (and all of today's questions are at `/props`, from the Friends tab):
+  a question Docchi wrote ("Who has the best laugh?") with 4 of your friends as answers. Pick one,
+  **Shuffle** (twice per question) or **Skip**. It's anonymous: the friend gets a push and an
+  Activity item ("💜 You got props for Best laugh"), delayed a random 10–60 minutes and grouped so
+  the timing doesn't give you away, and nobody ever sees who picked them. 10 questions a day
+  (India time), the same question not again for 7 days, never the same friend twice for one
+  question. Needs 4 friends who can be picked; before that, an "Unlock Props" card (once a day)
+  invites more. Profile shows **What friends say about you** (counts only, only you see it), and
+  each one can be shared as a story picture drawn on the phone. Settings → **Include me in
+  Props** (on by default) and a "Friends gave me props" notification switch. 100 questions, all
+  compliments, in `prop_questions`.
 - **Streaks:** 🔥 N next to the bell: days in a row (India time) you've voted on at least one poll.
   It's grey until you vote today (the streak lives until midnight); tap it for your best. Hitting
   3, 7, 14, 30… days pops a "🔥 7-day streak!" bubble. Guests' votes count, so signing in keeps it
@@ -253,7 +265,7 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261110000000_activity.sql`, `20261111000000_guest_votes.sql`, `20261112000000_friends.sql`,
    `20261113000000_streaks.sql`, `20261114000000_quick_snap.sql`,
    `20261115000000_snap_photo_size.sql`, `20261116000000_snap_answers.sql`,
-   `20261117000000_delete_account_best_rank.sql`, …),
+   `20261117000000_delete_account_best_rank.sql`, `20261118000000_props.sql`, …),
    in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter

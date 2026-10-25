@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { isSignedIn, continueWithGoogle, onUserChange, saveReturnTo, signOut } from "@/lib/auth";
 import { installPlatform, type InstallPlatform } from "@/lib/install";
 import { getMyProfile, type Profile } from "@/lib/profile";
+import { propsState, setPropsOff } from "@/lib/props";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { BottomNav } from "./BottomNav";
 import { DeleteAccountSheet } from "./DeleteAccountSheet";
@@ -20,6 +21,8 @@ export function SettingsScreen() {
   const [platform, setPlatform] = useState<InstallPlatform | null>(null);
   const [installing, setInstalling] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // "Include me in Props" (null until known).
+  const [propsOn, setPropsOn] = useState<boolean | null>(null);
 
   useEffect(() => {
     // The platform is only known in the browser.
@@ -30,7 +33,11 @@ export function SettingsScreen() {
   }, []);
 
   useEffect(() => {
-    if (signedIn) getMyProfile().then(setProfile).catch(() => {});
+    if (!signedIn) return;
+    getMyProfile().then(setProfile).catch(() => {});
+    propsState()
+      .then((s) => setPropsOn(!s.off))
+      .catch(() => {});
   }, [signedIn]);
 
   const installable = platform === "android" || platform === "ios" || platform === "in-app";
@@ -85,6 +92,24 @@ export function SettingsScreen() {
                 <Chevron />
               </Link>
             )}
+            <label className="settings-row">
+              <span>
+                <strong>Include me in Props</strong>
+                <span className="notif-hint">Friends can pick you in compliment questions. Always anonymous.</span>
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                className="switch"
+                checked={propsOn ?? true}
+                disabled={propsOn === null}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  setPropsOn(on);
+                  setPropsOff(!on).catch(() => setPropsOn(!on));
+                }}
+              />
+            </label>
             <button
               type="button"
               className="settings-row settings-row-danger"

@@ -6,6 +6,7 @@ import { activityText, fetchActivity, markActivitySeen, type Activity } from "@/
 import { continueWithGoogle, isSignedIn, onUserChange, saveReturnTo } from "@/lib/auth";
 import { announceCircleChange, circleErrorText, getMyCircle, respondRequest, type MyCircle } from "@/lib/circle";
 import { fetchRecentResults, type RecentResult } from "@/lib/streak";
+import { markPropsSeen, myProps, type MyProps } from "@/lib/props";
 import { recall, remember } from "@/lib/screen-cache";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { BottomNav } from "./BottomNav";
@@ -21,6 +22,8 @@ export function ActivityScreen() {
   const [circle, setCircle] = useState<MyCircle | null>(() => recall<MyCircle>("activity:circle") ?? null);
   const [results, setResults] = useState<RecentResult[]>(() => recall<RecentResult[]>("activity:results") ?? []);
   const [error, setError] = useState<string | null>(null);
+  // New props since last time (shown for this visit, then marked seen).
+  const [props, setProps] = useState<MyProps | null>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -44,6 +47,12 @@ export function ActivityScreen() {
       .then((r) => {
         setResults(r);
         remember("activity:results", r);
+      })
+      .catch(() => {});
+    myProps()
+      .then((p) => {
+        setProps(p);
+        if (p.fresh > 0) markPropsSeen().catch(() => {});
       })
       .catch(() => {});
     fetchActivity()
@@ -77,7 +86,7 @@ export function ActivityScreen() {
 
   const requests = circle?.requests ?? [];
   const loaded = activity !== null && circle !== null;
-  const quiet = loaded && requests.length === 0 && activity.list.length === 0 && results.length === 0;
+  const quiet = loaded && requests.length === 0 && activity.list.length === 0 && results.length === 0 && !props?.fresh;
 
   return (
     <div className="screen activity-screen">
@@ -126,6 +135,31 @@ export function ActivityScreen() {
                   </li>
                 ))}
               </ul>
+            </section>
+          )}
+
+          {props && props.fresh > 0 && (
+            <section className="circle-section">
+              <h2 className="circle-title">
+                💜 You got props <span className="count-pill">{props.fresh}</span>
+              </h2>
+              <ul className="activity-list">
+                {props.items
+                  .filter((i) => i.fresh > 0)
+                  .map((i) => (
+                    <li key={i.label} className="activity-row props-news-row">
+                      <span className="activity-q">
+                        <span aria-hidden="true">{i.emoji}</span> {i.label}
+                      </span>
+                      <span className="activity-chip">
+                        +{i.fresh} · ×{i.count} in all
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+              <p className="circle-hint">
+                From friends, anonymously. <Link href="/profile">See all your props</Link> · <Link href="/props">Give some back</Link>
+              </p>
             </section>
           )}
 
