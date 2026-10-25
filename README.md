@@ -111,8 +111,10 @@ The first slice of the build order:
 - **One feed:** **For you** (trending) and **New** show every live poll you can see: public polls,
   your friends' friends-only polls, your own, and link-only polls you've opened or voted on (opening
   one records it in `poll_access`). The **Friends** tab narrows it to polls from friends.
-- **Friends voted:** after you vote on a public or link poll, "@priya and 2 friends voted" with
-  their faces. Never what they picked (`friends_voted()`).
+- **Friends voted:** on a public or link poll, "(faces) @priya +2 voted" sits under the creator's
+  name before you vote, and moves into the footer line once you have. Never what they picked
+  (`friends_voted()`), and only friends you've both accepted. On a short screen where the line
+  would make the card scroll, it stays hidden until you vote.
 - **Bell:** top right of the feed, with the friend-request count or a dot for new votes and comments
   on your polls. It opens **Activity** (`/activity`): requests to accept or decline, and each of
   your polls with news ("+5 votes · 1 comment"), linking to the poll.

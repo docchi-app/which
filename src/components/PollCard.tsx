@@ -276,6 +276,8 @@ export function PollCard({
           </span>
         </div>
       )}
+      {/* Friends who voted, before you do (never what they picked). After voting it moves to the footer line. */}
+      {!isSnap && !isCircle && signedIn && !voted && !poll.isMine && !closed && <FriendsVotedRow poll={poll} top />}
 
       {isSnap ? (
         <SnapPoll

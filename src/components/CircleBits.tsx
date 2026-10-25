@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { continueWithGoogle, saveReturnTo } from "@/lib/auth";
 import { addFriend, announceCircleChange, circleErrorText, getCirclePicks, getFriendsVoted, type CirclePick, type FriendsVoted } from "@/lib/circle";
 import type { Poll } from "@/lib/types";
+import { recall, remember } from "@/lib/screen-cache";
 import { Avatar } from "./Avatar";
 
 /** What someone who isn't a friend (or not in the chosen lists) sees instead of the poll. */
@@ -117,24 +118,65 @@ export function CirclePicks({ poll }: { poll: Poll }) {
   );
 }
 
-/** "@priya and 2 friends voted": who of your friends voted, never what they picked. Public and link polls. */
-export function FriendsVotedRow({ poll, compact = false }: { poll: Poll; compact?: boolean }) {
-  const [data, setData] = useState<FriendsVoted | null>(null);
+/**
+ * "@priya and 2 friends voted": who of your friends voted, never what they picked. Public and link polls.
+ * top: the line under the creator's name before you vote; compact: in the card's footer line after.
+ */
+export function FriendsVotedRow({ poll, compact = false, top = false }: { poll: Poll; compact?: boolean; top?: boolean }) {
+  // Remembered per poll, so the footer line is there the moment you vote.
+  const [data, setData] = useState<FriendsVoted | null>(() => recall<FriendsVoted>(`fv:${poll.id}`, 5 * 60_000) ?? null);
   const voted = poll.myOptionId !== null;
 
   useEffect(() => {
     let stale = false;
     getFriendsVoted(poll.id)
-      .then((d) => !stale && setData(d))
+      .then((d) => {
+        remember(`fv:${poll.id}`, d);
+        if (!stale) setData(d);
+      })
       .catch(() => {});
     return () => {
       stale = true;
     };
   }, [poll.id, voted]);
 
+  // The feed card is sized to fit the screen without scrolling. On a short screen where this line
+  // would make it scroll, it stays hidden (it still shows in the footer after you vote).
+  const fitRef = useRef<HTMLParagraphElement>(null);
+  const shown = top && !!data && data.count > 0;
+  useLayoutEffect(() => {
+    const el = fitRef.current;
+    const card = el?.closest<HTMLElement>(".poll-card");
+    if (!shown || !el || !card) return;
+    const check = () => {
+      el.style.display = "";
+      if (card.scrollHeight > card.clientHeight + 1) el.style.display = "none";
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(card);
+    return () => ro.disconnect();
+  }, [shown]);
+
   if (!data || data.count === 0) return null;
   const [first] = data.people;
   const rest = data.count - 1;
+  if (top) {
+    // Before you vote: "(faces) @priya +2 voted" under the creator's name.
+    return (
+      <p ref={fitRef} className="friends-voted-inline friends-voted-top">
+        <span className="avatar-stack" aria-hidden="true">
+          {data.people.slice(0, 3).map((p) => (
+            <Avatar key={p.username} name={p.username} url={p.avatarUrl} size={20} />
+          ))}
+        </span>
+        <span>
+          <strong>@{first.username}</strong>
+          {rest > 0 ? ` +${rest} voted` : " voted"}
+        </span>
+      </p>
+    );
+  }
   if (compact) {
     // In the card's footer line: "(faces) @priya +2 voted".
     return (
