@@ -22,20 +22,30 @@ import {
   type Person,
   type Suggestion,
 } from "@/lib/circle";
+import { recall, remember } from "@/lib/screen-cache";
 import { Avatar } from "./Avatar";
+import { markRequestsSeen } from "./NavBadge";
 
 /** Everything on the Friends screen: invite, find, requests, suggestions, friends, lists. */
 export function FriendsPanel({ username }: { username: string | null }) {
-  const [circle, setCircle] = useState<MyCircle | null>(null);
-  const [suggested, setSuggested] = useState<Suggestion[] | null>(null);
+  // Shown straight away from the last visit, then refreshed.
+  const [circle, setCircle] = useState<MyCircle | null>(() => recall<MyCircle>("friends:circle") ?? null);
+  const [suggested, setSuggested] = useState<Suggestion[] | null>(() => recall<Suggestion[]>("friends:suggested") ?? null);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     getMyCircle()
-      .then(setCircle)
+      .then((c) => {
+        setCircle(c);
+        remember("friends:circle", c);
+        markRequestsSeen(c.requests.length);
+      })
       .catch((e) => setError(circleErrorText(e)));
     suggestFriends()
-      .then(setSuggested)
+      .then((list) => {
+        setSuggested(list);
+        remember("friends:suggested", list);
+      })
       .catch(() => setSuggested([]));
   }, []);
 

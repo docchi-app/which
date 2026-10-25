@@ -1635,24 +1635,11 @@ button.ghost-action { cursor: pointer; }
   color: var(--ink);
   text-decoration: none;
 }
-.profile-poll-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
 .profile-poll-q {
   font-size: 15px;
   font-weight: 700;
   overflow-wrap: anywhere;
 }
-.profile-poll-tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-.profile-poll-tags:empty { display: none; }
 .profile-poll-by { color: var(--muted); font-size: 12px; }
 .chip-closed { background: var(--line); }
 .chip-link { background: var(--lilac); }
@@ -1668,14 +1655,6 @@ button.ghost-action { cursor: pointer; }
 .segments span { border-right: 1.5px solid var(--ink); }
 .segments span:last-child { border-right: 0; }
 .profile-poll-meta { color: var(--muted); font-size: 12px; }
-.profile-poll-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-top: 2px dashed var(--line);
-}
 .mini-btn {
   min-height: 36px;
   padding: 0 12px;
@@ -1961,18 +1940,6 @@ button.ghost-action { cursor: pointer; }
 }
 .circle-picks-list li { display: flex; flex-wrap: wrap; gap: 6px; }
 .circle-picks-list span { color: var(--muted); }
-.mini-select select {
-  min-height: 36px;
-  padding: 0 28px 0 12px;
-  border: var(--outline);
-  border-radius: 12px;
-  background: var(--white)
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231B1530' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")
-    no-repeat right 10px center;
-  color: var(--ink);
-  font: 700 13px var(--font-body);
-  appearance: none;
-}
 .sr-only {
   position: absolute;
   width: 1px;
@@ -3339,3 +3306,148 @@ button.ghost-action { cursor: pointer; }
   text-align: center;
   transform: translateX(-50%);
 }
+
+/* ─── Feed cards: compact, so a voted card fits without scrolling ───────── */
+/* Results fill the same rows as the answers; "You're with…" is one line;
+   friends who voted join the footer; Comment / Share / Next stay on screen. */
+.feed-card { gap: 10px; padding: 16px; }
+.feed-card .poll-question { font-size: 26px; }
+.feed-card .answers,
+.feed-card .results { gap: 8px; }
+.feed-card .answer { min-height: 46px; padding: 5px 12px; }
+.feed-card .answer-letter { width: 28px; height: 28px; }
+.feed-card .result { min-height: 46px; }
+.feed-card .result-row { min-height: 42px; padding: 4px 14px; }
+.feed-card .result-mine { box-shadow: var(--shadow); }
+.feed-card .with-you {
+  justify-content: flex-start;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-size: 16px;
+  text-align: left;
+}
+.feed-card .poll-foot-note { font-size: 13px; }
+.result-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.friends-voted-inline { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.friends-voted-inline strong { color: var(--ink); }
+.friends-voted-inline::after { content: "·"; }
+.feed-card .poll-actions {
+  position: sticky;
+  bottom: -16px;
+  z-index: 2;
+  margin: 0 -16px -16px;
+  padding: 8px 16px 12px;
+  background: inherit;
+}
+
+/* ─── Profile: compact header, one stats strip, compact poll rows ──────── */
+.profile-screen .profile-banner { height: 92px; }
+.profile-screen .banner-sun { top: -40px; right: -30px; width: 130px; height: 130px; }
+.profile-screen .banner-tile { top: 34px; right: 92px; width: 56px; height: 56px; border-radius: 16px; }
+/* Avatar and Edit on one row; the name gets the full width under them. */
+.profile-screen .profile-head { flex-wrap: wrap; column-gap: 12px; row-gap: 8px; margin-top: -32px; padding: 0 18px; }
+.profile-screen .profile-head .avatar { width: 78px; height: 78px; border-radius: 24px; font-size: 36px; }
+.profile-screen .profile-edit-btn { order: 2; margin: 0 0 4px auto; }
+.profile-screen .profile-name {
+  order: 3;
+  flex: 0 0 100%;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 4px;
+  padding: 0;
+}
+.profile-screen .profile-handle { flex-basis: 100%; font-size: 24px; line-height: 1.1; white-space: normal; overflow-wrap: anywhere; }
+.profile-screen .best-rank { margin-top: 0; }
+/* The four stats as one slim strip. */
+.profile-screen .stat-tiles {
+  gap: 0;
+  margin: 14px 18px 12px;
+  overflow: hidden;
+  border: var(--outline-bold);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+.profile-screen .stat { padding: 8px 10px; border: 0; border-left: var(--outline); border-radius: 0; box-shadow: none; animation: none; }
+.profile-screen .stat:first-child { border-left: 0; }
+.profile-screen .stat dd { font-size: 22px; line-height: 1.05; }
+.profile-screen .stat dt { font-size: 11.5px; }
+.profile-tabs-row { display: flex; align-items: center; gap: 8px; padding-right: 18px; }
+.profile-tabs-row .profile-tabs { flex: 1; min-width: 0; padding-bottom: 10px; }
+.profile-tabs-row .activity-summary { flex: none; margin: 0 0 10px; padding: 5px 10px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+/* Poll rows: question, mini bar, then tags and numbers on one line. */
+.profile-screen .profile-list { gap: 10px; padding: 0 18px; }
+.profile-poll { position: relative; overflow: visible; }
+.profile-poll-open { z-index: 5; }
+.profile-poll-link { gap: 8px; padding: 12px 14px 10px; border-radius: 16px; }
+.profile-poll-mine .profile-poll-q { padding-right: 70px; }
+.profile-poll-q { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.3; }
+.profile-poll-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 12.5px; }
+.tag {
+  padding: 0 8px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 17px;
+  text-transform: uppercase;
+}
+.tag-live { background: #cdf3e3; }
+.tag-closed { background: var(--line); }
+.tag-link { background: #e4dbff; }
+.tag-circle { background: #d5ebff; }
+.profile-poll-icons { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; }
+.profile-poll-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: var(--outline);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+.poll-menu-backdrop { position: fixed; }
+.poll-menu {
+  position: absolute;
+  top: 48px;
+  right: 8px;
+  z-index: 10;
+  display: flex;
+  width: 250px;
+  flex-direction: column;
+  padding: 6px;
+  border: var(--outline-bold);
+  border-radius: 18px;
+  background: var(--white);
+  box-shadow: var(--shadow-md);
+}
+.poll-menu > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 800;
+  text-align: left;
+}
+.poll-menu-who { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-top: 1.5px solid var(--line); border-bottom: 1.5px solid var(--line); font-size: 14px; font-weight: 800; }
+.poll-menu-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.poll-menu-pill { height: 32px; padding: 0 10px; border: var(--outline); border-radius: 999px; background: var(--white); color: var(--ink); font-size: 12.5px; font-weight: 700; }
+.poll-menu-pill[aria-checked="true"] { background: var(--ink); color: var(--cream); }
+.poll-menu-confirm { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; font-size: 14px; }

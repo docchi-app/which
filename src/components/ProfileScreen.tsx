@@ -8,12 +8,14 @@ import { formatCount, percentages, timeLeft } from "@/lib/format";
 import { deletePoll, fetchMyPolls, setPollVisibility } from "@/lib/polls";
 import { activityText, fetchActivity, markActivitySeen, type Activity } from "@/lib/activity";
 import { compactCount, getMyProfile, PROFILE_CHANGED, updateUsername, type Profile } from "@/lib/profile";
+import { recall, remember } from "@/lib/screen-cache";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import type { Poll, Visibility } from "@/lib/types";
 import { BestRankBadge } from "./BestRankBadge";
 import { BottomNav } from "./BottomNav";
 import { NotificationPrompt } from "./Notifications";
 import { ANSWER_COLORS, VerifiedTick } from "./PollCard";
+import { ShareIcon } from "./icons";
 import { ShareSheet } from "./ShareSheet";
 import { audienceLabel, getMyCircle } from "@/lib/circle";
 import { fetchStreak, type Streak } from "@/lib/streak";
@@ -34,13 +36,14 @@ const cleanName = (s: string) => s.toLowerCase().replace(/[^a-z0-9_]/g, "").slic
 export function ProfileScreen() {
   // undefined: still checking; null: signed out.
   const [signedIn, setSignedIn] = useState<boolean | undefined>(isSupabaseConfigured ? undefined : false);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [friends, setFriends] = useState<number | null>(null);
-  const [streak, setStreak] = useState<Streak | null>(null);
+  // Shown straight away from the last visit, then refreshed.
+  const [profile, setProfile] = useState<Profile | null>(() => recall<Profile>("profile") ?? null);
+  const [friends, setFriends] = useState<number | null>(() => recall<number>("profile:friends") ?? null);
+  const [streak, setStreak] = useState<Streak | null>(() => recall<Streak>("profile:streak") ?? null);
   // Polls voted on as a guest (not counted until they sign in).
   const [guestVotes, setGuestVotes] = useState(0);
   const [tab, setTab] = useState<Tab>("mine");
-  const [polls, setPolls] = useState<Poll[] | null>(null);
+  const [polls, setPolls] = useState<Poll[] | null>(() => recall<Poll[]>("profile:polls:mine") ?? null);
   const [sharing, setSharing] = useState<Poll | null>(null);
   const [error, setError] = useState<string | null>(null);
   // New votes / comments since the last visit; shown for this visit, then marked seen.
@@ -64,7 +67,10 @@ export function ProfileScreen() {
 
   const loadProfile = useCallback(() => {
     getMyProfile()
-      .then(setProfile)
+      .then((p) => {
+        setProfile(p);
+        remember("profile", p);
+      })
       .catch((e) => {
         console.error(e);
         setError("Couldn't load your profile. Check your connection.");
@@ -75,18 +81,24 @@ export function ProfileScreen() {
     if (!signedIn) return;
     loadProfile();
     getMyCircle()
-      .then((c) => setFriends(c.members.length))
+      .then((c) => {
+        setFriends(c.members.length);
+        remember("profile:friends", c.members.length);
+      })
       .catch(() => {});
     fetchStreak()
-      .then(setStreak)
+      .then((st) => {
+        setStreak(st);
+        remember("profile:streak", st);
+      })
       .catch(() => {});
-    let timer = 0;
-    fetchActivity().then((a) => {
-      setActivity(a);
-      // Give it a moment on screen before it counts as seen.
-      if (a.votes + a.comments > 0) timer = window.setTimeout(markActivitySeen, 2500);
-    });
-    return () => window.clearTimeout(timer);
+    fetchActivity()
+      .then((a) => {
+        // Shown as new for this visit; seen as soon as it's on screen.
+        setActivity(a);
+        if (a.votes + a.comments > 0) markActivitySeen();
+      })
+      .catch(() => {});
   }, [signedIn, loadProfile]);
 
   // The "Pick your @name" sheet can change the name while this screen is open.
@@ -98,8 +110,12 @@ export function ProfileScreen() {
   useEffect(() => {
     if (!signedIn) return;
     let stale = false;
+    const key = `profile:polls:${tab}`;
     fetchMyPolls(tab)
-      .then((list) => !stale && setPolls(list))
+      .then((list) => {
+        remember(key, list);
+        if (!stale) setPolls(list);
+      })
       .catch((e) => {
         console.error(e);
         if (!stale) setPolls([]);
@@ -111,7 +127,7 @@ export function ProfileScreen() {
 
   function pickTab(next: Tab) {
     if (next === tab) return;
-    setPolls(null);
+    setPolls(recall<Poll[]>(`profile:polls:${next}`) ?? null);
     setTab(next);
   }
 
@@ -185,35 +201,36 @@ export function ProfileScreen() {
 
           {signedIn && <NotificationPrompt />}
 
-          <div role="tablist" aria-label="Profile lists" className="tabs profile-tabs">
-            {(
-              [
-                ["mine", "My polls"],
-                ["voted", "Voted"],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                role="tab"
-                type="button"
-                aria-selected={tab === id}
-                className="tab press"
-                onClick={() => pickTab(id)}
-              >
-                {label}
-              </button>
-            ))}
+          <div className="profile-tabs-row">
+            <div role="tablist" aria-label="Profile lists" className="tabs profile-tabs">
+              {(
+                [
+                  ["mine", "My polls"],
+                  ["voted", "Voted"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  role="tab"
+                  type="button"
+                  aria-selected={tab === id}
+                  className="tab press"
+                  onClick={() => pickTab(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {tab === "mine" && activity && activity.votes + activity.comments > 0 && (
+              <p className="activity-summary" role="status" title="Since your last visit">
+                <span aria-hidden="true">✨</span> {activityText(activity)}
+              </p>
+            )}
           </div>
 
           {error && (
             <p className="poll-error profile-error" role="alert">
               {error}
-            </p>
-          )}
-
-          {tab === "mine" && activity && activity.votes + activity.comments > 0 && (
-            <p className="activity-summary" role="status">
-              <span aria-hidden="true">✨</span> Since your last visit: {activityText(activity)}
             </p>
           )}
 
@@ -410,6 +427,7 @@ export function ProfilePoll({
   /** New fields, or null when the poll was deleted. */
   onChange: (patch: Partial<Poll> | null) => void;
 }) {
+  const [menu, setMenu] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
@@ -423,7 +441,11 @@ export function ProfilePoll({
   const mine = poll.options.find((o) => o.id === poll.myOptionId);
   const votes = `${formatCount(poll.voteCount)} ${poll.voteCount === 1 ? "vote" : "votes"}`;
   const meta = poll.isMine
-    ? [votes, poll.shareCount ? `${formatCount(poll.shareCount)} shares` : null, closed ? "closed" : timeLeft(poll.closesAt, now)]
+    ? [
+        votes,
+        poll.shareCount ? `${formatCount(poll.shareCount)} ${poll.shareCount === 1 ? "share" : "shares"}` : null,
+        closed ? null : timeLeft(poll.closesAt, now),
+      ]
     : [mine ? `You picked ${mine.text}` : null, votes];
 
   async function run(action: () => Promise<void>, patch: Partial<Poll> | null) {
@@ -438,24 +460,36 @@ export function ProfilePoll({
     } finally {
       setBusy(false);
       setConfirming(false);
+      setMenu(false);
     }
   }
 
+  function closeMenu() {
+    setMenu(false);
+    setConfirming(false);
+  }
 
   return (
-    <li className="profile-poll" data-news={news || undefined} style={{ animationDelay: `${0.05 + index * 0.06}s` }}>
+    <li
+      className={`profile-poll${poll.isMine ? " profile-poll-mine" : ""}${menu ? " profile-poll-open" : ""}`}
+      data-news={news || undefined}
+      style={{ animationDelay: `${0.05 + index * 0.06}s` }}
+    >
       <Link href={`/p/${poll.id}`} className="profile-poll-link">
-        <span className="profile-poll-top">
-          <span className="profile-poll-q">{poll.question ?? poll.teaser}</span>
-          <span className={`chip chip-small ${closed ? "chip-closed" : "chip-mint"}`}>{closed ? "Closed" : "Live"}</span>
-        </span>
-        <span className="profile-poll-tags">
-          {poll.kind === "hot_take" && <span className="chip chip-small">Hot take</span>}
-          {poll.kind === "mystery" && <span className="chip chip-small">Mystery</span>}
-          {poll.visibility === "link" && <span className="chip chip-small chip-link">Link only</span>}
-          {poll.visibility === "circle" && (
-            <span className="chip chip-small chip-circle">{poll.isMine ? audienceLabel(poll.audience) : "Friends"}</span>
-          )}
+        <span className="profile-poll-q">{poll.question ?? poll.teaser}</span>
+        {hasCounts && (
+          <span className="segments" aria-hidden="true">
+            {pcts.map((w, i) => (w > 0 ? <span key={i} style={{ width: `${w}%`, background: colors[i] }} /> : null))}
+          </span>
+        )}
+        <span className="profile-poll-meta">
+          <span className={`tag ${closed ? "tag-closed" : "tag-live"}`}>{closed ? "Ended" : "Live"}</span>
+          {poll.kind === "hot_take" && <span className="tag">Hot take</span>}
+          {poll.kind === "mystery" && <span className="tag">Mystery</span>}
+          {poll.visibility === "link" && <span className="tag tag-link">Link only</span>}
+          {poll.visibility === "circle" && <span className="tag tag-circle">{poll.isMine ? audienceLabel(poll.audience) : "Friends"}</span>}
+          {news && <span className="activity-chip">{activityText(news)}</span>}
+          <span>{meta.filter(Boolean).join(" · ")}</span>
           {!poll.isMine && (
             <span className="profile-poll-by">
               by @{poll.creator}
@@ -463,54 +497,88 @@ export function ProfilePoll({
             </span>
           )}
         </span>
-        {hasCounts && (
-          <span className="segments" aria-hidden="true">
-            {pcts.map((w, i) => (w > 0 ? <span key={i} style={{ width: `${w}%`, background: colors[i] }} /> : null))}
-          </span>
-        )}
-        <span className="profile-poll-meta">
-          {news && <span className="activity-chip">{activityText(news)}</span>} {meta.filter(Boolean).join(" · ")}
-        </span>
       </Link>
 
       {poll.isMine && (
-        <div className="profile-poll-actions">
-          {confirming ? (
-            <>
-              <span className="confirm-text">Delete this poll for everyone?</span>
-              <button type="button" className="mini-btn mini-btn-danger" disabled={busy} onClick={() => run(() => deletePoll(poll.id), null)}>
-                Delete
-              </button>
-              <button type="button" className="mini-btn" onClick={() => setConfirming(false)}>
-                Keep it
-              </button>
-            </>
-          ) : (
-            <>
-              <button type="button" className="mini-btn" onClick={onShare}>
-                Share
-              </button>
-              <label className="mini-select">
-                <span className="sr-only">Who can see it</span>
-                <select
-                  value={poll.visibility}
-                  disabled={busy}
-                  onChange={(e) => {
-                    const v = e.target.value as Visibility;
-                    run(() => setPollVisibility(poll.id, v), { visibility: v, audience: v === "circle" ? "Whole circle" : null });
+        <span className="profile-poll-icons">
+          <button type="button" className="profile-poll-icon press" aria-label="Share poll" onClick={onShare}>
+            <ShareIcon size={16} />
+          </button>
+          <button
+            type="button"
+            className="profile-poll-icon press"
+            aria-label="Poll options"
+            aria-haspopup="menu"
+            aria-expanded={menu}
+            onClick={() => (menu ? closeMenu() : setMenu(true))}
+          >
+            •••
+          </button>
+        </span>
+      )}
+
+      {menu && (
+        <>
+          <div className="snap-menu-backdrop poll-menu-backdrop" aria-hidden="true" onClick={closeMenu} />
+          <div className="poll-menu" role="menu" aria-label="Poll options">
+            {confirming ? (
+              <div className="poll-menu-confirm">
+                <strong>Delete this poll for everyone?</strong>
+                <span className="poll-menu-row">
+                  <button type="button" className="mini-btn mini-btn-danger" disabled={busy} onClick={() => run(() => deletePoll(poll.id), null)}>
+                    Delete
+                  </button>
+                  <button type="button" className="mini-btn" onClick={() => setConfirming(false)}>
+                    Keep it
+                  </button>
+                </span>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    closeMenu();
+                    onShare();
                   }}
                 >
-                  <option value="public">Everyone</option>
-                  <option value="circle">Friends</option>
-                  <option value="link">Only with link</option>
-                </select>
-              </label>
-              <button type="button" className="mini-btn mini-btn-danger-text" onClick={() => setConfirming(true)}>
-                Delete
-              </button>
-            </>
-          )}
-        </div>
+                  <ShareIcon size={18} /> Share
+                </button>
+                <div className="poll-menu-who" role="group" aria-label="Who sees it">
+                  <span>👁 Who sees it</span>
+                  <span className="poll-menu-row">
+                    {(
+                      [
+                        ["public", "Everyone"],
+                        ["circle", "Friends"],
+                        ["link", "Link only"],
+                      ] as const
+                    ).map(([v, label]) => (
+                      <button
+                        key={v}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={poll.visibility === v}
+                        disabled={busy}
+                        className="poll-menu-pill"
+                        onClick={() =>
+                          poll.visibility !== v &&
+                          run(() => setPollVisibility(poll.id, v), { visibility: v as Visibility, audience: v === "circle" ? "Whole circle" : null })
+                        }
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </span>
+                </div>
+                <button type="button" role="menuitem" className="snap-menu-danger" onClick={() => setConfirming(true)}>
+                  🗑️ Delete poll
+                </button>
+              </>
+            )}
+          </div>
+        </>
       )}
       {failed && (
         <p className="poll-error" role="alert">

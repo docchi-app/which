@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { isSignedIn, onUserChange } from "@/lib/auth";
 import { fetchLeaderboard, type Board, type Leaderboard, type LeaderRow } from "@/lib/leaders";
+import { recall, remember } from "@/lib/screen-cache";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { Avatar } from "./Avatar";
 import { BottomNav } from "./BottomNav";
@@ -25,15 +26,23 @@ const votes = (n: number) => `${n.toLocaleString("en-IN")} ${n === 1 ? "vote" : 
 
 /** Weekly leaderboard: top creators and hottest polls, Monday–Sunday India time. */
 export function LeadersScreen() {
-  const [board, setBoard] = useState<Board>("creators");
-  const [which, setWhich] = useState<"this" | "last">("this");
-  const [data, setData] = useState<Leaderboard | null | undefined>(undefined);
+  // Coming back: the board you were on, shown straight away and then refreshed.
+  const [view] = useState(() => recall<{ board: Board; which: "this" | "last"; fellBack: boolean }>("leaders:view"));
+  const [board, setBoard] = useState<Board>(view?.board ?? "creators");
+  const [which, setWhich] = useState<"this" | "last">(view?.which ?? "this");
+  const [data, setData] = useState<Leaderboard | null | undefined>(() =>
+    view ? recall<Leaderboard | null>(`leaders:${view.board}:${view.which}`) : undefined,
+  );
   const [failed, setFailed] = useState(false);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [retry, setRetry] = useState(0);
   // This week was still empty on arrival, so we're showing last week instead.
-  const [fellBack, setFellBack] = useState(false);
-  const firstLoad = useRef(true);
+  const [fellBack, setFellBack] = useState(view?.fellBack ?? false);
+  const firstLoad = useRef(!view);
+  const fellBackRef = useRef(fellBack);
+  useEffect(() => {
+    fellBackRef.current = fellBack;
+  });
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -56,6 +65,8 @@ export function LeadersScreen() {
         }
         firstLoad.current = false;
         setData(d);
+        remember(`leaders:${board}:${which}`, d);
+        remember("leaders:view", { board, which, fellBack: fellBackRef.current });
       })
       .catch(() => live && setFailed(true));
     return () => {

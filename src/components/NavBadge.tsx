@@ -16,28 +16,61 @@ export function NavBadge() {
   );
 }
 
-/** Friend requests waiting for me, kept fresh when anything changes. */
+// How many waiting requests I've already seen (Activity or Friends): those stop
+// counting on the badges but stay listed until I answer them.
+const SEEN_KEY = "docchi.requestsSeen";
+const REQUESTS_SEEN = "docchi:requests-seen";
+
+function seenRequests() {
+  try {
+    return Number(localStorage.getItem(SEEN_KEY) ?? 0) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** I've just seen `count` waiting requests. */
+export function markRequestsSeen(count: number) {
+  try {
+    localStorage.setItem(SEEN_KEY, String(count));
+  } catch {
+    // Not remembered; the badge shows again next time.
+  }
+  window.dispatchEvent(new Event(REQUESTS_SEEN));
+}
+
+/** Friend requests waiting for me that I haven't seen yet, kept fresh when anything changes. */
 export function useFriendRequests() {
-  const [count, setCount] = useState(0);
+  const [waiting, setWaiting] = useState(0);
+  const [seen, setSeen] = useState(0);
+  const count = Math.max(0, waiting - seen);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let signedIn = false;
     const refresh = () => {
-      if (!signedIn) return setCount(0);
+      setSeen(seenRequests());
+      if (!signedIn) return setWaiting(0);
       getCircleBadge()
-        .then(setCount)
+        .then((n) => {
+          // Answered (or withdrawn) requests leave the seen count too.
+          if (n < seenRequests()) markRequestsSeen(n);
+          setWaiting(n);
+        })
         .catch(() => {});
     };
+    const onSeen = () => setSeen(seenRequests());
     const stop = onUserChange((user) => {
       signedIn = isSignedIn(user);
       refresh();
     });
     // Accepting or declining a request elsewhere updates the badge at once.
     window.addEventListener(CIRCLE_CHANGED, refresh);
+    window.addEventListener(REQUESTS_SEEN, onSeen);
     return () => {
       stop();
       window.removeEventListener(CIRCLE_CHANGED, refresh);
+      window.removeEventListener(REQUESTS_SEEN, onSeen);
     };
   }, []);
 
