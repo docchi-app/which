@@ -3451,3 +3451,89 @@ button.ghost-action { cursor: pointer; }
 .poll-menu-pill { height: 32px; padding: 0 10px; border: var(--outline); border-radius: 999px; background: var(--white); color: var(--ink); font-size: 12.5px; font-weight: 700; }
 .poll-menu-pill[aria-checked="true"] { background: var(--ink); color: var(--cream); }
 .poll-menu-confirm { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; font-size: 14px; }
+
+/* ─── Props: compliment polls about your friends ───────────────────────── */
+.props-card { background: var(--lilac); }
+.props-chip { align-self: flex-start; background: var(--white); }
+.props-sub { margin: -2px 0 0; color: #3b2f5c; font-size: 14px; line-height: 1.4; }
+.props-answer { gap: 10px; font-weight: 700; }
+.props-answer .person-avatar { flex: none; }
+.props-actions .props-skip { color: var(--muted); }
+.props-actions .next-btn { margin-left: auto; }
+.props-link { align-self: flex-start; }
+.props-ghosts { display: flex; gap: 8px; }
+.props-ghost {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 2px dashed var(--ink);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 0.55);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 800;
+}
+.props-ghost-on { border-style: solid; background: var(--mint); }
+.props-sent { position: relative; align-items: center; text-align: center; }
+.props-sent .post-btn { align-self: stretch; }
+.props-sent-heart { font-size: 64px; line-height: 1; animation: pop 0.6s var(--ease-pop) both; }
+.props-heart {
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  font-size: 22px;
+  pointer-events: none;
+  animation: props-heart 1.1s ease-out both;
+}
+@keyframes props-heart {
+  0% { opacity: 0; transform: translate(-50%, 0) scale(0.4); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), var(--dy)) scale(1.1); }
+}
+.props-count { margin: 0; color: #3b2f5c; font-size: 13px; font-weight: 700; }
+.props-sent .poll-actions { align-self: stretch; }
+/* Friends tab entry and /props. */
+.props-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 20px 16px;
+  padding: 12px 14px;
+  border: var(--outline-bold);
+  border-radius: 20px;
+  background: var(--lilac);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  font-weight: 800;
+  text-decoration: none;
+}
+.props-entry-icon { font-size: 28px; }
+.props-entry-text { display: flex; flex: 1; flex-direction: column; gap: 2px; }
+.props-entry-text strong { font-family: var(--font-display); font-size: 18px; }
+.props-entry-text span { color: #3b2f5c; font-size: 13px; font-weight: 600; }
+.props-page { display: flex; flex-direction: column; gap: 14px; padding: 0 20px 130px; }
+.props-mine-link { align-self: center; color: var(--ink); font-weight: 800; }
+/* Profile: what friends say about you. */
+.props-about {
+  margin: 0 18px 12px;
+  padding: 12px 14px;
+  border: var(--outline-bold);
+  border-radius: 20px;
+  background: var(--white);
+  box-shadow: var(--shadow);
+}
+.props-about-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 8px; }
+.props-about-head h2 { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 800; }
+.props-only { color: var(--muted); font-size: 12px; font-weight: 600; }
+.props-about-empty { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+.props-about-list { margin: 8px 0 0; padding: 0; list-style: none; }
+.props-about-list li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1.5px solid var(--line); }
+.props-about-emoji { font-size: 22px; }
+.props-about-label { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4px; font-size: 14px; font-weight: 700; }
+.props-about-bar { height: 7px; border-radius: 9px; background: var(--grape, #8b5cf6); }
+.props-about-n { font-family: var(--font-display); font-size: 17px; }
+.props-about-more { margin-top: 6px; padding: 4px 0; border: 0; background: none; color: var(--ink); font-weight: 800; text-decoration: underline; }
+.props-news-row { cursor: default; }
+.props-sent > :not(.props-heart) { position: relative; z-index: 1; }
+.props-sent .poll-actions { position: sticky; z-index: 2; }

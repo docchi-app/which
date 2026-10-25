@@ -12,10 +12,12 @@ import { FEED_PAGE_SIZE, fetchFeed, fetchPoll, recordOpen } from "@/lib/polls";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { recall, remember } from "@/lib/screen-cache";
 import { warmProfile } from "@/lib/warm";
+import { isPropsSlot, propsSlot, propsState } from "@/lib/props";
 import { useLiveInterval } from "@/lib/useLiveInterval";
 import type { FeedTab, Poll, VoteResult } from "@/lib/types";
 import { LogoMark, Wordmark } from "./Logo";
 import { ANSWER_COLORS, PollCard } from "./PollCard";
+import { PropsCard } from "./PropsCard";
 import { SignInSheet, type SheetPick } from "./SignInSheet";
 import { ShareSheet } from "./ShareSheet";
 import { BottomNav } from "./BottomNav";
@@ -36,6 +38,25 @@ const NEW_POLLS_CHECK_MS = 45_000;
 const SAVE_VOTES_AFTER = 3;
 const SAVE_ASKED_KEY = "docchi.saveVotesAsked";
 const WELCOMED_KEY = "docchi.welcomed";
+// The "Unlock Props" card shows at most once a day.
+const PROPS_LOCKED_KEY = "docchi.propsLockedDay";
+const today = () => new Date().toLocaleDateString("en-CA");
+
+function shownToday(key: string) {
+  try {
+    return localStorage.getItem(key) === today();
+  } catch {
+    return false;
+  }
+}
+
+function markShownToday(key: string) {
+  try {
+    localStorage.setItem(key, today());
+  } catch {
+    // Shown again next time. Harmless.
+  }
+}
 // The guest's "votes not counted yet" bar: ✕ hides it for a day.
 const GUEST_BAR_HIDDEN_KEY = "docchi.guestBarHidden";
 const GUEST_TOAST_KEY = "docchi.guestToastShown";
@@ -75,6 +96,8 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   // Coming back from another screen: carry on at the same card, no reload.
   const [saved] = useState(() => savedFeed(initialPollId));
   const skipLoad = useRef(!!saved);
+  // Props cards already slotted into this list (a restored list has them).
+  const propsAdded = useRef(!!saved);
   const [tab, setTab] = useState<FeedTab>(saved?.tab ?? "trending");
   const [polls, setPolls] = useState<Poll[] | null>(saved?.polls ?? null);
   // For callbacks that shouldn't change identity when the list does.
@@ -166,6 +189,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
 
   const load = useCallback(async (which: FeedTab) => {
     const token = ++loadToken.current;
+    propsAdded.current = false;
     setPolls(null);
     setFailed(false);
     setFreshPolls(false);
@@ -239,8 +263,38 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
     load(tab);
   }, [tab, load]);
 
-  // Once the feed is in, get Profile ready in the background.
   const feedReady = !!polls;
+  const indexRef = useRef(index);
+  useEffect(() => {
+    indexRef.current = index;
+  });
+
+  // Props: a few polls in, a question about your friends (For you only, signed in).
+  useEffect(() => {
+    if (!feedReady || !signedIn || tab !== "trending" || propsAdded.current || initialPollId) return;
+    propsAdded.current = true;
+    const token = loadToken.current;
+    propsState()
+      .then((st) => {
+        if (token !== loadToken.current) return;
+        let slots: number[] = [];
+        if (st.state === "ready") slots = [3, 8].slice(0, Math.min(2, st.left ?? 0));
+        else if (st.state === "locked" && !shownToday(PROPS_LOCKED_KEY)) {
+          slots = [5];
+          markShownToday(PROPS_LOCKED_KEY);
+        }
+        if (!slots.length) return;
+        setPolls((list) => {
+          if (!list) return list;
+          const next = [...list];
+          slots.forEach((at, n) => next.splice(Math.min(indexRef.current + at + n, next.length), 0, propsSlot(n)));
+          return next;
+        });
+      })
+      .catch(() => {});
+  }, [feedReady, signedIn, tab, initialPollId]);
+
+  // Once the feed is in, get Profile ready in the background.
   useEffect(() => {
     if (feedReady && signedIn) warmProfile();
   }, [feedReady, signedIn]);
@@ -564,23 +618,27 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
                 ))}
               </section>
             ) : poll ? (
-              <PollCard
-                key={poll.id}
-                poll={poll}
-                tag={tagFor(poll, index)}
-                signedIn={signedIn}
-                celebrate={poll.id === celebrateId}
-                justCreated={poll.id === createdId}
-                onVoted={onVoted}
-                onRefresh={onRefresh}
-                onNeedSignIn={onNeedSignIn}
-                onSaveVotes={() => setSheet("save")}
-                onShare={() => setSharing(poll)}
-                onNext={() => go(1)}
-                onReported={(id) => setPolls((list) => list?.filter((p) => p.id !== id) ?? null)}
-                onDeleted={(id) => setPolls((list) => list?.filter((p) => p.id !== id) ?? null)}
-                openComments={poll.id === commentsFor}
-              />
+              isPropsSlot(poll) ? (
+                <PropsCard key={poll.id} onNext={() => go(1)} />
+              ) : (
+                <PollCard
+                  key={poll.id}
+                  poll={poll}
+                  tag={tagFor(poll, index)}
+                  signedIn={signedIn}
+                  celebrate={poll.id === celebrateId}
+                  justCreated={poll.id === createdId}
+                  onVoted={onVoted}
+                  onRefresh={onRefresh}
+                  onNeedSignIn={onNeedSignIn}
+                  onSaveVotes={() => setSheet("save")}
+                  onShare={() => setSharing(poll)}
+                  onNext={() => go(1)}
+                  onReported={(id) => setPolls((list) => list?.filter((p) => p.id !== id) ?? null)}
+                  onDeleted={(id) => setPolls((list) => list?.filter((p) => p.id !== id) ?? null)}
+                  openComments={poll.id === commentsFor}
+                />
+              )
             ) : (
               tab === "circle" && polls.length === 0 ? (
                 <section className="poll-card empty-card">

@@ -1,7 +1,7 @@
 import { installPlatform } from "./install";
 import { getSupabase } from "./supabase";
 
-export type PushKinds = { votes: boolean; comments: boolean; circle: boolean; results: boolean; daily: boolean };
+export type PushKinds = { votes: boolean; comments: boolean; circle: boolean; results: boolean; daily: boolean; props: boolean };
 
 /**
  * ready: can turn on · install: iPhone/iPad in Safari (add to Home Screen first)
@@ -115,7 +115,9 @@ export async function syncPush(): Promise<void> {
 export async function getPushKinds(): Promise<PushKinds> {
   const { data, error } = (await getSupabase()?.rpc("get_push_settings")) ?? { data: null, error: null };
   if (error) throw error;
-  return (data as PushKinds | null) ?? { votes: true, comments: true, circle: true, results: true, daily: true };
+  // Older databases (before the Props migration) don't send "props".
+  const kinds = (data as Partial<PushKinds> | null) ?? {};
+  return { votes: true, comments: true, circle: true, results: true, daily: true, props: true, ...kinds };
 }
 
 export async function setPushKinds(kinds: PushKinds): Promise<void> {
