@@ -18,7 +18,7 @@ import {
 import { InstallSheet } from "./InstallSheet";
 
 const KINDS: { id: keyof PushKinds; label: string; hint: string }[] = [
-  { id: "votes", label: "Votes on my polls", hint: "At 10, 25, 50, 100…" },
+  { id: "votes", label: "Votes on my polls", hint: "At 3, 5, 10, 25, 50…" },
   { id: "comments", label: "Comments on my polls", hint: "A few at a time, not every one" },
   { id: "props", label: "Friends gave me props", hint: "💜 Anonymous: never who" },
   { id: "circle", label: "Friends", hint: "Friend requests, new friends and friends-only polls" },
@@ -269,7 +269,7 @@ export function NotificationSettings() {
                 />
               </label>
             ))}
-            <p className="notif-hint">Quiet from 11pm to 8am, and never more than 8 a day.</p>
+            <p className="notif-hint">Quiet from 11pm to 8am. Anything from the night arrives at 8am.</p>
             <div className="notif-actions">
               <button type="button" className="mini-btn" onClick={test} disabled={busy}>
                 Send me a test

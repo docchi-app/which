@@ -212,11 +212,12 @@ The first slice of the build order:
 - **Phone notifications (web push):** a slim "Get notified → Turn on" row on Profile, and "Get a ping
   when votes come in" on a poll you just posted, while they're off on that phone (✕ hides it for a
   month); once on, it disappears. Settings → Notifications has a
-  switch for each kind: **votes** on your polls (at 10, 25, 50, 100…), **friends** (friend requests, new friends,
+  switch for each kind: **votes** on your polls (at 3, 5, 10, 25, 50, 100…), **friends** (friend requests, new friends,
   friends-only polls), **results** (when a poll you voted on or made closes) and **Poll of the Day** (9am, with "Keep
   your 🔥 5-day streak going" when you're on one; the same switch covers an 8pm "Your 🔥 6-day
   streak ends at midnight" for streaks of 3+ days not yet kept today).
-  Quiet 11pm–8am India time, at most 8 a day, and tapping one opens the poll. Works on Android and
+  Quiet 11pm–8am India time (what comes in at night goes out at 8am), no daily cap, and tapping
+  one opens the poll. Works on Android and
   desktop browsers; on iPhone, only after adding Docchi to the Home Screen (iOS 16.4+), and the
   app says so. Signing out stops that phone getting your notifications.
 - **Get the app (Home Screen):** a step-by-step sheet. On iPhone: Share → Add to Home Screen →
