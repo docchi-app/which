@@ -3334,6 +3334,9 @@ button.ghost-action { cursor: pointer; }
 .friends-voted-inline { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
 .friends-voted-inline strong { color: var(--ink); }
 .friends-voted-inline::after { content: "·"; }
+/* Before voting: one slim line under the creator's name, tucked close to it. */
+.friends-voted-top { margin: -6px 0 -2px; }
+.friends-voted-top::after { content: none; }
 .feed-card .poll-actions {
   position: sticky;
   bottom: -16px;
