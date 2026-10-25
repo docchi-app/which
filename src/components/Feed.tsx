@@ -523,6 +523,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
                 onShare={() => setSharing(poll)}
                 onNext={() => go(1)}
                 onReported={(id) => setPolls((list) => list?.filter((p) => p.id !== id) ?? null)}
+                onDeleted={(id) => setPolls((list) => list?.filter((p) => p.id !== id) ?? null)}
                 openComments={poll.id === commentsFor}
               />
             ) : (

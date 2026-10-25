@@ -5,16 +5,42 @@ import { getSupabase } from "./supabase";
 // the private "snaps" bucket, and the poll only goes live once
 // /api/snap/check has passed the photo.
 
-export type SnapTemplate = "rate" | "buy" | "go" | "own";
 export type SnapAudience = "circle" | "public";
 export type SnapStatus = "pending" | "live" | "review" | "rejected";
 
-export const SNAP_TEMPLATES: { id: SnapTemplate; label: string; question: string; answers: string[] }[] = [
-  { id: "rate", label: "Rate my fit", question: "Rate my fit", answers: ["🔥", "😍", "😐", "🙅"] },
-  { id: "buy", label: "Buy or skip?", question: "Buy it or skip it?", answers: ["🛒 Buy", "🙅 Skip"] },
-  { id: "go", label: "Should I go?", question: "Should I go?", answers: ["🙌 Go", "🛋️ Stay home"] },
-  { id: "own", label: "✏️ Your own", question: "", answers: ["👍 Yes", "👎 No"] },
-];
+/** Ready-made questions: tap one and its question and answers fill in (all still editable). */
+export const SNAP_IDEAS = [
+  { id: "buy", label: "🛒 Buy or skip?", question: "Buy it or skip it?", answers: ["🛒 Buy", "🙅 Skip"] },
+  { id: "rate", label: "🔥 Rate my fit", question: "Rate my fit", answers: ["🔥", "😍", "😐", "🙅"] },
+  { id: "go", label: "🙌 Should I go?", question: "Should I go?", answers: ["🙌 Go", "🛋️ Stay home"] },
+  { id: "that", label: "⚖️ This or that?", question: "This or that?", answers: ["👈 This", "👉 That"] },
+  { id: "food", label: "🍽️ Rate my food", question: "Rate my food", answers: ["🤤", "😋", "😐", "🤢"] },
+  { id: "much", label: "🤔 Too much?", question: "Too much?", answers: ["😍 Love it", "😬 Too much"] },
+] as const;
+export type SnapIdea = (typeof SNAP_IDEAS)[number]["id"];
+
+export const YES_NO = ["👍 Yes", "👎 No"];
+export const MAX_ANSWERS = 4;
+export const QUESTION_MAX = 80;
+export const ANSWER_MAX = 24;
+
+/** "Wedding or office party?" → ["Wedding", "Office party"]: the two sides, as answers. */
+export function eitherOr(question: string): string[] | null {
+  const m = /^(?:[\w\s']*?:\s*)?(.+?)\s+or\s+(.+?)[?!.\s]*$/i.exec(question.trim());
+  if (!m) return null;
+  const side = (t: string) => {
+    const s = t.trim().replace(/^(a|an|the)\s+/i, "");
+    return (s.charAt(0).toUpperCase() + s.slice(1)).slice(0, ANSWER_MAX).trim();
+  };
+  // "Should I go to Goa or Manali?": a long first half is mostly the question; keep its end.
+  const left = m[1].trim().split(/\s+/);
+  const keep = Math.min(3, Math.max(1, m[2].trim().split(/\s+/).length));
+  const [a, b] = [side((left.length > 3 ? left.slice(-keep) : left).join(" ")), side(m[2])];
+  return a && b && a.toLowerCase() !== b.toLowerCase() ? [a, b] : null;
+}
+
+/** Answers short enough to be emoji only (🔥 😍 😐 🙅) show as round, big tap targets. */
+export const isEmojiAnswers = (answers: readonly string[]) => answers.length > 2 && answers.every((a) => [...a.trim()].length <= 2);
 
 export class SnapError extends Error {
   constructor(public code: string) {
@@ -25,8 +51,8 @@ export class SnapError extends Error {
 /** Uploads and posts a snap (`photo` is already a 3:4 snap photo). Returns the new poll's id (still waiting for its check). */
 export async function postSnap(input: {
   photo: Blob;
-  template: SnapTemplate;
-  question?: string;
+  question: string;
+  answers: string[];
   audience: SnapAudience;
   live: boolean;
 }): Promise<string> {
@@ -48,8 +74,8 @@ export async function postSnap(input: {
 
   const { data: id, error } = await supabase.rpc("create_snap", {
     photo_path: path,
-    template: input.template,
-    question: input.question ?? null,
+    question: input.question,
+    answers: input.answers,
     visibility: input.audience,
     live: input.live,
   });
@@ -58,6 +84,19 @@ export async function postSnap(input: {
     throw new SnapError(/docchi:(\w+)/.exec(error.message)?.[1] ?? "failed");
   }
   return id as string;
+}
+
+/** Deletes my snap for everyone, and its photo straight away (the daily clean-up catches it otherwise). */
+export async function deleteSnap(pollId: string): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) throw new SnapError("demo");
+  const info = await snapInfo(pollId).catch(() => null);
+  const { error } = await supabase.rpc("delete_poll", { poll: pollId });
+  if (error) throw new SnapError(/docchi:(\w+)/.exec(error.message)?.[1] ?? "failed");
+  if (info?.path) {
+    const { error: rm } = await supabase.storage.from("snaps").remove([info.path]);
+    if (!rm) await supabase.rpc("mark_snap_photos_deleted", { paths: [info.path] });
+  }
 }
 
 /** Runs the safety check for a snap I just posted. */
@@ -131,6 +170,10 @@ export const SNAP_ERRORS: Record<string, string> = {
   snap_too_new: "New accounts can send snaps to friends for the first day. Everyone opens up tomorrow.",
   empty_circle: "Add a friend first, or send it to Everyone.",
   question_length: "Questions need 3 to 80 characters.",
+  answer_count: "Give it 2 to 4 answers.",
+  answer_length: "Answers need 1 to 24 characters.",
+  duplicate_answers: "Two answers are the same. Change one.",
+  not_yours: "You can only delete your own snap.",
   blocked_words: "Let's keep it friendly: some of those words aren't allowed.",
   too_big: "That photo is too big. Try another one.",
   not_set_up: "Snaps aren't set up yet. (Whoever runs Docchi: run the Quick snap migrations.)",
@@ -140,24 +183,24 @@ export const SNAP_ERRORS: Record<string, string> = {
 };
 export const snapErrorText = (e: unknown) => (e instanceof SnapError && SNAP_ERRORS[e.code]) || "Couldn't post your snap. Try again?";
 
-// The last question and audience, so the next snap is one tap shorter.
+// The last idea and audience, so the next snap is one tap shorter.
 const PREFS_KEY = "docchi.snapPrefs";
 
-export function snapPrefs(): { template: SnapTemplate; audience: SnapAudience } {
+export function snapPrefs(): { idea: SnapIdea; audience: SnapAudience } {
   try {
-    const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") as { template?: SnapTemplate; audience?: SnapAudience };
+    const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") as { idea?: SnapIdea; audience?: SnapAudience };
     return {
-      template: SNAP_TEMPLATES.some((t) => t.id === p.template) ? p.template! : "rate",
+      idea: SNAP_IDEAS.some((t) => t.id === p.idea) ? p.idea! : "buy",
       audience: p.audience === "public" ? "public" : "circle",
     };
   } catch {
-    return { template: "rate", audience: "circle" };
+    return { idea: "buy", audience: "circle" };
   }
 }
 
-export function saveSnapPrefs(template: SnapTemplate, audience: SnapAudience) {
+export function saveSnapPrefs(prefs: { idea?: SnapIdea; audience?: SnapAudience }) {
   try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify({ template, audience }));
+    localStorage.setItem(PREFS_KEY, JSON.stringify({ ...snapPrefs(), ...prefs }));
   } catch {
     // Not remembered this time.
   }

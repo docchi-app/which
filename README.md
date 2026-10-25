@@ -139,22 +139,28 @@ The first slice of the build order:
   marked seen after a moment on screen (`my_activity()` / `mark_activity_seen()`, stored per account).
 - **Settings (⚙︎ on Profile):** notifications, the app (Home Screen), account (Admin, Sign out) and
   the policies, so Profile stays about your polls.
-- **Quick snap (the big tile at the top of +, "Snap one" on the caught-up card, or `/snap`):** the
-  camera opens straight away in a 3:4 frame that is exactly the feed card. Pick the question on
-  the camera (Rate my fit 🔥😍😐🙅 / Buy or skip / Should I go / your own, Yes or No) and who sees
-  it: **👥 Friends** (they see who picked what) or **🌍 Everyone** (counts only). Both are
-  remembered for next time. Camera shots get the 📸 Live badge. A gallery photo that's upright
-  goes straight to the preview; any other photo gets a **Frame your photo** step (drag and pinch
-  to fill the card, or **Show whole photo** on a blurred fill). Every photo is made exactly 3:4
-  at 1080 × 1440 on the phone (WebP, about 150–400 KB, location data removed), so upright photos
-  fill the card with nothing cut off. The preview is the feed card itself; in the feed you vote
-  right on the photo and the answers fill with the results. It disappears after 24 hours. Photos
-  go to the private `snaps` bucket and the snap stays hidden until `/api/snap/check` passes the
-  photo through OpenAI's free moderation: clean → live (and the share sheet opens), unsure →
-  **Admin → Snaps** for you to approve or reject (turned down after 12 hours), clearly bad →
-  rejected. Everyone snaps get a stricter bar; accounts under a day old can only send to
-  Friends; 3 snaps a day. Snaps stay off profiles, and their photos are deleted once they close
-  (by the owner's app, or Admin → Snaps → Clean up).
+- **Quick snap (the big tile at the top of +, "Snap one" on the caught-up card, or `/snap`):**
+  Shoot → Ask → Send. The camera opens straight away: just a shutter, gallery and flip, in a 3:4
+  frame that is exactly the feed card. Camera shots get the 📸 Live badge. A gallery photo
+  that's upright goes straight through; any other photo gets a **Frame your photo** step (drag
+  and pinch to fill the card, or **Show whole photo** on a blurred fill). Then the card itself
+  is where you ask: tap an idea (Buy or skip? / Rate my fit / Should I go? / This or that? /
+  Rate my food / Too much?) and its question and answers fill in, or **Type my own** and type
+  right on the photo. Your own question gets 2–4 answers you can edit (+ to add, × to remove),
+  with suggestions above: the two sides of an "X or Y?" question, Yes / No, or 🔥😍😐🙅.
+  **👥 Friends ▾** next to Send opens "Who sees this snap?": Friends (they see who picked what)
+  or Everyone (counts only). The last idea and audience are remembered. Every photo is made
+  exactly 3:4 at 1080 × 1440 on the phone (WebP, about 150–400 KB, location data removed), so
+  upright photos fill the card with nothing cut off. In the feed you vote right on the photo
+  and the answers fill with the results. On your own snap, **•••** → Share or **Delete snap**
+  (gone for everyone, and its photo is removed straight away). It disappears after 24 hours.
+  Photos go to the private `snaps` bucket and the snap stays hidden until `/api/snap/check`
+  passes the photo and its words through OpenAI's free moderation: clean → live (and the share
+  sheet opens), unsure → **Admin → Snaps** for you to approve or reject (turned down after 12
+  hours), clearly bad → rejected. Everyone snaps get a stricter bar; accounts under a day old
+  can only send to Friends; 3 snaps a day (deleting one doesn't give it back). Snaps stay off
+  profiles, and their photos are deleted once they close (by the owner's app, or Admin → Snaps →
+  Clean up).
 - **Streaks:** 🔥 N next to the bell: days in a row (India time) you've voted on at least one poll.
   It's grey until you vote today (the streak lives until midnight); tap it for your best. Hitting
   3, 7, 14, 30… days pops a "🔥 7-day streak!" bubble. Guests' votes count, so signing in keeps it
@@ -223,7 +229,7 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261108000000_comments.sql`, `20261109000000_rate_limits.sql`,
    `20261110000000_activity.sql`, `20261111000000_guest_votes.sql`, `20261112000000_friends.sql`,
    `20261113000000_streaks.sql`, `20261114000000_quick_snap.sql`,
-   `20261115000000_snap_photo_size.sql`, …),
+   `20261115000000_snap_photo_size.sql`, `20261116000000_snap_answers.sql`, …),
    in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
@@ -386,8 +392,8 @@ means everyone has to turn notifications on again, so keep a copy.
 
 1. Run `20261114000000_quick_snap.sql` (it creates the private `snaps` Storage bucket and its
    access rules), then `20261115000000_snap_photo_size.sql` (raises the bucket's limit to 600 KB
-   a photo for the sharper 1080 × 1440 snaps). Without these, sending a snap says "Snaps aren't
-   set up yet".
+   a photo for the sharper 1080 × 1440 snaps) and `20261116000000_snap_answers.sql` (snaps with
+   your own answers). Without these, sending a snap says "Snaps aren't set up yet".
 2. Create an API key at https://platform.openai.com/api-keys (the moderation check it's used for is
    free) and add it in Vercel as `OPENAI_API_KEY`, marked **Sensitive**. Redeploy.
 3. Snaps record their check result with `PUSH_CRON_SECRET` (the same value as for notifications,

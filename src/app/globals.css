@@ -2899,30 +2899,210 @@ button.ghost-action { cursor: pointer; }
 .your-turn-snap { background: var(--coral); }
 
 /* Snap screens. */
-.snap-intro { display: flex; flex-direction: column; gap: 14px; margin: 10px 20px; }
-.snap-retake-btn {
-  height: 40px;
-  padding: 0 14px;
-  border: var(--outline);
-  border-radius: 999px;
-  background: var(--white);
-  box-shadow: var(--shadow-sm);
+.cam-title { margin: 0; color: var(--white); font-family: var(--font-display); font-size: 18px; font-weight: 800; }
+
+/* Ask: the card is the editor. Dark, like the camera before it. */
+.ask-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  padding: calc(10px + env(safe-area-inset-top)) 0 0;
+  background: #0d0a18;
+  color: var(--white);
+}
+.ask-screen .cam-top { padding: 0 12px 10px; }
+.ask-card { width: min(calc(100% - 64px), 400px, calc((100dvh - 300px - env(safe-area-inset-top)) * 0.75)); flex: none; transition: width 0.25s var(--ease-pop); }
+.ask-card-typing { width: min(calc(100% - 96px), 320px, calc((100dvh - 330px) * 0.62)); }
+.ask-card .snapc { border-color: rgb(255 255 255 / 0.2); }
+.snapc-q-input {
+  width: 100%;
+  min-height: 1.15em;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--white);
+  resize: none;
+  field-sizing: content;
+  caret-color: var(--sun);
+  outline: none;
+}
+.snapc-q-input::placeholder { color: rgb(255 255 255 / 0.75); }
+.snapc-q-input:focus { background: rgb(13 10 24 / 0.35); box-shadow: 0 0 0 6px rgb(13 10 24 / 0.35); }
+.snapc-edit { padding: 0 6px; cursor: text; }
+.snapc-edit input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  outline: none;
+}
+.snapc-edit input::placeholder { color: var(--muted); font-size: 13px; }
+.snapc-edit:focus-within { box-shadow: 0 0 0 3px var(--sun), var(--shadow-sm); }
+.snapc-x {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0 14px 0 8px;
+  background: var(--ink);
+  color: var(--white);
+  font-size: 14px;
+  line-height: 1;
+}
+.snapc-add {
+  min-width: 40px;
+  min-height: 46px;
+  border: 2px solid rgb(255 255 255 / 0.75);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 0.16);
+  color: var(--white);
+  font-size: 22px;
   font-weight: 800;
 }
-.snap-preview-wrap { display: flex; justify-content: center; padding: 4px 20px 0; }
-.snap-preview-wrap .snapc { width: min(100%, 39dvh); }
-.snap-preview-controls { display: flex; flex-direction: column; gap: 12px; padding: 14px 20px 0; }
-.snap-templates { display: flex; flex-wrap: wrap; gap: 8px; }
-.snap-template {
+/* While asking: the answers in a row, then a small + (--n is the number of answers). */
+.snapc-answers:has(.snapc-add):not(.snapc-grid) { grid-auto-flow: row; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)) 40px; }
+/* Three or four worded answers: two by two. */
+.snapc-grid { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
+.ask-label { align-self: stretch; margin: 16px 16px 8px; color: rgb(255 255 255 / 0.7); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.ask-chips { display: flex; align-self: stretch; flex-wrap: wrap; gap: 8px; padding: 0 16px; }
+.ask-chip {
   height: 38px;
   padding: 0 14px;
-  border: var(--outline);
+  border: 0;
   border-radius: 999px;
-  background: var(--white);
+  background: rgb(255 255 255 / 0.13);
+  color: var(--white);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
 }
-.snap-template[aria-checked="true"] { background: var(--sun); box-shadow: var(--shadow-sm); }
+.ask-chip[aria-pressed="true"] { background: var(--sun); color: var(--ink); }
+.ask-chip-own { background: var(--white); color: var(--ink); }
+/* Ideas: two rows that scroll sideways, so the card stays big. */
+.ask-ideas { display: grid; grid-auto-columns: max-content; grid-auto-flow: column; grid-template-rows: auto auto; overflow-x: auto; scrollbar-width: none; }
+.ask-ideas::-webkit-scrollbar { display: none; }
+.ask-screen .sheet { color: var(--ink); }
+.ask-done { height: 38px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--sun); color: var(--ink); font-weight: 800; }
+.ask-bar {
+  position: sticky;
+  bottom: 0;
+  align-self: stretch;
+  margin-top: auto;
+  padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, #0d0a18 24%);
+}
+.ask-bar-row { display: flex; gap: 10px; }
+.ask-error { margin: 0 0 10px; padding: 10px 14px; border-radius: 14px; background: var(--white); }
+.ask-aud {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 56px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 18px;
+  background: rgb(255 255 255 / 0.13);
+  color: var(--white);
+  font-size: 15px;
+  font-weight: 800;
+}
+.ask-aud small { opacity: 0.7; }
+.ask-send {
+  flex: 1;
+  height: 56px;
+  border: 2.5px solid var(--ink);
+  border-radius: 18px;
+  background: var(--coral);
+  box-shadow: 3px 3px 0 #000;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 800;
+}
+.ask-send:disabled { background: #3a3550; box-shadow: none; color: rgb(255 255 255 / 0.6); font-family: var(--font-body); font-size: 15px; }
+/* Who sees this snap? */
+.aud-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.aud-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: var(--outline);
+  border-radius: 18px;
+  background: var(--white);
+  color: var(--ink);
+  text-align: left;
+}
+.aud-option[aria-checked="true"] { background: var(--ink); color: var(--cream); box-shadow: 3px 3px 0 var(--coral); }
+.aud-emoji { font-size: 28px; }
+.aud-text { display: flex; flex: 1; flex-direction: column; gap: 2px; }
+.aud-text strong { font-size: 16px; }
+.aud-text span { font-size: 13px; line-height: 1.35; opacity: 0.78; }
+.aud-check { display: grid; flex: none; width: 26px; height: 26px; place-items: center; border: 2px solid currentColor; border-radius: 50%; font-weight: 800; }
+.aud-option[aria-checked="true"] .aud-check { border-color: var(--sun); background: var(--sun); color: var(--ink); }
+.post-btn-danger { background: #d92d20; color: var(--white); }
+
+/* My snap in the feed: ••• → Share / Delete. */
+.snapc-badges { display: flex; flex: none; align-items: center; gap: 6px; }
+.snapc-more {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(13 10 24 / 0.55);
+  color: var(--white);
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+.snap-menu-backdrop { position: absolute; inset: 0; z-index: 9; }
+.snap-menu {
+  position: absolute;
+  top: 52px;
+  right: 10px;
+  z-index: 10;
+  display: flex;
+  width: 210px;
+  flex-direction: column;
+  padding: 6px;
+  border: var(--outline-bold);
+  border-radius: 18px;
+  background: var(--white);
+  box-shadow: var(--shadow-md);
+}
+.snap-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 800;
+  text-align: left;
+}
+.snap-menu button + button { border-top: 1.5px solid var(--line); border-radius: 0 0 12px 12px; }
+.snap-menu-danger { color: #d92d20 !important; }
+.snap-intro { display: flex; flex-direction: column; gap: 14px; margin: 10px 20px; }
 /* A two-way segmented control. */
 .snap-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: var(--outline); border-radius: 16px; background: var(--white); }
 .snap-seg button {
@@ -2967,9 +3147,6 @@ button.ghost-action { cursor: pointer; }
   color: var(--white);
 }
 .cam-spacer { visibility: hidden; }
-.cam-aud { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: rgb(255 255 255 / 0.14); }
-.cam-aud button { height: 34px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--white); font-size: 13px; font-weight: 800; }
-.cam-aud [aria-checked="true"] { background: var(--white); color: var(--ink); }
 .cam-frame {
   position: relative;
   flex: 0 1 auto;
@@ -2998,43 +3175,6 @@ button.ghost-action { cursor: pointer; }
 .cam-tr { top: 10px; right: 10px; border-width: 4px 4px 0 0; border-top-right-radius: 10px; }
 .cam-bl { bottom: 10px; left: 10px; border-width: 0 0 4px 4px; border-bottom-left-radius: 10px; }
 .cam-br { right: 10px; bottom: 10px; border-width: 0 4px 4px 0; border-bottom-right-radius: 10px; }
-.cam-question {
-  position: absolute;
-  right: 16px;
-  bottom: 72px;
-  left: 16px;
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 21px;
-  font-weight: 800;
-  line-height: 1.15;
-  text-shadow: 0 2px 8px rgb(0 0 0 / 0.6);
-}
-.cam-chips {
-  position: absolute;
-  right: 0;
-  bottom: 26px;
-  left: 0;
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 0 16px;
-  scrollbar-width: none;
-}
-.cam-chips::-webkit-scrollbar { display: none; }
-.cam-chips button {
-  flex: none;
-  height: 34px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 999px;
-  background: rgb(13 10 24 / 0.6);
-  color: var(--white);
-  font-size: 13px;
-  font-weight: 800;
-  backdrop-filter: blur(6px);
-}
-.cam-chips [aria-checked="true"] { background: var(--sun); color: var(--ink); }
 .cam-note { margin: 0; color: rgb(255 255 255 / 0.7); font-size: 12px; text-align: center; }
 .cam-bar { display: flex; width: 100%; max-width: 360px; align-items: center; justify-content: space-between; margin-top: auto; }
 .cam-round {
