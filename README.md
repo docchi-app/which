@@ -247,6 +247,24 @@ npm run dev                  # http://localhost:3000
 
 Checks: `npm run lint`, `npm run typecheck`, `npm run build`.
 
+### Layout check
+
+`npm run check:layout` catches text that runs out of its box: it opens every poll format filled
+with the longest content allowed (140-character questions, 60-character answers, single 60-letter
+words, 24-character snap answers, 20-character usernames), before and after voting, at 320, 360
+and 390px wide, plus every main screen and sheet, and fails if any text spills out, gets cut off,
+or makes the page scroll sideways. It runs against a pretend Supabase (`scripts/layout-check/`),
+so no real data is touched. Run it before shipping UI changes:
+
+```bash
+npm i -D playwright && npx playwright install chromium    # once
+NEXT_PUBLIC_SUPABASE_URL=http://localhost:54339 NEXT_PUBLIC_SUPABASE_ANON_KEY=anon npm run build
+NEXT_PUBLIC_SUPABASE_URL=http://localhost:54339 NEXT_PUBLIC_SUPABASE_ANON_KEY=anon npx next start -p 3145
+npm run check:layout                                         # in another terminal
+```
+
+Failures come with screenshots in `scripts/layout-check/out/`.
+
 ## Supabase setup (free tier)
 
 ### 1. Create the project

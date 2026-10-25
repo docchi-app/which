@@ -35,7 +35,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     font("DMSans-Bold.ttf"),
   ]);
 
-  const { kind, question, cardBg, badge, cta, compact, questionSize, votes, votesNote } = cardModel(poll);
+  const { kind, question, cardBg, badge, cta, compact, questionSize, votes, votesNote, options } = cardModel(poll);
 
   return new ImageResponse(
     (
@@ -141,7 +141,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           </div>
           {poll && !poll.circle && (
             <div style={{ display: "flex", flexWrap: "wrap", flexShrink: 0, gap: compact ? 10 : 14 }}>
-              {poll.options.map((text, i) =>
+              {options.map((text, i) =>
                 kind === "hot_take" ? (
                   <div
                     key={i}
