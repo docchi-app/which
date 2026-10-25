@@ -70,7 +70,7 @@ export function SharePreview({ card }: { card: CardInput }) {
           </div>
           {!card.circle && (
             <div style={{ display: "flex", flexWrap: "wrap", flexShrink: 0, gap: u(m.compact ? 10 : 14) }}>
-              {card.options.map((text, i) =>
+              {m.options.map((text, i) =>
                 m.kind === "hot_take" ? (
                   <span
                     key={i}

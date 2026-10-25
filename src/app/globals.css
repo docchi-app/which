@@ -276,6 +276,8 @@ button {
   scrollbar-width: none;
 }
 .swipe-card > .poll-card::-webkit-scrollbar { display: none; }
+/* The card scrolls when it must; its parts never get squashed to fit. */
+.swipe-card > .poll-card > * { flex-shrink: 0; }
 /* Decorative cards peeking out behind the current poll; they follow its height. */
 .stack-card {
   position: absolute;
@@ -516,6 +518,9 @@ button {
   text-align: left;
   animation: rise 0.45s var(--ease-pop) both;
 }
+/* Long answers (and long single words) wrap inside the button instead of running out of it. */
+.answer { overflow-wrap: anywhere; }
+.answer > :not(.answer-letter) { min-width: 0; }
 .answer:disabled { cursor: progress; }
 .answer:disabled:not([data-pending]) { opacity: 0.6; }
 .answer-letter {
@@ -605,8 +610,11 @@ button {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .result-pct {
+  flex: none;
   font-family: var(--font-display);
   font-size: 18px;
   font-weight: 800;
@@ -2691,9 +2699,10 @@ button.ghost-action { cursor: pointer; }
 .poll-snap > .poll-actions { padding: 0 6px 6px; }
 .snapc {
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   flex: none;
   width: 100%;
-  aspect-ratio: 3 / 4;
   overflow: hidden;
   border: var(--outline-bold);
   border-radius: 20px;
@@ -2702,6 +2711,9 @@ button.ghost-action { cursor: pointer; }
 }
 /* In the feed, keep the whole card on screen on short phones. */
 .screen-feed .snapc { width: min(100%, calc((100dvh - 330px) * 0.75)); align-self: center; }
+/* 3:4, unless a long question with long answers needs more room: then the photo gets taller
+   rather than the text running into the name on top. */
+.snapc::before { grid-area: 1 / 1; aspect-ratio: 3 / 4; content: ""; }
 .snapc-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .snapc-empty {
   position: absolute;
@@ -2756,10 +2768,10 @@ button.ghost-action { cursor: pointer; }
   font-weight: 800;
 }
 .snapc-bottom {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  left: 12px;
+  position: relative;
+  grid-area: 1 / 1;
+  align-self: end;
+  margin: 64px 12px 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -2806,11 +2818,14 @@ button.ghost-action { cursor: pointer; }
 .snapc-results .snapc-mine::before { background: var(--sun); }
 .snapc-mine { box-shadow: 0 0 0 3px var(--sun), var(--shadow-sm); }
 .snapc-results .snapc-emoji { flex-direction: column; gap: 0; min-height: 62px; font-size: 24px; }
-.snapc-label { white-space: nowrap; }
+/* Long answers wrap to a second line inside the box (24 characters max). */
+.snapc-label { min-width: 0; overflow-wrap: anywhere; text-align: center; line-height: 1.15; }
+.snapc-answer:not(.snapc-emoji) { padding-block: 6px; }
 /* On a narrow card the share drops under the answer instead of squashing it. */
 .snapc-results .snapc-answer { flex-wrap: wrap; row-gap: 0; padding: 4px 8px; }
 .snapc-pct { flex: none; font-family: var(--font-display); font-size: 15px; }
 .snapc-results .snapc-emoji .snapc-pct { font-size: 13px; }
+.snapc-results .snapc-answer.snapc-emoji { padding-inline: 2px; }
 .snap-voted .snapc-answer:not(.snapc-mine) { opacity: 0.9; }
 
 /* Create: the snap tile above the typed poll. */

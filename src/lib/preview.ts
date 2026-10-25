@@ -48,6 +48,11 @@ export function cardModel(poll: CardInput | null) {
   // A long question plus 3–4 answers wraps to two answer rows: shrink the
   // question so the footer still fits inside the card.
   if (answersCount > 2 && question.length > 45) questionSize = Math.min(questionSize, question.length > 70 ? 44 : 52);
+  // Very long questions get smaller still, and long answers are shortened (…), so 4 answers of up to
+  // 60 characters never push the footer out of the card.
+  if (question.length > 110) questionSize = Math.min(questionSize, 40);
+  const maxAnswer = answersCount > 2 ? (long ? 22 : 30) : 44;
+  const options = (poll?.options ?? []).map((t) => ([...t].length > maxAnswer ? `${[...t].slice(0, maxAnswer - 1).join("").trimEnd()}…` : t));
   // A tiny count looks like nobody's there; invite them to be early instead (as on the feed).
   const votes = !poll
     ? null
@@ -57,5 +62,5 @@ export function cardModel(poll: CardInput | null) {
         ? "Be one of the first"
         : `${poll.voteCount.toLocaleString("en-US")} ${poll.voteCount === 1 ? "vote" : "votes"}`;
   const votesNote = kind === "mystery" ? "the question shows after you vote" : "results after you vote";
-  return { kind, question, cardBg, badge, cta, compact, questionSize, votes, votesNote };
+  return { kind, question, cardBg, badge, cta, compact, questionSize, votes, votesNote, options };
 }
