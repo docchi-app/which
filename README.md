@@ -38,8 +38,16 @@ The first slice of the build order:
   the first to vote" instead of a tiny count, and a poll with no comments shows the bubble without
   a "0".
 - **Animated results:** bars grow in from the left (900ms, 80ms apart), percentages pop,
-  "You're with the X%!" appears with a confetti burst, and buttons sink when pressed. All motion
+  "🎉 You're with the X%!" appears with a confetti burst, and buttons sink when pressed. All motion
   stops when the phone's "reduce motion" setting is on.
+- **Compact cards:** results fill the same rows as the answers (✓ and a "Your pick" tag on yours),
+  "You're with the X%" is one line under them, and friends who voted join the footer line
+  ("@priya +2 friends voted · 1,204 votes · live"), so a voted card doesn't grow. Comment, Share
+  and Next stay pinned at the bottom of the card; a 4-answer card fits a normal phone screen.
+- **Instant screens:** Feed, Profile, Leaders, Friends and Activity remember what they last showed
+  (in memory, for this visit only; cleared on sign-out). Coming back shows it straight away and
+  refreshes quietly; the feed returns to the card you were on. Profile is loaded in the
+  background once the feed is in, so the first tap on it is instant too.
 - **Design tokens:** colours, fonts (Bricolage Grotesque and DM Sans), outlines, hard shadows and
   corner radii are CSS variables in `src/app/globals.css`.
 - **PWA basics:** web app manifest, app icon, theme colour.
@@ -68,12 +76,14 @@ The first slice of the build order:
   poll and the share sheet opens by itself ("Your poll is live 🎉 Drop it in the group chat"); the
   "Your poll is live!" banner stays on the card after it's closed. Share cards with fewer than 10
   votes say "Be the first to vote" / "Be one of the first" instead of a tiny count.
-- **Profile:** lilac banner, avatar (Google photo or initial), @username with Edit (live
-  availability check and suggestions; once a week), a **🏆 Best rank #N** badge for anyone who has
-  made the weekly top 100 creators (on public profiles too; taps through to Leaders), stat tiles
-  (Polls, Votes got, Friends, 🔥 Streak), and
-  **My polls / Voted** tabs with mini result bars. Your own polls have Share, Make link-only / Show
-  in feed, and Delete (with a confirm).
+- **Profile:** a short lilac banner with the avatar (Google photo or initial) overlapping it and
+  Edit beside it (live availability check and suggestions; once a week); the full @username on its
+  own line, then the joined date and a **🏆 Best rank #N** badge for anyone who has made the weekly
+  top 100 creators (on public profiles too; taps through to Leaders); the stats as one slim strip
+  (Polls, Votes got, Friends, 🔥 Streak); and **My polls / Voted** tabs (with a "✨ +N votes" chip
+  for news). Poll rows are compact: question, mini bar, then tags (Live/Ended, Link only,
+  Friends…) and numbers on one line. Your own polls have a share button and a **•••** menu: Share,
+  Who sees it (Everyone / Friends / Link only) and Delete (with a confirm).
 - **Usernames:** every Google account gets a starting username made from its Google name (or
   email). The first time someone opens the app signed in, a **"Pick your @name"** sheet asks them
   to keep it or change it (live check, free suggestions). It can't be skipped. After that, names
@@ -135,7 +145,9 @@ The first slice of the build order:
   news. Never more than one every 2 minutes, never while a sheet is open, never blocks a tap; any
   tap, scroll or 7 seconds hides it (`src/lib/tips.ts`, `TipLayer`).
 - **What's new on your polls:** a dot on the bell when your polls got votes or comments since you
-  last looked (friend requests show a number on the bell and the Friends tab), then Activity and
+  last looked (friend requests show a number on the bell and the Friends tab until you've seen
+  them; they stay listed until you answer). Opening Activity clears the dot straight away, and the
+  bell checks again whenever you come back to the app. Activity and
   Profile → My polls show a
   "Since your last visit: +14 votes · 3 comments" line and a chip on each poll with news. It's
   marked seen after a moment on screen (`my_activity()` / `mark_activity_seen()`, stored per account).

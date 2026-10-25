@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { SignInRequired } from "@/lib/auth";
 import { audienceLabel } from "@/lib/circle";
@@ -110,6 +110,13 @@ export function PollCard({
   // the bars fill in when the server answers.
   const [lockingId, setLockingId] = useState<string | null>(null);
   const [justVoted, setJustVoted] = useState(celebrate);
+  // The confetti, only while it bursts: spent pieces would otherwise stretch the card.
+  const [burst, setBurst] = useState(celebrate);
+  useEffect(() => {
+    if (!burst) return;
+    const t = window.setTimeout(() => setBurst(false), 1200);
+    return () => window.clearTimeout(t);
+  }, [burst]);
   const [error, setError] = useState<string | null>(null);
   const [reporting, setReporting] = useState(false);
   const [commenting, setCommenting] = useState(openComments);
@@ -133,6 +140,7 @@ export function PollCard({
     try {
       const result = await castVote(poll.id, optionId);
       setJustVoted(true);
+      setBurst(true);
       onVoted(poll.id, result);
     } catch (e) {
       if (e instanceof SignInRequired) onNeedSignIn(poll.id, optionId);
@@ -215,7 +223,7 @@ export function PollCard({
         : `You're with the ${pcts[mineIndex]}%!`;
 
   return (
-    <article className={`poll-card poll-${poll.kind}`} aria-labelledby={`q-${poll.id}`}>
+    <article className={`poll-card feed-card poll-${poll.kind}`} aria-labelledby={`q-${poll.id}`}>
       {justCreated && (
         <div className="created-banner" role="status">
           <span>
@@ -376,32 +384,6 @@ export function PollCard({
         </>
       ) : (
         <>
-          {(voted || lockingId) && (
-            <div className={`with-you${justVoted ? " pop" : ""}${showResults ? "" : " locking"}`} role="status">
-              {withYou}
-              {justVoted &&
-                CONFETTI.map((c, n) => (
-                  <span
-                    key={n}
-                    className="confetti"
-                    aria-hidden="true"
-                    style={
-                      {
-                        "--dx": c.dx,
-                        "--dy": c.dy,
-                        width: c.size,
-                        height: c.size,
-                        background: c.color,
-                        borderRadius: c.round ? "50%" : 3,
-                        animationDelay: `${c.delay}s`,
-                      } as CSSProperties
-                    }
-                  />
-                ))}
-            </div>
-          )}
-          {isCircle && showResults && (voted || poll.isMine) && <CirclePicks poll={poll} />}
-          {!isCircle && signedIn && (voted || poll.isMine || closed) && <FriendsVotedRow poll={poll} />}
           {spice && (
             <div className="spice-meter">
               <strong>Spice meter</strong>
@@ -431,6 +413,7 @@ export function PollCard({
                     )}
                     <span className="result-row">
                       <span className="result-text">
+                        {mine && showResults && <span aria-hidden="true">✓</span>}
                         {o.text}
                         {mine && <span className="chip chip-small">{guestVote && !closed ? "Your pick · not counted yet" : "Your pick"}</span>}
                       </span>
@@ -445,20 +428,49 @@ export function PollCard({
               })}
             </ul>
           )}
+          {(voted || lockingId) && (
+            <div className={`with-you${justVoted ? " pop" : ""}${showResults ? "" : " locking"}`} role="status">
+              {showResults && <span aria-hidden="true">🎉 </span>}
+              {withYou}
+              {burst &&
+                CONFETTI.map((c, n) => (
+                  <span
+                    key={n}
+                    className="confetti"
+                    aria-hidden="true"
+                    style={
+                      {
+                        "--dx": c.dx,
+                        "--dy": c.dy,
+                        width: c.size,
+                        height: c.size,
+                        background: c.color,
+                        borderRadius: c.round ? "50%" : 3,
+                        animationDelay: `${c.delay}s`,
+                      } as CSSProperties
+                    }
+                  />
+                ))}
+            </div>
+          )}
           {spice && spice.split >= 70 && voted && (
             <button type="button" className="btn btn-white press settle-btn" onClick={onShare}>
               <ShareIcon size={18} />
               Too close to call. Settle this
             </button>
           )}
-          <p className="poll-foot-note">
-            {!closed && showResults && <span className="live-dot live-dot-small" aria-hidden="true" />}
-            {guestVote && !closed
-              ? poll.voteCount === 0
-                ? "Only you so far · not counted yet"
-                : `${formatCount(poll.voteCount)} ${poll.voteCount === 1 ? "vote" : "votes"} · live (yours isn't in yet)`
-              : `${votesLabel} · ${closed ? "final results" : showResults ? "live" : "counting…"}`}
-          </p>
+          {isCircle && showResults && (voted || poll.isMine) && <CirclePicks poll={poll} />}
+          <div className="result-foot">
+            {!isCircle && signedIn && (voted || poll.isMine || closed) && <FriendsVotedRow poll={poll} compact />}
+            <p className="poll-foot-note">
+              {!closed && showResults && <span className="live-dot live-dot-small" aria-hidden="true" />}
+              {guestVote && !closed
+                ? poll.voteCount === 0
+                  ? "Only you so far · not counted yet"
+                  : `${formatCount(poll.voteCount)} ${poll.voteCount === 1 ? "vote" : "votes"} · live (yours isn't in yet)`
+                : `${votesLabel} · ${closed ? "final results" : showResults ? "live" : "counting…"}`}
+            </p>
+          </div>
           {guestVote && !closed && (
             <div className="count-strip">
               <p>Your vote isn&apos;t in the total yet. One tap with Google and it counts.</p>

@@ -137,7 +137,7 @@ export function PublicProfileScreen({ username }: { username: string }) {
 
       <section className="profile-head">
         {person ? (
-          <Avatar name={person.username} url={person.avatarUrl} size={88} />
+          <Avatar name={person.username} url={person.avatarUrl} size={78} />
         ) : (
           <span className="avatar avatar-initial skeleton" aria-hidden="true" />
         )}

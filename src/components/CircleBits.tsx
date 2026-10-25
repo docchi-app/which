@@ -118,7 +118,7 @@ export function CirclePicks({ poll }: { poll: Poll }) {
 }
 
 /** "@priya and 2 friends voted": who of your friends voted, never what they picked. Public and link polls. */
-export function FriendsVotedRow({ poll }: { poll: Poll }) {
+export function FriendsVotedRow({ poll, compact = false }: { poll: Poll; compact?: boolean }) {
   const [data, setData] = useState<FriendsVoted | null>(null);
   const voted = poll.myOptionId !== null;
 
@@ -135,6 +135,22 @@ export function FriendsVotedRow({ poll }: { poll: Poll }) {
   if (!data || data.count === 0) return null;
   const [first] = data.people;
   const rest = data.count - 1;
+  if (compact) {
+    // In the card's footer line: "(faces) @priya +2 voted".
+    return (
+      <span className="friends-voted friends-voted-inline">
+        <span className="avatar-stack" aria-hidden="true">
+          {data.people.slice(0, 3).map((p) => (
+            <Avatar key={p.username} name={p.username} url={p.avatarUrl} size={20} />
+          ))}
+        </span>
+        <span>
+          <strong>@{first.username}</strong>
+          {rest > 0 ? ` +${rest} ${rest === 1 ? "friend" : "friends"} voted` : " voted"}
+        </span>
+      </span>
+    );
+  }
   return (
     <p className="friends-voted">
       <span className="avatar-stack" aria-hidden="true">

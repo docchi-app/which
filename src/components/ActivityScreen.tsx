@@ -6,8 +6,10 @@ import { activityText, fetchActivity, markActivitySeen, type Activity } from "@/
 import { continueWithGoogle, isSignedIn, onUserChange, saveReturnTo } from "@/lib/auth";
 import { announceCircleChange, circleErrorText, getMyCircle, respondRequest, type MyCircle } from "@/lib/circle";
 import { fetchRecentResults, type RecentResult } from "@/lib/streak";
+import { recall, remember } from "@/lib/screen-cache";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { BottomNav } from "./BottomNav";
+import { markRequestsSeen } from "./NavBadge";
 import { PersonLink } from "./FriendsPanel";
 import { SignInNote } from "./SignInSheet";
 
@@ -15,8 +17,9 @@ import { SignInNote } from "./SignInSheet";
 export function ActivityScreen() {
   const [signedIn, setSignedIn] = useState<boolean | undefined>(isSupabaseConfigured ? undefined : false);
   const [activity, setActivity] = useState<Activity | null>(null);
-  const [circle, setCircle] = useState<MyCircle | null>(null);
-  const [results, setResults] = useState<RecentResult[]>([]);
+  // Shown straight away from the last visit, then refreshed. (New votes are always fetched fresh.)
+  const [circle, setCircle] = useState<MyCircle | null>(() => recall<MyCircle>("activity:circle") ?? null);
+  const [results, setResults] = useState<RecentResult[]>(() => recall<RecentResult[]>("activity:results") ?? []);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -26,7 +29,11 @@ export function ActivityScreen() {
 
   const loadRequests = useCallback(() => {
     getMyCircle()
-      .then(setCircle)
+      .then((c) => {
+        setCircle(c);
+        remember("activity:circle", c);
+        markRequestsSeen(c.requests.length);
+      })
       .catch(() => {});
   }, []);
 
@@ -34,15 +41,18 @@ export function ActivityScreen() {
     if (!signedIn) return;
     loadRequests();
     fetchRecentResults()
-      .then(setResults)
+      .then((r) => {
+        setResults(r);
+        remember("activity:results", r);
+      })
       .catch(() => {});
-    let timer = 0;
-    fetchActivity().then((a) => {
-      setActivity(a);
-      // Seen once it's been on screen a moment.
-      if (a.votes + a.comments > 0) timer = window.setTimeout(markActivitySeen, 2500);
-    });
-    return () => window.clearTimeout(timer);
+    fetchActivity()
+      .then((a) => {
+        // Shown as new for this visit; seen as soon as it's on screen.
+        setActivity(a);
+        if (a.votes + a.comments > 0) markActivitySeen();
+      })
+      .catch(() => {});
   }, [signedIn, loadRequests]);
 
   async function respond(name: string, accept: boolean) {

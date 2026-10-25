@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { forgetThisDevice } from "./push";
+import { cacheOwner, clearScreenCache } from "./screen-cache";
 import { getSupabase } from "./supabase";
 
 /** Thrown by castVote when guest voting isn't available and the viewer must sign in first. */
@@ -26,7 +27,10 @@ export async function currentUser(): Promise<User | null> {
 export function onUserChange(callback: (user: User | null) => void): () => void {
   const supabase = getSupabase();
   if (!supabase) return () => {};
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => callback(session?.user ?? null));
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    cacheOwner(session?.user?.id ?? null);
+    callback(session?.user ?? null);
+  });
   return () => data.subscription.unsubscribe();
 }
 
@@ -90,6 +94,7 @@ export async function currentOrGuest(): Promise<User | null> {
 
 export async function signOut(): Promise<void> {
   forgetGuestPicks();
+  clearScreenCache();
   await forgetThisDevice();
   await getSupabase()?.auth.signOut();
 }

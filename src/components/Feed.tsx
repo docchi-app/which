@@ -10,6 +10,8 @@ import { warmShareCard } from "@/lib/share";
 import { showTip, tipsAfterVote } from "@/lib/tips";
 import { FEED_PAGE_SIZE, fetchFeed, fetchPoll, recordOpen } from "@/lib/polls";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { recall, remember } from "@/lib/screen-cache";
+import { warmProfile } from "@/lib/warm";
 import { useLiveInterval } from "@/lib/useLiveInterval";
 import type { FeedTab, Poll, VoteResult } from "@/lib/types";
 import { LogoMark, Wordmark } from "./Logo";
@@ -58,17 +60,30 @@ function store(key: string) {
 const SWIPE_DISTANCE = 90;
 const SWIPE_VELOCITY = 0.5;
 
+type FeedSnapshot = { tab: FeedTab; polls: Poll[]; index: number; hasMore: boolean; votedBefore: Set<string> };
+const FEED_CACHE = "feed";
+
+/** Where the feed was, unless this visit opens a particular poll (a shared link, or one just posted). */
+function savedFeed(initialPollId?: string): FeedSnapshot | null {
+  if (initialPollId || typeof window === "undefined" || new URLSearchParams(window.location.search).has("poll")) return null;
+  // Older than this, start fresh: the feed has probably moved on.
+  return recall<FeedSnapshot>(FEED_CACHE, 10 * 60_000) ?? null;
+}
+
 /** `initialPollId` opens the feed on that poll (a shared /p/<id> link). */
 export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
-  const [tab, setTab] = useState<FeedTab>("trending");
-  const [polls, setPolls] = useState<Poll[] | null>(null);
+  // Coming back from another screen: carry on at the same card, no reload.
+  const [saved] = useState(() => savedFeed(initialPollId));
+  const skipLoad = useRef(!!saved);
+  const [tab, setTab] = useState<FeedTab>(saved?.tab ?? "trending");
+  const [polls, setPolls] = useState<Poll[] | null>(saved?.polls ?? null);
   // For callbacks that shouldn't change identity when the list does.
   const pollsRef = useRef(polls);
   useEffect(() => {
     pollsRef.current = polls;
   });
-  const [hasMore, setHasMore] = useState(false);
-  const [index, setIndex] = useState(0);
+  const [hasMore, setHasMore] = useState(saved?.hasMore ?? false);
+  const [index, setIndex] = useState(saved?.index ?? 0);
   const [failed, setFailed] = useState(false);
   const [offline, setOffline] = useState(false);
   const [signedIn, setSignedIn] = useState<boolean | null>(isSupabaseConfigured ? null : true);
@@ -92,7 +107,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   // Poll the viewer just posted (arrives from /create with ?created=1).
   const [createdId, setCreatedId] = useState<string | null>(null);
   // Polls already voted on when the feed loaded (they sit at the end).
-  const [votedBefore, setVotedBefore] = useState<Set<string>>(new Set());
+  const [votedBefore, setVotedBefore] = useState<Set<string>>(saved?.votedBefore ?? new Set());
   // Which way the last move went, so the next card comes in from that side.
   const [dir, setDir] = useState<"next" | "prev">("next");
   // Polls posted since this feed loaded ("New polls" pill).
@@ -214,10 +229,26 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   }, [failed, tab, load]);
 
   useEffect(() => {
+    // Restored from the last visit: the cards are already here.
+    if (skipLoad.current) {
+      skipLoad.current = false;
+      return;
+    }
     // Fetching on mount and on tab change is exactly what this effect is for.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load(tab);
   }, [tab, load]);
+
+  // Once the feed is in, get Profile ready in the background.
+  const feedReady = !!polls;
+  useEffect(() => {
+    if (feedReady && signedIn) warmProfile();
+  }, [feedReady, signedIn]);
+
+  // Remember where the feed is, for coming back from another screen.
+  useEffect(() => {
+    if (polls && !initialPollId) remember<FeedSnapshot>(FEED_CACHE, { tab, polls, index, hasMore, votedBefore });
+  }, [tab, polls, index, hasMore, votedBefore, initialPollId]);
 
   // Load the next page a few cards before the end.
   useEffect(() => {
