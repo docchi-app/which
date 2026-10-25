@@ -265,7 +265,8 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261110000000_activity.sql`, `20261111000000_guest_votes.sql`, `20261112000000_friends.sql`,
    `20261113000000_streaks.sql`, `20261114000000_quick_snap.sql`,
    `20261115000000_snap_photo_size.sql`, `20261116000000_snap_answers.sql`,
-   `20261117000000_delete_account_best_rank.sql`, `20261118000000_props.sql`, …),
+   `20261117000000_delete_account_best_rank.sql`, `20261118000000_props.sql`,
+   `20261119000000_security_hardening.sql`, …),
    in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
@@ -525,6 +526,31 @@ until its day.
 **The leaderboard** is stored in `leader_scores` (top 100 per board per week) and rebuilt every
 10 minutes by pg_cron (`docchi-leaders`), or by the first visit after 15 minutes without it. Past
 weeks are kept, so last week's champ is a lookup.
+
+## Security
+
+- **The database is only reached through functions.** Tables have row-level security on and no
+  grants for `anon` / `authenticated` (`20261119000000_security_hardening.sql` revokes them, and
+  the default for future tables), so the REST API can't read or write any table directly. Every
+  function the app calls is `security definer` with `set search_path = ''` and checks who's asking.
+  **When adding a function:** grant `execute` to exactly the roles that need it, and `revoke ...
+  from public, anon, authenticated` on internal helpers (Supabase grants new functions to `anon`
+  and `authenticated` by default, so revoking from `public` alone isn't enough).
+- **Secrets stay on the server:** the service_role key is never in the app; `GOOGLE_CLIENT_SECRET`,
+  `VAPID_PRIVATE_KEY`, `PUSH_CRON_SECRET` and `OPENAI_API_KEY` are server-only (mark them
+  **Sensitive** in Vercel). Only the URL, the anon key, the Google client id, the VAPID public key,
+  the site URL and the contact email are `NEXT_PUBLIC_`.
+- **Headers** (`next.config.ts`): a Content-Security-Policy (scripts only from this site, network only
+  to this site and Supabase, images from Supabase and Google avatars, no framing), HSTS, nosniff,
+  `X-Frame-Options: DENY`, a strict referrer policy, and a Permissions-Policy allowing only the
+  camera, on this site.
+- **Push** subscriptions must point at a real push service (Google, Mozilla, Apple, Microsoft),
+  checked in the database and again before sending.
+- **Sign-in:** our Google route uses `state` + `nonce` in an httpOnly cookie; after sign-in the app
+  only returns to paths on this site.
+- **Abuse:** rate limits on votes, comments, polls, snaps, friend requests, shares and blocks;
+  reserved usernames (docchi, admin, support…); reports auto-hide content; guest votes only count
+  after sign-in. Still to add: CAPTCHA on guest sign-ups and an alert for sudden vote spikes.
 
 ## Project layout
 

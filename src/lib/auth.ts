@@ -139,7 +139,8 @@ export function takeReturnTo(): string | null {
   try {
     const path = sessionStorage.getItem(RETURN_KEY);
     sessionStorage.removeItem(RETURN_KEY);
-    return path?.startsWith("/") && !path.startsWith("//") ? path : null;
+    // Only paths on this site: "//x" and "/\x" would leave it.
+    return path && /^\/(?![/\\])/.test(path) && !/[\\\s]/.test(path) ? path : null;
   } catch {
     return null;
   }
