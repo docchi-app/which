@@ -50,6 +50,19 @@ export async function userFromToken(token: string): Promise<string | null> {
  * Sends to many devices, a few at a time. Resolves to the endpoints the push
  * service says no longer exist (404 / 410), so they can be deleted.
  */
+// Only real push services (the database checks this too), so a stored endpoint
+// can never point the sender at another server.
+const PUSH_HOST = /^(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|push\.services\.mozilla\.com|web\.push\.apple\.com|[a-z0-9-]+\.push\.apple\.com|[a-z0-9.-]+\.notify\.windows\.com)$/;
+
+export function isPushEndpoint(endpoint: string) {
+  try {
+    const u = new URL(endpoint);
+    return u.protocol === "https:" && PUSH_HOST.test(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
 export async function sendAll(
   items: { target: PushTarget; payload: PushPayload }[],
 ): Promise<{ sent: number; gone: string[]; failed: number; firstError?: string }> {
@@ -61,6 +74,10 @@ export async function sendAll(
   const queue = [...items];
   async function worker() {
     for (let item = queue.shift(); item; item = queue.shift()) {
+      if (!isPushEndpoint(item.target.endpoint)) {
+        gone.push(item.target.endpoint);
+        continue;
+      }
       try {
         await webpush.sendNotification(
           { endpoint: item.target.endpoint, keys: { p256dh: item.target.p256dh, auth: item.target.auth } },
