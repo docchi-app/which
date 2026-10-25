@@ -42,7 +42,7 @@ export default function TermsPage() {
 
       <h2>Ending things</h2>
       <p>
-        You can delete your polls any time from your profile, or ask us to delete your account. We may suspend or close
+        You can delete your polls any time from your profile, and your account from Settings → Delete account. We may suspend or close
         accounts that break these terms.
       </p>
 

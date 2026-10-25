@@ -1,3 +1,4 @@
+import { forgetThisDevice } from "./push";
 import { getSupabase } from "./supabase";
 
 export type Profile = {
@@ -60,3 +61,49 @@ export async function getUsernameSuggestions(): Promise<string[]> {
 
 /** Fired after the username changes, so screens showing it refresh. */
 export const PROFILE_CHANGED = "docchi:profile-changed";
+
+export type BestRank = { rank: number; week: string };
+
+/** Best weekly rank on the creators board (null = never in the top 100). name: whose; mine if left out. */
+export async function getBestRank(name?: string): Promise<BestRank | null> {
+  const { data } = (await getSupabase()?.rpc("best_rank", { name: name ?? null })) ?? {};
+  return (data as BestRank | null) ?? null;
+}
+
+export class DeleteAccountError extends Error {
+  constructor(public code: string) {
+    super(code);
+  }
+}
+
+/**
+ * Deletes my account for good. Snap photos first (Storage can't be cleared
+ * from SQL, and the database refuses while any are left), then everything
+ * else in one go, then this device forgets the session and Docchi's settings.
+ */
+export async function deleteMyAccount(confirm: string): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) throw new DeleteAccountError("demo");
+  const { data: files } = await supabase.rpc("my_storage_files");
+  const paths = (files as string[] | null) ?? [];
+  for (let i = 0; i < paths.length; i += 100) {
+    const { error } = await supabase.storage.from("snaps").remove(paths.slice(i, i + 100));
+    if (error) throw new DeleteAccountError("photos_left");
+  }
+  await forgetThisDevice().catch(() => {});
+  const { error } = await supabase.rpc("delete_my_account", { confirm });
+  if (error) throw new DeleteAccountError(/docchi:(\w+)/.exec(error.message)?.[1] ?? "failed");
+  await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+  try {
+    for (const key of Object.keys(localStorage)) if (key.startsWith("docchi.")) localStorage.removeItem(key);
+  } catch {
+    // Storage blocked: nothing saved to clear.
+  }
+}
+
+export const DELETE_ERRORS: Record<string, string> = {
+  confirm: "Type DELETE to confirm.",
+  photos_left: "Couldn't remove your snap photos. Check your connection and try again.",
+  sign_in: "You're signed out already.",
+  demo: "Demo mode: there's no account to delete.",
+};

@@ -4,6 +4,7 @@ import { siteUrl } from "@/lib/server-poll";
 import { UsernameGate } from "@/components/UsernameGate";
 import { VisitTracker } from "@/components/VisitTracker";
 import { PushSync } from "@/components/PushSync";
+import { OfflineBar } from "@/components/OfflineBar";
 import { TipLayer } from "@/components/TipLayer";
 import "./globals.css";
 
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <VisitTracker />
         <PushSync />
         <TipLayer />
+        <OfflineBar />
       </body>
     </html>
   );

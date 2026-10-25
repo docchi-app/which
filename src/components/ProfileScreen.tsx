@@ -10,6 +10,7 @@ import { activityText, fetchActivity, markActivitySeen, type Activity } from "@/
 import { compactCount, getMyProfile, PROFILE_CHANGED, updateUsername, type Profile } from "@/lib/profile";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import type { Poll, Visibility } from "@/lib/types";
+import { BestRankBadge } from "./BestRankBadge";
 import { BottomNav } from "./BottomNav";
 import { NotificationPrompt } from "./Notifications";
 import { ANSWER_COLORS, VerifiedTick } from "./PollCard";
@@ -325,6 +326,7 @@ function ProfileHead({ profile, onRenamed }: { profile: Profile | null; onRename
         <div className="profile-name">
           <span className="profile-handle">{current ? `@${current}` : profile ? "Pick a username" : " "}</span>
           <span className="muted">{joined && `Joined ${joined}`}</span>
+          {profile && <BestRankBadge />}
         </div>
         {profile && !editing && (
           <button

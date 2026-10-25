@@ -22,6 +22,7 @@ import { compactCount } from "@/lib/profile";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import type { Poll } from "@/lib/types";
 import { Avatar } from "./Avatar";
+import { BestRankBadge } from "./BestRankBadge";
 import { BottomNav } from "./BottomNav";
 import { ProfilePoll } from "./ProfileScreen";
 import { ReportSheet } from "./ReportSheet";
@@ -55,7 +56,8 @@ export function PublicProfileScreen({ username }: { username: string }) {
         if (p?.isMe) router.replace("/profile");
         else setPerson(p);
       })
-      .catch(() => setPerson(null));
+      // Offline isn't "no such person": keep waiting (the offline bar says why).
+      .catch(() => navigator.onLine && setPerson(null));
   }, [username, router]);
 
   useEffect(() => {
@@ -142,6 +144,7 @@ export function PublicProfileScreen({ username }: { username: string }) {
         <div className="profile-name">
           <span className="profile-handle">@{username}</span>
           <span className="muted">{joined && `Joined ${joined}`}</span>
+          {person && <BestRankBadge name={person.username} />}
         </div>
       </section>
 

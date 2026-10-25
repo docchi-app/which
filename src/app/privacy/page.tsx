@@ -36,7 +36,7 @@ export default function PrivacyPage() {
 
       <h2>How long we keep it</h2>
       <ul>
-        <li>Your account and polls: until you delete them or ask us to delete your account.</li>
+        <li>Your account and polls: until you delete them. Deleting your account (Settings → Delete account) removes your profile, polls, snaps, votes, comments and friends right away.</li>
         <li>Deleted or removed polls, reports and comments: kept for up to 180 days for safety reviews, then deleted.</li>
         <li>Visit records: up to 2 years, then deleted.</li>
       </ul>
@@ -44,7 +44,8 @@ export default function PrivacyPage() {
       <h2>Your choices</h2>
       <ul>
         <li>Change your username, delete polls or make them link-only from your profile.</li>
-        <li>Ask us for a copy of your data, to correct it, or to delete your account (write to us below).</li>
+        <li>Delete your account any time from Settings → Delete account.</li>
+        <li>Ask us for a copy of your data or to correct it (write to us below).</li>
         <li>Clearing your browser&apos;s site data resets your visit ID.</li>
       </ul>
 
