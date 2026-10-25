@@ -70,6 +70,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   const [hasMore, setHasMore] = useState(false);
   const [index, setIndex] = useState(0);
   const [failed, setFailed] = useState(false);
+  const [offline, setOffline] = useState(false);
   const [signedIn, setSignedIn] = useState<boolean | null>(isSupabaseConfigured ? null : true);
   // A pick waiting for sign-in (guest voting is off), or "save": a guest asked to make their votes count.
   const [sheet, setSheet] = useState<SheetPick | "save" | null>(null);
@@ -196,6 +197,21 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
       if (token === loadToken.current) setFailed(true);
     }
   }, [initialPollId]);
+
+  // Offline: say so, and load again by itself once the connection is back.
+  useEffect(() => {
+    if (!failed) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOffline(!navigator.onLine);
+    const back = () => load(tab);
+    const gone = () => setOffline(true);
+    window.addEventListener("online", back);
+    window.addEventListener("offline", gone);
+    return () => {
+      window.removeEventListener("online", back);
+      window.removeEventListener("offline", gone);
+    };
+  }, [failed, tab, load]);
 
   useEffect(() => {
     // Fetching on mount and on tab change is exactly what this effect is for.
@@ -495,7 +511,15 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
           <div className="swipe-card" ref={cardRef}>
             {failed ? (
               <section className="poll-card empty-card">
-                <h1 className="poll-question">Couldn&apos;t load polls.</h1>
+                {offline ? (
+                  <>
+                    <span className="chip chip-white">📡 Offline</span>
+                    <h1 className="poll-question">You&apos;re offline.</h1>
+                    <p className="poll-foot-note">Polls load by themselves as soon as you&apos;re back online.</p>
+                  </>
+                ) : (
+                  <h1 className="poll-question">Couldn&apos;t load polls.</h1>
+                )}
                 <button type="button" className="btn btn-coral press" onClick={() => load(tab)}>
                   Try again
                 </button>

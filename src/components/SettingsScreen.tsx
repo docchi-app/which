@@ -8,6 +8,7 @@ import { installPlatform, type InstallPlatform } from "@/lib/install";
 import { getMyProfile, type Profile } from "@/lib/profile";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { BottomNav } from "./BottomNav";
+import { DeleteAccountSheet } from "./DeleteAccountSheet";
 import { InstallSheet } from "./InstallSheet";
 import { NotificationSettings } from "./Notifications";
 
@@ -18,6 +19,7 @@ export function SettingsScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [platform, setPlatform] = useState<InstallPlatform | null>(null);
   const [installing, setInstalling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     // The platform is only known in the browser.
@@ -93,6 +95,12 @@ export function SettingsScreen() {
             >
               <strong>Sign out</strong>
             </button>
+            <button type="button" className="settings-row settings-row-danger" onClick={() => setDeleting(true)}>
+              <span>
+                <strong>Delete account</strong>
+                <span className="notif-hint">Your polls, votes, comments and friends, for good</span>
+              </span>
+            </button>
           </div>
         ) : (
           signedIn === false &&
@@ -111,6 +119,9 @@ export function SettingsScreen() {
           )
         )}
       </section>
+
+      {/* Outside the signed-in part: it stays up to say "deleted" after the sign-out. */}
+      {deleting && <DeleteAccountSheet username={profile?.username ?? null} onClose={() => setDeleting(false)} />}
 
       <section className="settings-group" aria-labelledby="about-title">
         <h2 id="about-title" className="settings-heading">

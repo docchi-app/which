@@ -69,7 +69,9 @@ The first slice of the build order:
   "Your poll is live!" banner stays on the card after it's closed. Share cards with fewer than 10
   votes say "Be the first to vote" / "Be one of the first" instead of a tiny count.
 - **Profile:** lilac banner, avatar (Google photo or initial), @username with Edit (live
-  availability check and suggestions; once a week), stat tiles (Polls, Votes got, Friends, 🔥 Streak), and
+  availability check and suggestions; once a week), a **🏆 Best rank #N** badge for anyone who has
+  made the weekly top 100 creators (on public profiles too; taps through to Leaders), stat tiles
+  (Polls, Votes got, Friends, 🔥 Streak), and
   **My polls / Voted** tabs with mini result bars. Your own polls have Share, Make link-only / Show
   in feed, and Delete (with a confirm).
 - **Usernames:** every Google account gets a starting username made from its Google name (or
@@ -137,8 +139,17 @@ The first slice of the build order:
   Profile → My polls show a
   "Since your last visit: +14 votes · 3 comments" line and a chip on each poll with news. It's
   marked seen after a moment on screen (`my_activity()` / `mark_activity_seen()`, stored per account).
-- **Settings (⚙︎ on Profile):** notifications, the app (Home Screen), account (Admin, Sign out) and
-  the policies, so Profile stays about your polls.
+- **Settings (⚙︎ on Profile):** notifications, the app (Home Screen), account (Admin, Sign out,
+  Delete account) and the policies, so Profile stays about your polls.
+- **Delete account (Settings):** says what goes, asks you to type DELETE, then deletes for good
+  and right away: profile, polls and snaps (with their votes and comments), your votes and
+  comments elsewhere (they leave other polls' totals), friends, lists, notifications and the
+  sign-in itself. Snap photos are removed from Storage first; the database refuses to delete
+  while any are left, so none are orphaned. Signing in with Google again starts a new account.
+- **Offline:** the service worker keeps the app's files and the pages you've opened, so Docchi
+  opens without a connection: the feed says "You're offline" and loads by itself when the
+  connection is back, a "📡 You're offline" bar shows on every screen, and pages you haven't
+  opened show `/offline`. Pages always come from the network first, so nobody gets a stale app.
 - **Quick snap (the big tile at the top of +, "Snap one" on the caught-up card, or `/snap`):**
   Shoot → Ask → Send. The camera opens straight away: just a shutter, gallery and flip, in a 3:4
   frame that is exactly the feed card. Camera shots get the 📸 Live badge. A gallery photo
@@ -229,7 +240,8 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261108000000_comments.sql`, `20261109000000_rate_limits.sql`,
    `20261110000000_activity.sql`, `20261111000000_guest_votes.sql`, `20261112000000_friends.sql`,
    `20261113000000_streaks.sql`, `20261114000000_quick_snap.sql`,
-   `20261115000000_snap_photo_size.sql`, `20261116000000_snap_answers.sql`, …),
+   `20261115000000_snap_photo_size.sql`, `20261116000000_snap_answers.sql`,
+   `20261117000000_delete_account_best_rank.sql`, …),
    in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter

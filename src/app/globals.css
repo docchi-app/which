@@ -3282,3 +3282,60 @@ button.ghost-action { cursor: pointer; }
 .review-scores .score-high { color: #c0392b; }
 .review-actions { display: flex; gap: 8px; }
 .review-actions .mini-btn { flex: 1; height: 40px; }
+
+/* Settings → Delete account. */
+.delete-list { margin: -4px 0 12px; padding-left: 20px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.sheet .field-label + .answer-input { flex: none; margin: 6px 0 12px; }
+
+/* Profiles: best weekly rank on the Leaders board. */
+.best-rank {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 3px 10px;
+  border: var(--outline);
+  border-radius: 999px;
+  background: var(--sun);
+  box-shadow: var(--shadow-sm);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.best-rank strong { font-family: var(--font-display); font-size: 13px; }
+
+/* Offline: the page the service worker shows, and the bar on every screen. */
+.offline-screen {
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+}
+.offline-title { margin: 6px 0 0; font-family: var(--font-display); font-size: 28px; font-weight: 800; }
+.offline-text { max-width: 320px; margin: 0 0 6px; color: var(--muted); font-size: 15px; line-height: 1.45; }
+.offline-bar {
+  position: fixed;
+  bottom: calc(98px + env(safe-area-inset-bottom));
+  left: 50%;
+  z-index: 60;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 8px 14px;
+  border: var(--outline);
+  border-radius: 999px;
+  background: var(--ink);
+  box-shadow: 2px 2px 0 var(--coral);
+  color: var(--cream);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  transform: translateX(-50%);
+}
