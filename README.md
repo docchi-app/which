@@ -216,8 +216,8 @@ The first slice of the build order:
   friends-only polls), **results** (when a poll you voted on or made closes) and **Poll of the Day** (9am, with "Keep
   your 🔥 5-day streak going" when you're on one; the same switch covers an 8pm "Your 🔥 6-day
   streak ends at midnight" for streaks of 3+ days not yet kept today).
-  Quiet 11pm–8am India time, at most 8 a day (friend requests and new friends always go out, and
-  don't count), and tapping one opens the poll. Works on Android and
+  Quiet 11pm–8am India time (what comes in at night goes out at 8am), no daily cap, and tapping
+  one opens the poll. Works on Android and
   desktop browsers; on iPhone, only after adding Docchi to the Home Screen (iOS 16.4+), and the
   app says so. Signing out stops that phone getting your notifications.
 - **Get the app (Home Screen):** a step-by-step sheet. On iPhone: Share → Add to Home Screen →

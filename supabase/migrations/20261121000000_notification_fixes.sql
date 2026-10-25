@@ -1,9 +1,9 @@
 -- Notification fixes, and vote milestones from 3.
 --
--- 1. Friend requests (and "you're friends now") always go out. Before, every
---    notification counted toward a cap of 8 a day, so on a busy day a friend
---    request could be held back and then dropped after 12 hours. Other kinds
---    keep the cap of 8, and friend pushes don't count toward it.
+-- 1. No daily cap. Before, at most 8 notifications a day went to each person,
+--    so on a busy day a friend request could be held back and then dropped
+--    after 12 hours. Now everything goes out (quiet hours 11pm–8am India time
+--    stay: what comes in at night is sent at 8am).
 -- 2. Each run looks back 2 minutes past the last one, so an event committed
 --    while a run was in progress is no longer missed. Dedupe keys stop repeats
 --    (comment pushes now dedupe on the newest comment instead of the run time).
@@ -196,7 +196,6 @@ set search_path = ''
 as $$
 declare
   local_hour int := extract(hour from now() at time zone 'Asia/Kolkata');
-  day_start timestamptz := ((now() at time zone 'Asia/Kolkata')::date::timestamp at time zone 'Asia/Kolkata');
 begin
   if not public.push_secret_ok(secret) then
     raise exception 'docchi:forbidden' using errcode = '42501';
@@ -213,21 +212,11 @@ begin
   end if;
 
   return query
-  with pending as (
-    select n.id, n.user_id, n.kind,
-           row_number() over (partition by n.user_id
-                              order by case n.kind when 'test' then 0 when 'circle' then 1 when 'props' then 2
-                                                   when 'results' then 3 when 'votes' then 4 else 5 end, n.created_at) as rn
-    from public.notifications n
+  -- Everything waiting goes out (no daily cap), oldest first.
+  with picked as (
+    select n.id from public.notifications n
     where n.sent_at is null and n.created_at > now() - interval '12 hours'
-  ),
-  picked as (
-    select pe.id from pending pe
-    -- Friend requests and new friends always go out; everything else is capped at 8 a day.
-    where pe.kind in ('test', 'circle')
-       or pe.rn <= 8 - (select count(*) from public.notifications x
-                        where x.user_id = pe.user_id and x.sent_at >= day_start and x.kind not in ('test', 'circle'))
-    order by pe.id
+    order by n.id
     limit greatest(coalesce(max_rows, 300), 1)
   ),
   claimed as (

@@ -269,7 +269,7 @@ export function NotificationSettings() {
                 />
               </label>
             ))}
-            <p className="notif-hint">Quiet from 11pm to 8am, and never more than 8 a day.</p>
+            <p className="notif-hint">Quiet from 11pm to 8am. Anything from the night arrives at 8am.</p>
             <div className="notif-actions">
               <button type="button" className="mini-btn" onClick={test} disabled={busy}>
                 Send me a test
