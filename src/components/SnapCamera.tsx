@@ -2,14 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { SNAP_TEMPLATES, type SnapAudience, type SnapTemplate } from "@/lib/snap";
 import { drawFromVideo } from "@/lib/snap-photo";
 
 type Props = {
-  template: SnapTemplate;
-  audience: SnapAudience;
-  onTemplate: (t: SnapTemplate) => void;
-  onAudience: (a: SnapAudience) => void;
   /** A photo taken here: an exact 3:4 frame. */
   onShot: (frame: HTMLCanvasElement) => void;
   /** A photo from the gallery (or the phone's own camera, when ours isn't available). */
@@ -20,10 +15,10 @@ type CamState = "starting" | "ready" | "unavailable";
 
 /**
  * The camera, inside Docchi. The frame on screen is exactly the snap card
- * (3:4), so what you see is what friends see. The question and Friends /
- * Everyone are picked right here.
+ * (3:4), so what you see is what friends see. Nothing else on it: the
+ * question comes after the photo.
  */
-export function SnapCamera({ template, audience, onTemplate, onAudience, onShot, onPick }: Props) {
+export function SnapCamera({ onShot, onPick }: Props) {
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const [facing, setFacing] = useState<"environment" | "user">("environment");
@@ -71,8 +66,6 @@ export function SnapCamera({ template, audience, onTemplate, onAudience, onShot,
     onShot(frame);
   }
 
-  const tpl = SNAP_TEMPLATES.find((t) => t.id === template)!;
-
   return (
     <div className="cam-screen">
       <div className="cam-top">
@@ -81,14 +74,7 @@ export function SnapCamera({ template, audience, onTemplate, onAudience, onShot,
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </Link>
-        <div className="cam-aud" role="radiogroup" aria-label="Who sees it">
-          <button type="button" role="radio" aria-checked={audience === "circle"} onClick={() => onAudience("circle")}>
-            👥 Friends
-          </button>
-          <button type="button" role="radio" aria-checked={audience === "public"} onClick={() => onAudience("public")}>
-            🌍 Everyone
-          </button>
-        </div>
+        <h1 className="cam-title">Snap</h1>
         <span className="cam-icon cam-spacer" aria-hidden="true" />
       </div>
 
@@ -111,16 +97,8 @@ export function SnapCamera({ template, audience, onTemplate, onAudience, onShot,
         <span className="cam-corner cam-tr" aria-hidden="true" />
         <span className="cam-corner cam-bl" aria-hidden="true" />
         <span className="cam-corner cam-br" aria-hidden="true" />
-        <p className="cam-question">{template === "own" ? "Your own question (type it next)" : tpl.question}</p>
-        <div className="cam-chips" role="radiogroup" aria-label="Question">
-          {SNAP_TEMPLATES.map((t) => (
-            <button key={t.id} type="button" role="radio" aria-checked={template === t.id} onClick={() => onTemplate(t.id)}>
-              {t.id === "own" ? "✏️ Own" : t.label}
-            </button>
-          ))}
-        </div>
       </div>
-      <p className="cam-note">The frame is exactly the card. What you see is what friends see.</p>
+      <p className="cam-note">Snap first. You&apos;ll add the question next.</p>
 
       <div className="cam-bar">
         <button type="button" className="cam-round" aria-label="Choose from gallery" onClick={() => galleryRef.current?.click()}>

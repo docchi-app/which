@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { snapInfo, snapPhotoUrl } from "@/lib/snap";
+import { isEmojiAnswers, snapInfo, snapPhotoUrl } from "@/lib/snap";
 import type { Poll } from "@/lib/types";
 
 /**
  * The snap card: a 3:4 photo filling the card, who posted it on top, and the
  * question with its answers (or results) on the bottom of the photo. Used in
- * the feed and as the preview before sending, so both look the same.
+ * the feed and while asking, so both look the same.
  */
 export function SnapCardShell({
   src,
@@ -17,6 +17,8 @@ export function SnapCardShell({
   href,
   sub,
   gone,
+  more,
+  menu,
   children,
 }: {
   src: string | null | undefined;
@@ -27,6 +29,10 @@ export function SnapCardShell({
   sub: ReactNode;
   /** The photo has disappeared (24 hours are up). */
   gone?: boolean;
+  /** Opens the owner's menu (Share, Delete). */
+  more?: () => void;
+  /** The owner's menu, when open (it hangs under •••). */
+  menu?: ReactNode;
   children: ReactNode;
 }) {
   const name = (
@@ -47,13 +53,7 @@ export function SnapCardShell({
         // eslint-disable-next-line @next/next/no-img-element
         <img className="snapc-img" src={src} alt="" />
       ) : (
-        <div className="snapc-empty">
-          {src === null
-            ? gone
-              ? "👻 This snap has disappeared"
-              : "📷 Photo unavailable"
-            : null}
-        </div>
+        <div className="snapc-empty">{src === null ? (gone ? "👻 This snap has disappeared" : "📷 Photo unavailable") : null}</div>
       )}
       <div className="snapc-shade-top" aria-hidden="true" />
       <div className="snapc-shade-bottom" aria-hidden="true" />
@@ -65,8 +65,16 @@ export function SnapCardShell({
         ) : (
           <span className="snapc-who">{name}</span>
         )}
-        {live && <span className="snapc-live">📸 Live</span>}
+        <span className="snapc-badges">
+          {live && <span className="snapc-live">📸 Live</span>}
+          {more && (
+            <button type="button" className="snapc-more" aria-label="Snap options" aria-haspopup="menu" onClick={more}>
+              •••
+            </button>
+          )}
+        </span>
       </div>
+      {menu}
       <div className="snapc-bottom">{children}</div>
     </div>
   );
@@ -81,6 +89,8 @@ export function SnapPoll({
   pcts,
   mineId,
   onVote,
+  onMore,
+  menu,
 }: {
   poll: Poll;
   sub: ReactNode;
@@ -91,6 +101,9 @@ export function SnapPoll({
   /** The viewer's pick (or the one being saved). */
   mineId: string | null;
   onVote: (optionId: string) => void;
+  /** My own snap: the ••• menu. */
+  onMore?: () => void;
+  menu?: ReactNode;
 }) {
   // undefined: loading · null: no photo (it has disappeared)
   const [src, setSrc] = useState<string | null | undefined>(undefined);
@@ -100,9 +113,7 @@ export function SnapPoll({
     let stale = false;
     (async () => {
       const info = await snapInfo(poll.id).catch(() => null);
-      const url = info?.path
-        ? await snapPhotoUrl(info.path).catch(() => null)
-        : null;
+      const url = info?.path ? await snapPhotoUrl(info.path).catch(() => null) : null;
       if (stale) return;
       setLive(!!info?.live);
       setSrc(url);
@@ -112,10 +123,9 @@ export function SnapPoll({
     };
   }, [poll.id]);
 
-  // "Rate it": four emoji, shown as round tap targets.
-  const emoji =
-    poll.options.length > 2 &&
-    poll.options.every((o) => [...o.text].length <= 2);
+  // "Rate it": four emoji, shown as big tap targets. Three or four words: two by two.
+  const emoji = isEmojiAnswers(poll.options.map((o) => o.text));
+  const grid = !emoji && poll.options.length > 2;
   const busy = !!mineId && !showResults;
 
   return (
@@ -126,12 +136,14 @@ export function SnapPoll({
       href={poll.isSystem ? undefined : `/u/${poll.creator}`}
       sub={sub}
       gone={closed}
+      more={onMore}
+      menu={menu}
     >
       <h1 id={`q-${poll.id}`} className="snapc-q">
         {poll.question}
       </h1>
       <div
-        className={`snapc-answers${showResults ? " snapc-results" : ""}`}
+        className={`snapc-answers${grid ? " snapc-grid" : ""}${showResults ? " snapc-results" : ""}`}
         role={showResults ? "list" : undefined}
         aria-label={showResults ? "Results" : undefined}
       >
@@ -139,25 +151,12 @@ export function SnapPoll({
           const mine = o.id === mineId;
           const cls = `snapc-answer${emoji ? " snapc-emoji" : ""}${mine ? " snapc-mine" : ""}`;
           return showResults || busy ? (
-            <span
-              key={o.id}
-              role={showResults ? "listitem" : undefined}
-              className={cls}
-              style={
-                { "--pct": `${showResults ? pcts[i] : 0}%` } as CSSProperties
-              }
-            >
+            <span key={o.id} role={showResults ? "listitem" : undefined} className={cls} style={{ "--pct": `${showResults ? pcts[i] : 0}%` } as CSSProperties}>
               <span className="snapc-label">{o.text}</span>
               {showResults && <strong className="snapc-pct">{pcts[i]}%</strong>}
             </span>
           ) : (
-            <button
-              key={o.id}
-              type="button"
-              className={`${cls} press`}
-              aria-label={`Vote ${o.text}`}
-              onClick={() => onVote(o.id)}
-            >
+            <button key={o.id} type="button" className={`${cls} press`} aria-label={`Vote ${o.text}`} onClick={() => onVote(o.id)}>
               <span className="snapc-label">{o.text}</span>
             </button>
           );
