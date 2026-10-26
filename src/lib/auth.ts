@@ -2,6 +2,7 @@ import type { User } from "@supabase/supabase-js";
 import { forgetThisDevice } from "./push";
 import { cacheOwner, clearScreenCache } from "./screen-cache";
 import { getSupabase } from "./supabase";
+import { forgetViews } from "./views";
 
 /** Thrown by castVote when guest voting isn't available and the viewer must sign in first. */
 export class SignInRequired extends Error {
@@ -94,6 +95,7 @@ export async function currentOrGuest(): Promise<User | null> {
 
 export async function signOut(): Promise<void> {
   forgetGuestPicks();
+  forgetViews();
   clearScreenCache();
   await forgetThisDevice();
   await getSupabase()?.auth.signOut();

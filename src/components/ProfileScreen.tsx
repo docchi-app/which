@@ -444,8 +444,10 @@ export function ProfilePoll({
   const colors = poll.kind === "hot_take" ? ["var(--sun)", "var(--sky)"] : ANSWER_COLORS;
   const mine = poll.options.find((o) => o.id === poll.myOptionId);
   const votes = `${formatCount(poll.voteCount)} ${poll.voteCount === 1 ? "vote" : "votes"}`;
+  const views = Math.max(poll.viewCount ?? 0, poll.voteCount);
   const meta = poll.isMine
     ? [
+        `${formatCount(views)} ${views === 1 ? "view" : "views"}`,
         votes,
         poll.shareCount ? `${formatCount(poll.shareCount)} ${poll.shareCount === 1 ? "share" : "shares"}` : null,
         closed ? null : timeLeft(poll.closesAt, now),

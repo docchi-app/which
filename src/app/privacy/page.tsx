@@ -17,6 +17,7 @@ export default function PrivacyPage() {
         <li><strong>Snap photos:</strong> shrunk on your phone (location data removed) before upload. They&apos;re deleted after the snap&apos;s 24 hours, or when it&apos;s turned down.</li>
         <li><strong>Props:</strong> when you give a friend props, we store who you picked, for which question, and when. That&apos;s needed for the daily limit and for safety.</li>
         <li><strong>Visits:</strong> a random ID stored in your browser, which days you opened Docchi and how many times. We use it to count visitors and see whether people come back. It isn&apos;t linked to ads or other sites.</li>
+        <li><strong>Views:</strong> that you saw a poll (its card was on your screen for a second), so we can count how many people saw it. If you&apos;re not signed in, you&apos;re counted as a scrambled code made from your connection and browser, never your IP address itself. Nobody is shown who viewed a poll, only the total.</li>
         <li><strong>Technical logs</strong> kept by our hosting providers (like IP address and browser) for security, for a short time.</li>
       </ul>
 
@@ -32,7 +33,7 @@ export default function PrivacyPage() {
 
       <h2>Cookies and storage</h2>
       <p>
-        We use a sign-in cookie to keep you logged in, and your browser&apos;s storage for the visit ID and small settings.
+        We use a sign-in cookie to keep you logged in, and your browser&apos;s storage for the visit ID, the polls you&apos;ve already seen (so each counts once) and small settings.
         No advertising or cross-site tracking cookies.
       </p>
 
@@ -41,6 +42,7 @@ export default function PrivacyPage() {
         <li>Your account and polls: until you delete them. Deleting your account (Settings → Delete account) removes your profile, polls, snaps, votes, comments and friends right away.</li>
         <li>Deleted or removed polls, reports and comments: kept for up to 180 days for safety reviews, then deleted.</li>
         <li>Visit records: up to 2 years, then deleted.</li>
+        <li>Who viewed a poll: deleted a day after the poll closes. Only its total stays.</li>
       </ul>
 
       <h2>Your choices</h2>

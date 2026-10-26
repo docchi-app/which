@@ -31,7 +31,7 @@ const POLLS = {
   "snap, emoji": "a7000000-0000-4000-8000-000000000007",
   "snap, 3 answers": "a8000000-0000-4000-8000-000000000008",
 };
-const CARD_SIZES = [[320, 640], [360, 740], [390, 844]];
+const CARD_SIZES = [[320, 640], [360, 740], [390, 844], [412, 892]];
 const SCREEN_SIZES = [[320, 640], [360, 740]];
 const SCREENS = ["/friends", "/leaders", "/profile", "/settings", "/activity", "/create", "/props", "/u/priya", "/notifications", "/snap"];
 
@@ -70,6 +70,25 @@ const SCREENS = ["/friends", "/leaders", "/profile", "/settings", "/activity", "
     for (const x of found) console.log(`    "${x.text}" in .${x.in} → ${x.how} (box .${x.box})`);
     await p.screenshot({ path: `${OUT}${label.replace(/[^a-z0-9]+/gi, "-")}.png` });
   }
+  // The card's action row: one line at its normal height, nothing past its edge.
+  async function checkRow(label) {
+    const bad = await p.evaluate(() => {
+      const row = document.querySelector(".swipe-card .poll-actions");
+      if (!row) return null;
+      const end = row.clientWidth - parseFloat(getComputedStyle(row).paddingRight);
+      const kids = [...row.children].filter((c) => c.offsetWidth > 1);
+      const tops = new Set(kids.map((c) => Math.round(c.offsetTop + c.offsetHeight / 2)));
+      const out = kids.filter((c) => c.offsetLeft + c.offsetWidth > end + 0.5).map((c) => c.className.split(" ")[0]);
+      if (tops.size > 1) return "wrapped to a second line";
+      if (out.length) return `past the edge: ${out.join(", ")}`;
+      if (row.offsetHeight > 70) return `row is ${row.offsetHeight}px tall`;
+      return null;
+    });
+    if (!bad) return passed++;
+    failed++;
+    console.log(`✗ ${label}: action row ${bad}`);
+    await p.screenshot({ path: `${OUT}${label.replace(/[^a-z0-9]+/gi, "-")}-row.png` });
+  }
   const go = async (path) => {
     await p.goto(BASE + path);
     await p.waitForTimeout(1800);
@@ -89,6 +108,7 @@ const SCREENS = ["/friends", "/leaders", "/profile", "/settings", "/activity", "
           }
         }
         await check(`${name} ${w}px ${phase}`, ".swipe-card .poll-card");
+        await checkRow(`${name} ${w}px ${phase}`);
       }
     }
   }

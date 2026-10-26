@@ -31,6 +31,8 @@ export type Poll = {
   /** The viewer made this poll. */
   isMine: boolean;
   shareCount: number;
+  /** How many people saw it (never below voteCount). Can lag a few seconds. */
+  viewCount?: number;
   creator: string;
   isSystem: boolean;
   featuredToday: boolean;
