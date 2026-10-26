@@ -1532,6 +1532,7 @@ button.ghost-action { cursor: pointer; }
 .more-chevron { font-size: 24px; font-weight: 700; line-height: 1; }
 .more-panel { display: flex; flex-direction: column; gap: 18px; padding: 16px 2px 0; }
 .teaser-input { flex: none; font-weight: 700; }
+.field-hint { margin: 6px 2px 0; color: var(--muted); font-size: 13px; line-height: 1.35; }
 .preview-card.preview-hot_take { background: var(--coral); }
 .preview-card.preview-mystery { background: var(--lilac); }
 .preview-blur {

@@ -129,6 +129,14 @@ const SCREENS = ["/friends", "/leaders", "/profile", "/settings", "/activity", "
       await go(path);
       await check(`${path} ${w}px`, "body");
     }
+    // Create, as a mystery poll with the longest teaser.
+    await go("/create");
+    await p.locator(".more-toggle").click();
+    await p.waitForTimeout(400);
+    await p.locator("button", { hasText: "Mystery" }).last().click();
+    await p.locator("#teaser").fill("Guess the market mood before everyone else does it 📈📈");
+    await p.evaluate(() => window.scrollTo(0, 0));
+    await check(`/create mystery ${w}px`, "body");
   }
 
   // The share image WhatsApp and X show, with the longest question and answers.

@@ -200,7 +200,7 @@ export function CreatePoll() {
   const missing = specialUsed
     ? "You've posted today's hot take or mystery poll. Classic polls are still open!"
     : isMystery && teaser.length < 3
-      ? "Write the teaser people see first"
+      ? "Add a teaser: what people see before voting"
       : question.length < 3
         ? isTake
           ? "Write your hot take"
@@ -290,22 +290,6 @@ export function CreatePoll() {
           post();
         }}
       >
-        {isMystery && (
-          <div className="field">
-            <label htmlFor="teaser" className="field-label">
-              What people see first
-            </label>
-            <input
-              id="teaser"
-              className="answer-input teaser-input"
-              maxLength={TEASER_MAX}
-              placeholder="Pick a colour"
-              value={draft.teaser}
-              onChange={(e) => set({ teaser: e.target.value })}
-            />
-          </div>
-        )}
-
         <Link href="/snap" className="snap-tile press">
           <span className="snap-tile-cam" aria-hidden="true">
             📸
@@ -341,6 +325,27 @@ export function CreatePoll() {
             {draft.question.length} / {QUESTION_MAX}
           </span>
         </div>
+
+        {/* Mystery: the teaser comes right after the question it hides. */}
+        {isMystery && (
+          <div className="field">
+            <label htmlFor="teaser" className="field-label">
+              Teaser
+            </label>
+            <input
+              id="teaser"
+              className="answer-input teaser-input"
+              maxLength={TEASER_MAX}
+              placeholder="e.g. Guess the market mood 📈"
+              aria-describedby="teaser-hint"
+              value={draft.teaser}
+              onChange={(e) => set({ teaser: e.target.value })}
+            />
+            <p id="teaser-hint" className="field-hint">
+              What people see before voting. The question stays hidden until they vote. {draft.teaser.length} / {TEASER_MAX}
+            </p>
+          </div>
+        )}
 
         {!isTake && (
           <fieldset className="field">

@@ -20,7 +20,8 @@ window.__overflow = (root) => {
     if (el.getBoundingClientRect().width <= 1 || getComputedStyle(el).clipPath !== 'none' || getComputedStyle(el).clip !== 'auto') continue;
     const a = clipAncestor(el);
     const top = a === document.body || a === document.documentElement;
-    const ar = top ? { left: 0, top: 0, right: window.innerWidth, bottom: Infinity } : a.getBoundingClientRect();
+    // The page itself scrolls up and down; only its sides are a hard edge.
+    const ar = top ? { left: 0, top: -Infinity, right: window.innerWidth, bottom: Infinity } : a.getBoundingClientRect();
     const as = getComputedStyle(a);
     // A scrolling container (the card on a short screen) may scroll vertically; that isn't clipping.
     const vScroll = as.overflowY === 'auto' || as.overflowY === 'scroll';
