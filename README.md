@@ -111,6 +111,19 @@ The first slice of the build order:
 - **One feed:** **For you** (trending) and **New** show every live poll you can see: public polls,
   your friends' friends-only polls, your own, and link-only polls you've opened or voted on (opening
   one records it in `poll_access`). The **Friends** tab narrows it to polls from friends.
+- **Views:** how many people saw a poll, in the card's action row (X-style): ✨ **New** under 5,
+  👀 **Noticed** under 10 (tap for "People are noticing"), then the count (3.4K, 12K, 1.2M). Your own
+  polls always show the exact number, here and on your profile rows ("61 views · 12 votes"). A view
+  is one person seeing the card (half on screen for a second, or voting); each person counts once
+  per poll, the creator never does, and views never show below votes. The action row never grows:
+  if it would overflow, it gives up the least first (Share's word, then Next's, then "Noticed",
+  then spacing), checked by `npm run check:layout`.
+  *How it scales:* the phone remembers what it already counted and sends new views in batches (2
+  seconds after the first, then at most every 10 seconds, and on leaving), signed in straight to
+  `record_views()`, signed out through `/api/views` (a hash of connection + browser + secret, bots
+  skipped). Batches land in an unlogged, index-free `view_buffer`; `views_rollup()` (pg_cron,
+  every 10 seconds; one setting to slow down later) dedupes into `poll_viewers` and updates each
+  poll's total once per run. Who viewed a poll is deleted a day after it closes; the total stays.
 - **Friends voted:** on a public or link poll, "(faces) @priya +2 voted" sits under the creator's
   name before you vote, and moves into the footer line once you have. Never what they picked
   (`friends_voted()`), and only friends you've both accepted. On a short screen where the line
@@ -252,9 +265,10 @@ Checks: `npm run lint`, `npm run typecheck`, `npm run build`.
 
 `npm run check:layout` catches text that runs out of its box: it opens every poll format filled
 with the longest content allowed (140-character questions, 60-character answers, single 60-letter
-words, 24-character snap answers, 20-character usernames), before and after voting, at 320, 360
-and 390px wide, plus every main screen and sheet, and fails if any text spills out, gets cut off,
-or makes the page scroll sideways. It runs against a pretend Supabase (`scripts/layout-check/`),
+words, 24-character snap answers, 20-character usernames, 999K views with 99 comments), before
+and after voting, at 320, 360, 390 and 412px wide, plus every main screen and sheet, and fails if
+any text spills out, gets cut off, makes the page scroll sideways, or if a card's action row
+wraps, grows or has anything past its edge. It runs against a pretend Supabase (`scripts/layout-check/`),
 so no real data is touched. Run it before shipping UI changes:
 
 ```bash

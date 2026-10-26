@@ -59,6 +59,13 @@ export const ShareIcon = (p: P) => (
   </Icon>
 );
 
+// Views (X-style bars).
+export const ViewsIcon = (p: P) => (
+  <Icon strokeWidth={2.4} {...p}>
+    <path d="M5 20v-8M12 20V5M19 20v-6" />
+  </Icon>
+);
+
 export const ArrowIcon = (p: P) => (
   <Icon strokeWidth={2.4} {...p}>
     <path d="M5 12h14M13 6l6 6-6 6" />

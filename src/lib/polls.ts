@@ -12,6 +12,7 @@ type FeedRow = {
   audience?: string | null;
   is_mine?: boolean;
   share_count?: number;
+  view_count?: number;
   creator: string | null;
   is_system: boolean;
   featured_today: boolean;
@@ -38,6 +39,7 @@ const toPoll = (r: FeedRow): Poll => ({
   audience: r.audience ?? null,
   isMine: r.is_mine ?? false,
   shareCount: r.share_count ?? 0,
+  viewCount: r.view_count ?? 0,
   creator: r.creator ?? "someone",
   isSystem: r.is_system,
   featuredToday: r.featured_today,

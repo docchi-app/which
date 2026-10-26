@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { SignInRequired } from "@/lib/auth";
 import { audienceLabel } from "@/lib/circle";
@@ -8,6 +8,7 @@ import { castVote, fetchPoll } from "@/lib/polls";
 import { useLiveInterval } from "@/lib/useLiveInterval";
 import { formatCount, percentages, timeLeft } from "@/lib/format";
 import type { Poll, VoteResult } from "@/lib/types";
+import { recordView, useCountView } from "@/lib/views";
 import { ArrowIcon, CommentIcon, ShareIcon } from "./icons";
 import { CirclePicks, FriendsVotedRow, LockedCircle } from "./CircleBits";
 import { CommentsSheet } from "./CommentsSheet";
@@ -15,6 +16,7 @@ import { SnapPoll } from "./SnapCard";
 import { DeleteSnapSheet } from "./DeleteSnapSheet";
 import { NotificationPrompt } from "./Notifications";
 import { ReportSheet } from "./ReportSheet";
+import { useFitActions, ViewsAction } from "./ViewsAction";
 
 const LIVE_REFRESH_MS = 5000;
 // Below this many votes, an unvoted card invites you to be early instead of showing the count.
@@ -133,8 +135,19 @@ export function PollCard({
   const isSnap = poll.kind === "snap";
   const colors = isTake ? TAKE_COLORS : ANSWER_COLORS;
 
+  // Views: this person counts once the card has been half on screen for a second (or
+  // when they vote). Their own view shows at once, until the server's count moves.
+  const cardRef = useRef<HTMLElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const [selfView, setSelfView] = useState<number | null>(null);
+  const countSelf = () => setSelfView(poll.viewCount ?? 0);
+  useCountView(cardRef, poll.id, poll.isMine || poll.locked, countSelf);
+  const serverViews = poll.viewCount ?? 0;
+  const views = Math.max(serverViews + (selfView !== null && serverViews === selfView ? 1 : 0), poll.voteCount);
+
   async function vote(optionId: string) {
     if (lockingId || voted) return;
+    if (!poll.isMine && recordView(poll.id)) countSelf();
     setLockingId(optionId);
     setError(null);
     try {
@@ -167,6 +180,7 @@ export function PollCard({
         const changed =
           fresh &&
           (fresh.voteCount !== poll.voteCount ||
+            fresh.viewCount !== poll.viewCount ||
             fresh.commentCount !== poll.commentCount ||
             fresh.options.some((o, i) => o.votes !== poll.options[i]?.votes));
         if (changed) onRefresh({ ...fresh, question: fresh.question ?? poll.question });
@@ -191,6 +205,8 @@ export function PollCard({
     poll.voteCount === 0 ? "Be the first to vote" : poll.voteCount < FEW_VOTES ? "Be one of the first to vote" : votesLabel;
   const spice = isTake && showResults ? spiciness(pcts) : null;
   const isCircle = poll.visibility === "circle";
+  // The action row never grows or spills: it makes room only when it has to.
+  useFitActions(actionsRef, [showResults, lockingId, views, poll.commentCount, poll.isMine, poll.isSystem]);
 
   if (poll.locked) {
     return (
@@ -223,7 +239,7 @@ export function PollCard({
         : `You're with the ${pcts[mineIndex]}%!`;
 
   return (
-    <article className={`poll-card feed-card poll-${poll.kind}`} aria-labelledby={`q-${poll.id}`}>
+    <article ref={cardRef} className={`poll-card feed-card poll-${poll.kind}`} aria-labelledby={`q-${poll.id}`}>
       {justCreated && (
         <div className="created-banner" role="status">
           <span>
@@ -492,7 +508,7 @@ export function PollCard({
         </p>
       )}
 
-      <div className="poll-actions">
+      <div ref={actionsRef} className="poll-actions">
         <button
           type="button"
           className="ghost-action"
@@ -503,18 +519,19 @@ export function PollCard({
           <CommentIcon />
           {poll.commentCount > 0 && poll.commentCount}
         </button>
-        <button type="button" className="ghost-action" onClick={onShare}>
+        <button type="button" className="ghost-action" aria-label="Share" onClick={onShare}>
           <ShareIcon />
-          Share
+          <span className="share-label">Share</span>
         </button>
+        <ViewsAction count={views} mine={poll.isMine} />
         {!poll.isMine && !poll.isSystem && (
           <button type="button" className="more-btn" onClick={() => setReporting(true)} aria-label="Report this poll" title="Report">
             <MoreIcon />
           </button>
         )}
         {showResults || lockingId ? (
-          <button type="button" className="btn btn-coral press next-btn" onClick={onNext}>
-            Next <ArrowIcon size={18} />
+          <button type="button" className="btn btn-coral press next-btn" aria-label="Next poll" onClick={onNext}>
+            <span className="next-label">Next</span> <ArrowIcon size={18} />
           </button>
         ) : (
           <button type="button" className="skip-btn" onClick={onNext} aria-label="Skip to next poll">
