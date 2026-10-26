@@ -23,7 +23,7 @@ const KINDS: { id: keyof PushKinds; label: string; hint: string }[] = [
   { id: "props", label: "Friends gave me props", hint: "💜 Anonymous: never who" },
   { id: "circle", label: "Friends", hint: "Friend requests, new friends and friends-only polls" },
   { id: "results", label: "Results", hint: "When a poll you voted on closes" },
-  { id: "daily", label: "Poll of the Day", hint: "Once a day, 9am" },
+  { id: "daily", label: "Docchi's polls", hint: "Poll of the Day at 9am, and new polls" },
 ];
 
 type State = "loading" | "off" | "on" | "denied";
