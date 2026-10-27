@@ -7,6 +7,7 @@ import { PushSync } from "@/components/PushSync";
 import { OfflineBar } from "@/components/OfflineBar";
 import { MoveSheet } from "@/components/MoveSheet";
 import { MovedWelcome } from "@/components/MovedWelcome";
+import { InAppNotify } from "@/components/InAppNotify";
 import { TipLayer } from "@/components/TipLayer";
 import "./globals.css";
 
@@ -58,6 +59,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <OfflineBar />
         <MoveSheet />
         <MovedWelcome />
+        <InAppNotify />
       </body>
     </html>
   );

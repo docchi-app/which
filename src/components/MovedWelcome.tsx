@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { clearNotifyInApp, notifyInAppPending, onInstallChange } from "@/lib/install";
 import { MOVED_EVENT, MOVED_KEY } from "@/lib/move";
 import { InstallSheet } from "./InstallSheet";
 import { NotificationPrompt } from "./Notifications";
@@ -13,6 +14,9 @@ export function MovedWelcome() {
   const [open, setOpen] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [standalone, setStandalone] = useState(false);
+  // Just installed on Android: notifications get turned on inside the installed app instead.
+  const [installedHere, setInstalledHere] = useState(false);
+  useEffect(() => onInstallChange(() => setInstalledHere(notifyInAppPending())), []);
 
   useEffect(() => {
     const check = () => {
@@ -44,6 +48,8 @@ export function MovedWelcome() {
     try {
       localStorage.removeItem(MOVED_KEY);
     } catch {}
+    // Seen inside the installed app: its notification step is done too.
+    if (standalone) clearNotifyInApp();
     setOpen(false);
   }
 
@@ -58,12 +64,21 @@ export function MovedWelcome() {
           You&apos;re in 🎉
         </h2>
         <p className="sheet-text">Everything came with you. Two quick things so Eithr works like before:</p>
-        {!standalone && (
-          <button type="button" className="btn btn-white press move-step" onClick={() => setInstalling(true)}>
-            📲 Add Eithr to your Home Screen
-          </button>
+        {installedHere ? (
+          <p className="move-note">
+            📲 Installed! Open <strong>Eithr</strong> from your Home Screen and turn on notifications there. On Android they
+            belong to the app.
+          </p>
+        ) : (
+          <>
+            {!standalone && (
+              <button type="button" className="btn btn-white press move-step" onClick={() => setInstalling(true)}>
+                📲 Add Eithr to your Home Screen
+              </button>
+            )}
+            <NotificationPrompt inSheet pitch={<><strong>Turn notifications back on</strong> for votes, friends and the Poll of the Day.</>} />
+          </>
         )}
-        <NotificationPrompt pitch={<><strong>Turn notifications back on</strong> for votes, friends and the Poll of the Day.</>} />
         <button type="button" className="sheet-later" onClick={done}>
           Done
         </button>

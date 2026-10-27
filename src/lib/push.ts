@@ -71,7 +71,9 @@ export async function turnOnPush(): Promise<"on" | "denied"> {
   if (permission !== "granted") return "denied";
   const reg = await registerWorker();
   if (!reg) throw new Error("no service worker");
-  await navigator.serviceWorker.ready;
+  // A brand-new install can take a few seconds to get ready; never hang the button.
+  const ready = await Promise.race([navigator.serviceWorker.ready, new Promise<null>((r) => setTimeout(() => r(null), 15_000))]);
+  if (!ready) throw new Error("service worker not ready");
   const sub =
     (await reg.pushManager.getSubscription()) ??
     (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(VAPID_KEY!) }));
@@ -105,8 +107,16 @@ export async function forgetThisDevice(): Promise<void> {
 export async function syncPush(): Promise<void> {
   try {
     if (pushSupport() !== "ready" || Notification.permission !== "granted") return;
-    const sub = await currentSubscription();
-    if (sub) await save(sub);
+    let sub = await currentSubscription();
+    // Allowed but not subscribed (the subscription was lost, e.g. when Android moved the
+    // permission to the installed app): subscribe again, no tap needed since it's allowed.
+    if (!sub) {
+      const reg = await registerWorker();
+      const ready = await Promise.race([navigator.serviceWorker.ready, new Promise<null>((r) => setTimeout(() => r(null), 10_000))]);
+      if (!reg || !ready) return;
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(VAPID_KEY!) });
+    }
+    await save(sub);
   } catch {
     // Next time.
   }
