@@ -263,6 +263,18 @@ npm run dev                  # http://localhost:3000
 
 Checks: `npm run lint`, `npm run typecheck`, `npm run build`.
 
+### Migration check
+
+`supabase/checks/migration-check.sql` lists every migration that hasn't fully run on a database
+(a missing function or column, or an older version of a function). Paste it into the Supabase SQL
+editor; no rows means everything is in place. It's generated from `supabase/migrations/`, so
+regenerate it after adding a migration:
+
+```bash
+npm i --no-save @electric-sql/pglite    # once
+node scripts/migration-check/make.mjs
+```
+
 ### Layout check
 
 `npm run check:layout` catches text that runs out of its box: it opens every poll format filled
@@ -319,9 +331,12 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261117000000_delete_account_best_rank.sql`, `20261118000000_props.sql`,
    `20261119000000_security_hardening.sql`, `20261120000000_friends_voted_early.sql`,
    `20261121000000_notification_fixes.sql`, `20261122000000_views.sql`,
-   `20261123000000_docchi_poll_pushes.sql`, `20261124000000_rename_eithr.sql`, …),
+   `20261123000000_docchi_poll_pushes.sql`, `20261124000000_rename_eithr.sql`,
+   `20261125000000_push_repair.sql`, …),
    in date order,
    each one once.
+   Then paste `supabase/checks/migration-check.sql` and run it: no rows means every migration is
+   in place; otherwise each row names one that was skipped (run that file, then check again).
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
    polls, with "Tea or coffee" as today's Poll of the Day. You can run it again safely: it skips
    polls that already exist.
@@ -464,7 +479,11 @@ the values are baked in at build time. Then set up the Supabase URL Configuratio
    `notifications` and sends them. To check it's running:
    `select status, return_message, start_time from cron.job_run_details order by start_time desc limit 5;`
    and `select status_code, content from net._http_response order by created desc limit 5;`
-   (expect `200` and something like `{"sent":0,"gone":0,"failed":0}`).
+   (expect `200` and something like `{"sent":0,"gone":0,"failed":0}`). A `500` with
+   `collect_failed` carries the database error in `detail`; usually a skipped migration, which
+   `supabase/checks/migration-check.sql` finds. If a scan step fails, notifications already
+   waiting still go out, and the error is kept:
+   `select * from public.push_errors order by at desc limit 5;`
 
 **If "Send me a test" fails,** the card says why:
 
