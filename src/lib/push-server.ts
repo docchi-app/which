@@ -82,7 +82,10 @@ export async function sendAll(
         await webpush.sendNotification(
           { endpoint: item.target.endpoint, keys: { p256dh: item.target.p256dh, auth: item.target.auth } },
           JSON.stringify(item.payload),
-          { TTL: 60 * 60 * 6, urgency: "normal", topic: item.payload.tag?.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 32) || undefined },
+          // "high": Android holds "normal" pushes while the phone is idle until it next wakes
+          // (they arrived when the app was opened). Every push shows a notification, which
+          // is what high priority asks for.
+          { TTL: 60 * 60 * 6, urgency: "high", topic: item.payload.tag?.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 32) || undefined },
         );
         sent++;
       } catch (e) {
