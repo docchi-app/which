@@ -1,9 +1,13 @@
+import { taglineFor } from "./brand";
+
 /**
  * The share card's content and layout decisions, shared by the server image
  * (src/app/p/[id]/opengraph-image.tsx) and the instant in-app preview
  * (SharePreview), so both always show the same card.
  */
 export type CardInput = {
+  /** The poll's id: picks its tagline, the same on the server image and the in-app preview. */
+  id?: string;
   kind: "classic" | "hot_take" | "mystery";
   question: string | null;
   teaser: string | null;
@@ -62,5 +66,6 @@ export function cardModel(poll: CardInput | null) {
         ? "Be one of the first"
         : `${poll.voteCount.toLocaleString("en-US")} ${poll.voteCount === 1 ? "vote" : "votes"}`;
   const votesNote = kind === "mystery" ? "the question shows after you vote" : "results after you vote";
-  return { kind, question, cardBg, badge, cta, compact, questionSize, votes, votesNote, options };
+  const tagline = taglineFor(poll?.id);
+  return { kind, question, cardBg, badge, cta, compact, questionSize, votes, votesNote, options, tagline };
 }

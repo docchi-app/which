@@ -443,7 +443,7 @@ function AudienceSheet({
 
   const options = [
     { id: "circle" as const, emoji: "👥", name: "Friends", text: "Only your friends. They see who picked what." },
-    { id: "public" as const, emoji: "🌍", name: "Everyone", text: "Anyone on Docchi. Only the counts show." },
+    { id: "public" as const, emoji: "🌍", name: "Everyone", text: "Anyone on Eithr. Only the counts show." },
   ];
   return (
     <div className="sheet-layer">

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { randomTagline } from "@/lib/brand";
 import {
   canPromptInstall,
   installPlatform,
@@ -25,11 +26,13 @@ const IN_APP_NAMES: [RegExp, string][] = [
   [/LinkedInApp/i, "LinkedIn"],
 ];
 
-/** Step-by-step help to put Docchi on the Home Screen (iPhone, Android, or from inside another app). */
+/** Step-by-step help to put Eithr on the Home Screen (iPhone, Android, or from inside another app). */
 export function InstallSheet({ reason, onClose }: Props) {
   const [platform] = useState<InstallPlatform>(() => installPlatform());
   const [canPrompt, setCanPrompt] = useState(canPromptInstall);
   const [copied, setCopied] = useState(false);
+  // A different tagline each time the sheet opens.
+  const [tagline] = useState(randomTagline);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
   const iphone = /iPad|iPhone|iPod/.test(ua) || platform === "ios";
@@ -73,7 +76,7 @@ export function InstallSheet({ reason, onClose }: Props) {
     reason === "notifications"
       ? iphone
         ? "iPhone only sends notifications to apps on your Home Screen. It takes 10 seconds:"
-        : "Notifications need Docchi in a real browser. It takes 10 seconds:"
+        : "Notifications need Eithr in a real browser. It takes 10 seconds:"
       : "Open it with one tap, full screen, and get told when your polls take off.";
 
   const arrow = platform === "ios" ? (otherIosBrowser ? "top" : "bottom") : platform === "android" && !canPrompt ? "top" : null;
@@ -95,8 +98,9 @@ export function InstallSheet({ reason, onClose }: Props) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/icon-192.png" alt="" width={64} height={64} />
         </div>
+        <p className="install-tagline">{tagline}</p>
         <h2 id="install-title" ref={titleRef} tabIndex={-1} className="sheet-title">
-          {platform === "in-app" ? "Open Docchi in your browser" : platform === "android" ? "Get the Docchi app" : "Add Docchi to your Home Screen"}
+          {platform === "in-app" ? "Open Eithr in your browser" : platform === "android" ? "Get the Eithr app" : "Add Eithr to your Home Screen"}
         </h2>
         <p className="sheet-text">
           {platform === "in-app"
@@ -133,7 +137,7 @@ export function InstallSheet({ reason, onClose }: Props) {
                 <img src="/icons/icon-192.png" alt="" width={28} height={28} />
               </span>
               <span>
-                Tap <strong>Add</strong>, then open <strong>Docchi</strong> from your Home Screen
+                Tap <strong>Add</strong>, then open <strong>Eithr</strong> from your Home Screen
                 {reason === "notifications" && <small>Then Profile → Turn on.</small>}
               </span>
             </li>
@@ -143,7 +147,7 @@ export function InstallSheet({ reason, onClose }: Props) {
         {platform === "android" &&
           (canPrompt ? (
             <button type="button" className="post-btn press" onClick={install}>
-              Install Docchi
+              Install Eithr
             </button>
           ) : (
             <ol className="install-steps">

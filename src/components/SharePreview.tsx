@@ -19,15 +19,16 @@ export function SharePreview({ card }: { card: CardInput }) {
           <svg style={{ width: u(64), height: u(64) }} viewBox="0 0 52 52" aria-hidden="true">
             <path d={BUBBLE} transform="translate(3 3)" fill={ink} />
             <path d={BUBBLE} fill="#FFD23F" stroke={ink} strokeWidth="3" strokeLinejoin="round" />
-            <circle cx="17" cy="18" r="7" fill="#FFFFFF" stroke={ink} strokeWidth="2.4" />
-            <circle cx="33" cy="18" r="7" fill="#FFFFFF" stroke={ink} strokeWidth="2.4" />
+            <circle cx="17" cy="18" r="7" fill={colors[0]} stroke={ink} strokeWidth="2.4" />
+            <circle cx="33" cy="18" r="7" fill={colors[1]} stroke={ink} strokeWidth="2.4" />
             <circle cx="14.5" cy="18" r="3.2" fill={ink} />
             <circle cx="30.5" cy="18" r="3.2" fill={ink} />
             <path d="M21 29Q25 32 29 29" fill="none" stroke={ink} strokeWidth="2.4" strokeLinecap="round" />
           </svg>
           <span className="sp-display" style={{ fontSize: u(52), letterSpacing: u(-2) }}>
-            docchi<span style={{ color: colors[0] }}>?</span>
+            eithr<span style={{ color: colors[0] }}>?</span>
           </span>
+          <span style={{ fontSize: u(26), color: muted }}>{m.tagline}</span>
           <span className="sp-by" style={{ fontSize: u(26), color: muted, gap: u(8) }}>
             by <span style={{ color: ink }}>@{card.creator}</span>
             {card.verified && (

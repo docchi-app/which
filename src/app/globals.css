@@ -1,4 +1,4 @@
-/* Docchi "pop poster" tokens. Source: design canvas + docs/HANDOFF-docchi.md */
+/* Eithr "pop poster" tokens. Source: design canvas + docs/HANDOFF-docchi.md */
 :root {
   --ink: #1b1530;
   --cream: #fff7ec;
@@ -180,7 +180,7 @@ button {
   line-height: 1.4;
 }
 
-/* First visit: what Docchi is, in one line. */
+/* First visit: what Eithr is, in one line. */
 .welcome {
   display: flex;
   align-items: flex-start;
@@ -468,7 +468,7 @@ button {
 }
 .guest-toast strong { color: var(--sun); }
 
-/* Sign-in: exactly what Docchi gets from Google. */
+/* Sign-in: exactly what Eithr gets from Google. */
 .trust {
   margin: 0;
   padding: 12px 14px;
@@ -2269,6 +2269,7 @@ button.ghost-action { cursor: pointer; }
 }
 .install-sheet { max-height: 88dvh; overflow-y: auto; }
 .install-sheet .sheet-title:focus { outline: none; }
+.install-tagline { margin: -2px 0 0; color: var(--coral); font-family: var(--font-display); font-size: 15px; font-weight: 800; text-align: center; }
 .install-icon { align-self: center; }
 .install-icon img { display: block; border: var(--outline-bold); border-radius: 18px; box-shadow: var(--shadow-md); }
 .install-steps { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: step; }

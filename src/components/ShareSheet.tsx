@@ -37,7 +37,7 @@ export function ShareSheet({ poll, onClose }: Props) {
 
   async function native() {
     try {
-      await navigator.share({ title: poll.question ?? poll.teaser ?? "Docchi", text, url: pollUrl(poll.id, "native") });
+      await navigator.share({ title: poll.question ?? poll.teaser ?? "Eithr", text, url: pollUrl(poll.id, "native") });
       recordShare(poll.id, "native");
     } catch {
       // Share menu dismissed.

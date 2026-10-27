@@ -23,12 +23,12 @@ const KINDS: { id: keyof PushKinds; label: string; hint: string }[] = [
   { id: "props", label: "Friends gave me props", hint: "💜 Anonymous: never who" },
   { id: "circle", label: "Friends", hint: "Friend requests, new friends and friends-only polls" },
   { id: "results", label: "Results", hint: "When a poll you voted on closes" },
-  { id: "daily", label: "Docchi's polls", hint: "Poll of the Day at 9am, and new polls" },
+  { id: "daily", label: "Eithr's polls", hint: "Poll of the Day at 9am, and new polls" },
 ];
 
 type State = "loading" | "off" | "on" | "denied";
 
-/** What to say when the test doesn't arrive. The setup hints are for whoever runs Docchi. */
+/** What to say when the test doesn't arrive. The setup hints are for whoever runs Eithr. */
 const TEST_TEXT: Record<TestResult, string> = {
   sent: "Sent! Check your notifications.",
   too_many: "That's enough tests for now. Try again in an hour.",
@@ -88,11 +88,11 @@ function usePush() {
 function statusText(support: PushSupport, state: State) {
   if (support === "install") {
     return installPlatform() === "in-app"
-      ? "Open Docchi in your browser first, then turn these on there."
-      : "On iPhone, add Docchi to your Home Screen first. Then open it from there and turn these on.";
+      ? "Open Eithr in your browser first, then turn these on there."
+      : "On iPhone, add Eithr to your Home Screen first. Then open it from there and turn these on.";
   }
   if (support === "unsupported") return "This browser can't show notifications. Try Chrome, or Safari on iPhone from the Home Screen.";
-  if (state === "denied") return "Notifications are blocked for Docchi. Allow them in your browser or phone settings, then come back.";
+  if (state === "denied") return "Notifications are blocked for Eithr. Allow them in your browser or phone settings, then come back.";
   if (state === "on") return "We'll tap you when your poll takes off, friends add you, or results land.";
   return "Know when your poll takes off, friends add you, or results are in.";
 }

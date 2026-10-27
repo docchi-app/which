@@ -1,6 +1,6 @@
-# Docchi
+# Eithr
 
-**Docchi. Which one?** A light, fun poll app: tap a side, then see where everyone else landed.
+**Eithr? Pick a side.** (Said "ee-ther". Formerly Docchi.) A light, fun poll app: tap a side, then see where everyone else landed.
 It's a mobile-first PWA built with Next.js and Supabase.
 
 Product and design background: [`docs/HANDOFF-docchi.md`](docs/HANDOFF-docchi.md) and
@@ -23,17 +23,17 @@ The first slice of the build order:
   account) and sees the results, with their own pick shown in them. A guest's votes are stored but
   left out of every total and the leaderboard until they sign in with Google; linking Google keeps
   the same account, so their votes join the totals then (if that Google account already had
-  Docchi, `/auth/callback` casts the guest's picks again as that account). Results show "Your vote
+  Eithr, `/auth/callback` casts the guest's picks again as that account). Results show "Your vote
   counts once you sign in", and after a guest's 3rd vote a "Make your votes count" sheet asks once.
   Guests are told plainly: a one-time "Voted as a guest" note after the first vote; a closable bar
   under the logo, "🕒 3 votes not counted yet · Count them" (✕ hides it for a day); their pick reads
   "Your pick · not counted yet", the count says "(yours isn't in yet)", and a yellow strip offers
   **Count my vote**. Nothing blocks browsing or voting.
 - **What we get from Google, said up front:** the sign-in sheet lists it (name for a @username,
-  profile photo, email kept private) and what Docchi never does (post for you, read contacts or other
+  profile photo, email kept private) and what Eithr never does (post for you, read contacts or other
   Google data, ads); other sign-in buttons carry a one-line version.
   If guest sign-ins are switched off, the first tap opens the old "Lock in your pick" sheet.
-- **First visit:** a one-line welcome above the tabs says what Docchi is, until it's dismissed or
+- **First visit:** a one-line welcome above the tabs says what Eithr is, until it's dismissed or
   the first vote. An unvoted card with fewer than 10 votes says "Be the first to vote" / "Be one of
   the first to vote" instead of a tiny count, and a poll with no comments shows the bubble without
   a "0".
@@ -70,7 +70,7 @@ The first slice of the build order:
   Disagree, with a spice meter showing how split people are and a "Settle this" share button when
   it's close) and **mystery polls** (people see a teaser like "Pick a colour" and the answers; the
   real question stays on the server until they vote, then it's revealed). Anyone can post one of
-  these a day. Docchi's own polls show a **verified** tick, in the app and on link previews.
+  these a day. Eithr's own polls show a **verified** tick, in the app and on link previews.
 - **Create poll:** opens on just the question (up to 140 characters) and 2 to 4 answers (up to 40
   each), with a live preview. Format (each shown as a tiny example card), closing time (1, 3 or 7
   days) and who can see it sit behind **More options**, whose row shows the current choice
@@ -138,7 +138,7 @@ The first slice of the build order:
 - **Leaders (weekly):** Monday–Sunday, India time. **Top creators** by votes their public polls got
   this week (podium for the top 3, then the list), **Hottest polls** by votes this week, last
   week's champ on top, your own rank pinned at the bottom, and a Last week view. Votes on your own
-  poll, on Docchi's polls, from guests who haven't signed in, from banned accounts or from accounts
+  poll, on Eithr's polls, from guests who haven't signed in, from banned accounts or from accounts
   under a day old don't count. Arriving while this week's board is still empty shows last week's
   instead.
 - **Comments:** tap the 💬 count on a card. You can read and write once you've voted (or the poll
@@ -178,7 +178,7 @@ The first slice of the build order:
   comments elsewhere (they leave other polls' totals), friends, lists, notifications and the
   sign-in itself. Snap photos are removed from Storage first; the database refuses to delete
   while any are left, so none are orphaned. Signing in with Google again starts a new account.
-- **Offline:** the service worker keeps the app's files and the pages you've opened, so Docchi
+- **Offline:** the service worker keeps the app's files and the pages you've opened, so Eithr
   opens without a connection: the feed says "You're offline" and loads by itself when the
   connection is back, a "📡 You're offline" bar shows on every screen, and pages you haven't
   opened show `/offline`. Pages always come from the network first, so nobody gets a stale app.
@@ -206,7 +206,7 @@ The first slice of the build order:
   Clean up).
 - **Props (💜 compliment polls about your friends):** a purple "About your friends" card shows up
   a few polls into **For you** (and all of today's questions are at `/props`, from the Friends tab):
-  a question Docchi wrote ("Who has the best laugh?") with 4 of your friends as answers. Pick one,
+  a question Eithr wrote ("Who has the best laugh?") with 4 of your friends as answers. Pick one,
   **Shuffle** (twice per question) or **Skip**. It's anonymous: the friend gets a push and an
   Activity item ("💜 You got props for Best laugh"), delayed a random 10–60 minutes and grouped so
   the timing doesn't give you away, and nobody ever sees who picked them. 10 questions a day
@@ -226,20 +226,20 @@ The first slice of the build order:
   when votes come in" on a poll you just posted, while they're off on that phone (✕ hides it for a
   month); once on, it disappears. Settings → Notifications has a
   switch for each kind: **votes** on your polls (at 3, 5, 10, 25, 50, 100…), **friends** (friend requests, new friends,
-  friends-only polls), **results** (when a poll you voted on or made closes) and **Docchi's polls**: the Poll of
+  friends-only polls), **results** (when a poll you voted on or made closes) and **Eithr's polls**: the Poll of
   the Day at 9am (an invitation with "Keep your 🔥 5-day streak going" when you're on one, or, if
-  you already voted, "Chai leads with 62% so far"), "New on Docchi 🗳️" when any other Docchi poll
+  you already voted, "Chai leads with 62% so far"), "New on Eithr 🗳️" when any other Eithr poll
   goes live, and an 8pm "Your 🔥 6-day streak ends at midnight" for streaks of 3+ days not yet kept
   today.
   Quiet 11pm–8am India time (what comes in at night goes out at 8am), no daily cap, and tapping
   one opens the poll. Works on Android and
-  desktop browsers; on iPhone, only after adding Docchi to the Home Screen (iOS 16.4+), and the
+  desktop browsers; on iPhone, only after adding Eithr to the Home Screen (iOS 16.4+), and the
   app says so. Signing out stops that phone getting your notifications.
 - **Get the app (Home Screen):** a step-by-step sheet. On iPhone: Share → Add to Home Screen →
   Add, with an arrow pointing at Safari's Share button (or at the top for Chrome on iPhone),
   opened from Profile's notifications row (How?) or Settings. Inside Instagram, Facebook, WhatsApp and
-  other in-app browsers: how to open Docchi in Safari or Chrome, plus Copy link. On Android: a
-  real **Install Docchi** button when Chrome offers it (Settings → The app), otherwise ⋮ →
+  other in-app browsers: how to open Eithr in Safari or Chrome, plus Copy link. On Android: a
+  real **Install Eithr** button when Chrome offers it (Settings → The app), otherwise ⋮ →
   Install app. After someone's 3rd vote in a browser it offers itself once; "Not now" waits a
   week. iPhone can't show an install prompt like Android: Apple doesn't allow it for websites.
 - **Terms, Privacy and Community guidelines** at `/terms`, `/privacy`, `/guidelines`, linked from
@@ -282,6 +282,11 @@ npm run check:layout                                         # in another termin
 
 Failures come with screenshots in `scripts/layout-check/out/`.
 
+### Brand and videos
+
+Name, pronunciation ("ee-ther"), logo, colours and taglines: [`docs/brand.md`](docs/brand.md).
+Promo videos with a voice-over that says the name right: [`scripts/video-kit/`](scripts/video-kit/README.md).
+
 ## Supabase setup (free tier)
 
 ### 1. Create the project
@@ -308,7 +313,9 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261113000000_streaks.sql`, `20261114000000_quick_snap.sql`,
    `20261115000000_snap_photo_size.sql`, `20261116000000_snap_answers.sql`,
    `20261117000000_delete_account_best_rank.sql`, `20261118000000_props.sql`,
-   `20261119000000_security_hardening.sql`, …),
+   `20261119000000_security_hardening.sql`, `20261120000000_friends_voted_early.sql`,
+   `20261121000000_notification_fixes.sql`, `20261122000000_views.sql`,
+   `20261123000000_docchi_poll_pushes.sql`, `20261124000000_rename_eithr.sql`, …),
    in date order,
    each one once.
 3. Open another new query, paste `supabase/seed.sql`, and click **Run**. This adds 12 starter
@@ -339,14 +346,14 @@ count from the day you run it. To write your own, copy a row in the `pack` list.
 
 **In Google Cloud** ([console.cloud.google.com](https://console.cloud.google.com)):
 
-1. Create a project (for example "Docchi"), or pick an existing one.
+1. Create a project (for example "Eithr"), or pick an existing one.
 2. **APIs & Services → OAuth consent screen** (called **Google Auth Platform** in newer
-   consoles): user type **External**, app name **Docchi**, your support email, and the
+   consoles): user type **External**, app name **Eithr**, your support email, and the
    `openid`, `email` and `profile` scopes. While it's in **Testing**, only the test users you add
    can sign in. Click **Publish app** when you're ready for everyone.
 3. **APIs & Services → Credentials → Create credentials → OAuth client ID**, type
    **Web application**:
-   - **Authorized JavaScript origins:** `https://dochhi.vercel.app` (and `http://localhost:3000`
+   - **Authorized JavaScript origins:** `https://eithr.app` (and `http://localhost:3000`
      for local development)
    - **Authorized redirect URIs:** `https://<project-ref>.supabase.co/auth/v1/callback`
      (Supabase shows this exact address on its Google provider page)
@@ -359,25 +366,25 @@ count from the day you run it. To write your own, copy a row in the `pack` list.
 2. On the same page, turn on **Allow manual linking**. This lets a guest account link Google
    and keep its votes.
 3. **Authentication → URL Configuration:**
-   - **Site URL:** `https://dochhi.vercel.app`
-   - **Redirect URLs:** add `https://dochhi.vercel.app/auth/callback`,
+   - **Site URL:** `https://eithr.app`
+   - **Redirect URLs:** add `https://eithr.app/auth/callback`,
      `https://*.vercel.app/auth/callback` (preview deployments) and
      `http://localhost:3000/auth/callback`
 4. On the same page, turn **on** **Allow anonymous sign-ins**. Visitors vote as guests before
    signing in; their votes only count once they link Google (step 2). With it off, the app asks
    for Google at the first vote instead.
 
-**Show "Docchi", not the Supabase address, on Google's screen.** By default Google sends people
+**Show "Eithr", not the Supabase address, on Google's screen.** By default Google sends people
 back to Supabase, so its screen says "Sign in to <project-ref>.supabase.co". To run sign-in
 through this site instead:
 
 1. On the same OAuth client in Google Cloud, add the redirect URI
-   `https://dochhi.vercel.app/auth/google/callback` (keep the Supabase one too; guest
+   `https://eithr.app/auth/google/callback` (keep the Supabase one too; guest
    linking still uses it). Add `http://localhost:3000/auth/google/callback` for local development.
 2. In Vercel, add `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (the Client ID; it's public) and
    `GOOGLE_CLIENT_SECRET` (the Client secret; server-only, mark it **Sensitive**). Redeploy.
 3. In Google Auth Platform → **Branding**, fill in the app name, logo, home page, privacy and terms
-   links. Google shows "Sign in to dochhi.vercel.app" straight away, and the app name **Docchi**
+   links. Google shows "Sign in to eithr.app" straight away, and the app name **Eithr**
    once the brand is verified.
 
 The sign-in button then opens `/auth/google`, which sends the viewer to Google; Google returns to
@@ -422,7 +429,7 @@ update public.profiles set is_admin = true where username = 'your_username';
 ### 5. Deploy (Vercel)
 
 Import the repo on [vercel.com](https://vercel.com), add the same two environment variables (plus,
-optionally, `NEXT_PUBLIC_SITE_URL=https://dochhi.vercel.app` so link previews always use that
+optionally, `NEXT_PUBLIC_SITE_URL=https://eithr.app` so link previews always use that
 address; otherwise Vercel's production address is used), and
 deploy. Vercel warns about the `NEXT_PUBLIC_` prefix on values saved as private: set their type to
 **Config** instead, since both are meant to be public. After changing a variable, **Redeploy**;
@@ -446,7 +453,7 @@ the values are baked in at build time. Then set up the Supabase URL Configuratio
    and the same secret:
 
    ```sql
-   select public.schedule_push('https://dochhi.vercel.app', '<PUSH_CRON_SECRET>');
+   select public.schedule_push('https://eithr.app', '<PUSH_CRON_SECRET>');
    ```
 
    Every 2 minutes pg_cron calls `/api/push/run`, which collects new events into

@@ -8,14 +8,14 @@ type Props = { params: Promise<{ username: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
   const person = await getSharedProfile(username);
-  if (!person) return { title: "Docchi. Which one?" };
-  const title = `@${person.username} on Docchi`;
-  const description = `Add @${person.username} as a friend on Docchi and vote on the polls they share with friends.`;
+  if (!person) return { title: "Eithr? Pick a side." };
+  const title = `@${person.username} on Eithr`;
+  const description = `Add @${person.username} as a friend on Eithr and vote on the polls they share with friends.`;
   return {
     title,
     description,
     alternates: { canonical: `/u/${person.username}` },
-    openGraph: { title, description, type: "profile", siteName: "Docchi", url: `/u/${person.username}` },
+    openGraph: { title, description, type: "profile", siteName: "Eithr", url: `/u/${person.username}` },
     twitter: { card: "summary", title, description },
   };
 }

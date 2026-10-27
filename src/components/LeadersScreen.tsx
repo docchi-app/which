@@ -81,7 +81,7 @@ export function LeadersScreen() {
   return (
     <div className="screen leaders-screen">
       <header className="app-header">
-        <Link href="/" className="brand" aria-label="Docchi home">
+        <Link href="/" className="brand" aria-label="Eithr home">
           <LogoMark />
           <Wordmark />
         </Link>

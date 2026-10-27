@@ -209,9 +209,9 @@ function InviteCard({ username }: { username: string }) {
 
   async function share() {
     if (!url) return;
-    const text = `Add me on Docchi, the app for settling arguments with polls.`;
+    const text = `Add me on Eithr, the app for settling arguments with polls.`;
     try {
-      if (navigator.share) await navigator.share({ title: "Docchi", text, url });
+      if (navigator.share) await navigator.share({ title: "Eithr", text, url });
       else {
         await navigator.clipboard.writeText(url);
         setCopied(true);

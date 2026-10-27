@@ -62,7 +62,7 @@ export function SettingsScreen() {
           </h2>
           <button type="button" className="settings-row" onClick={() => setInstalling(true)}>
             <span>
-              <strong>{platform === "in-app" ? "Open in your browser" : "Add Docchi to your Home Screen"}</strong>
+              <strong>{platform === "in-app" ? "Open in your browser" : "Add Eithr to your Home Screen"}</strong>
               <span className="notif-hint">One tap to open, full screen</span>
             </span>
             <Chevron />

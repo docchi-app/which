@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
 
-export const metadata: Metadata = { title: "Community guidelines · Docchi" };
+export const metadata: Metadata = { title: "Community guidelines · Eithr" };
 
 export default function GuidelinesPage() {
   return (
     <LegalPage
       path="/guidelines"
       title="Community guidelines"
-      intro="Docchi is for fun, quick “this or that” questions. Keep it light, keep it kind. Short version: would you be fine with your mum, your friend and a stranger all seeing this poll?"
+      intro="Eithr is for fun, quick “this or that” questions. Keep it light, keep it kind. Short version: would you be fine with your mum, your friend and a stranger all seeing this poll?"
     >
       <h2>Go for it</h2>
       <ul>
@@ -17,7 +17,7 @@ export default function GuidelinesPage() {
         <li>Opinions people can disagree on, as long as nobody is being attacked.</li>
       </ul>
 
-      <h2>Not on Docchi</h2>
+      <h2>Not on Eithr</h2>
       <ul>
         <li><strong>Hate or harassment:</strong> attacking people for religion, caste, gender, sexuality, race, region, disability or looks; bullying, mocking or “rate this person” polls about someone who didn&apos;t agree to it.</li>
         <li><strong>Real names and private details</strong> of anyone else: phone numbers, addresses, photos, school or workplace.</li>
@@ -26,7 +26,7 @@ export default function GuidelinesPage() {
         <li><strong>Violence or threats</strong>, glorifying violence, or encouraging self-harm.</li>
         <li><strong>Spam and scams:</strong> ads, links to make money, fake giveaways, repeated or copy-paste polls.</li>
         <li><strong>Illegal things:</strong> drugs, weapons, gambling or anything else that breaks Indian law.</li>
-        <li><strong>Misleading people</strong> on health, elections or emergencies, or pretending to be someone else (including Docchi).</li>
+        <li><strong>Misleading people</strong> on health, elections or emergencies, or pretending to be someone else (including Eithr).</li>
       </ul>
 
       <h2>If you see something</h2>

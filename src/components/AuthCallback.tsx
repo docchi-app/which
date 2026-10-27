@@ -29,7 +29,7 @@ export function AuthCallback() {
       const hash = new URLSearchParams(window.location.hash.slice(1));
       const errorCode = query.get("error_code") ?? hash.get("error_code");
 
-      // This Google account already has a Docchi account: sign in to that one.
+      // This Google account already has an Eithr account: sign in to that one.
       // The guest account is left behind, so the pick is cast as the real account.
       if (errorCode === "identity_already_exists") {
         try {
@@ -61,7 +61,7 @@ export function AuthCallback() {
       }
 
       // Picks made as a guest. Usually they're already on this account (Google
-      // was linked to it); if this Google account had Docchi before, cast them here.
+      // was linked to it); if this Google account had Eithr before, cast them here.
       if (!data.session.user.is_anonymous) {
         const picks = guestPicks();
         forgetGuestPicks();

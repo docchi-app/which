@@ -1,0 +1,180 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face{font-family:"Brico";font-weight:800;src:url(../../../../assets/fonts/BricolageGrotesque-ExtraBold.ttf)}
+@font-face{font-family:"DMS";font-weight:100 900;src:url(../../../../assets/fonts/DMSans-Bold.ttf)}
+:root{--ink:#1b1530;--cream:#fff7ec;--coral:#ff7a59;--sky:#6cb4ff;--sun:#ffd23f;--mint:#52d6a8;--lilac:#b79cff;--grape:#8b5cf6;--muted:#5a5370;--line:#e3d9ca}
+*{box-sizing:border-box;animation-play-state:paused!important}
+html,body{margin:0;width:540px;height:960px;overflow:hidden;background:var(--cream);color:var(--ink);font-family:"DMS",sans-serif;-webkit-font-smoothing:antialiased}
+.bg{position:absolute;inset:0;overflow:hidden}
+.blob{position:absolute;border:2.5px solid var(--ink);border-radius:50%}
+.scene{position:absolute;inset:0;opacity:0}
+/* phone */
+.phone{position:absolute;left:105px;top:46px;width:330px;height:714px;border:3px solid var(--ink);border-radius:44px;overflow:hidden;background:var(--cream);box-shadow:8px 8px 0 var(--ink)}
+.screen{position:absolute;left:0;top:0;width:390px;height:844px;transform:scale(.8308);transform-origin:0 0;overflow:hidden;background:var(--cream)}
+.status{display:flex;justify-content:space-between;height:40px;padding:12px 26px 0;font:700 14px DMS}
+.cap{position:absolute;left:30px;right:30px;top:800px;display:block;text-align:center;font:800 25px/1.2 Brico;letter-spacing:-.01em}
+.cap b{color:var(--grape)}
+/* app bits */
+header.top{display:flex;justify-content:space-between;align-items:center;padding:4px 18px 8px}
+.brand{display:flex;align-items:center;gap:8px}.mark{display:grid;place-items:center;width:40px;height:38px;border:2.5px solid var(--ink);border-radius:12px;background:var(--sun);box-shadow:2px 2px 0 var(--ink);font-size:18px}
+.word{font:800 30px/1 Brico;letter-spacing:-.04em}.word b{color:var(--coral)}
+.ib{position:relative;display:grid;place-items:center;width:44px;height:44px;border:2px solid var(--ink);border-radius:14px;background:var(--sun);box-shadow:2px 2px 0 var(--ink);font-size:18px}
+.tabs{display:flex;gap:8px;padding:6px 18px 12px}
+.tab{height:40px;padding:0 18px;border:2px solid var(--ink);border-radius:999px;background:#fff;box-shadow:2px 2px 0 var(--ink);font:700 14px/36px DMS}
+.tab.on{background:var(--ink);color:var(--cream);box-shadow:2px 2px 0 var(--coral)}
+.stage{position:relative;padding:0 18px}
+.card{position:relative;display:flex;flex-direction:column;gap:12px;padding:18px;border:2.5px solid var(--ink);border-radius:28px;background:var(--lilac);box-shadow:6px 6px 0 var(--ink)}
+.chip{display:inline-flex;align-self:flex-start;align-items:center;gap:6px;height:30px;padding:0 12px;border:2px solid var(--ink);border-radius:999px;background:#fff;font:800 12px DMS;letter-spacing:.05em;text-transform:uppercase}
+.q{margin:0;font:800 30px/1.08 Brico;letter-spacing:-.02em}
+.sub{margin:-4px 0 0;font:600 13px DMS;color:#3b2f5c}
+.ans{display:flex;flex-direction:column;gap:8px}
+.a{position:relative;display:flex;align-items:center;gap:12px;height:52px;padding:0 12px;border:2px solid var(--ink);border-radius:16px;background:#fff;box-shadow:3px 3px 0 var(--ink);font:700 17px DMS;overflow:hidden}
+.av{display:grid;place-items:center;flex:none;width:32px;height:32px;border:2px solid var(--ink);border-radius:10px;font:800 14px Brico}
+.foot{display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:2px dashed rgba(27,21,48,.25);font:800 15px DMS}
+.pill{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 16px;border:2px solid var(--ink);border-radius:999px;background:#fff;box-shadow:2px 2px 0 var(--ink)}
+.muted{color:var(--muted)}
+.nav{position:absolute;left:16px;right:16px;bottom:18px;display:flex;gap:12px}
+.navp{flex:1;display:flex;justify-content:space-around;align-items:center;height:62px;border-radius:24px;background:var(--ink);color:var(--cream);font-size:19px}
+.navp .on{padding:8px 14px;border-radius:999px;background:var(--sun);color:var(--ink);font:800 14px DMS}
+.plus{display:grid;place-items:center;width:62px;height:62px;border:2.5px solid var(--ink);border-radius:22px;background:var(--coral);box-shadow:4px 4px 0 var(--ink);font:800 32px DMS}
+.tap{position:absolute;z-index:50;width:60px;height:60px;margin:-30px 0 0 -30px;border:4px solid var(--sun);border-radius:50%;background:rgba(255,210,63,.35);opacity:0;animation:tap .9s ease-out both}
+@keyframes tap{0%{opacity:0;transform:scale(.4)}20%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.5)}}
+@keyframes rise{from{opacity:0;transform:translateY(40px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@keyframes fadeout{from{opacity:1}to{opacity:0}}
+@keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+@keyframes down{from{transform:translateY(-140%)}to{transform:none}}
+@keyframes flip{0%{transform:rotateX(0)}50%{transform:rotateX(90deg)}100%{transform:rotateX(0)}}
+@keyframes fill{from{width:0}to{width:100%}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes heart{0%{opacity:0;transform:translate(0,0) scale(.4)}20%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.1)}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center}
+.bigmark{display:grid;place-items:center;width:120px;height:112px;border:3px solid var(--ink);border-radius:32px;background:var(--sun);box-shadow:6px 6px 0 var(--ink);font-size:56px}
+.h1{font:800 72px/1 Brico;letter-spacing:-.04em}
+.h1 span{color:var(--grape)}
+.tag{font:700 20px DMS;color:var(--muted)}
+.sent{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;border-radius:26px;background:var(--lilac);text-align:center;opacity:0}
+.sent h3{margin:0;font:800 34px Brico}
+.sent p{margin:0;font:600 15px/1.4 DMS;color:#3b2f5c}
+.hrt{position:absolute;left:50%;top:40%;font-size:26px;opacity:0;animation:heart 1.1s ease-out both}
+/* lock screen */
+.lock{position:absolute;inset:0;background:linear-gradient(170deg,#2b2350,#1b1530 60%);color:#fff}
+.clock{margin-top:90px;text-align:center;font:700 86px/1 DMS;letter-spacing:-2px}
+.date{text-align:center;font:600 18px DMS;opacity:.8}
+.notif{position:absolute;left:14px;right:14px;top:250px;display:flex;gap:12px;padding:14px;border-radius:22px;background:rgba(255,255,255,.92);color:var(--ink);box-shadow:0 10px 30px rgba(0,0,0,.35);animation:down .6s cubic-bezier(.2,.9,.2,1) both}
+.notif .ic{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--sun);border:2px solid var(--ink);font-size:20px}
+.notif b{display:block;font:800 15px DMS}.notif span{font:600 14px/1.35 DMS}
+.notif small{position:absolute;right:16px;top:14px;font:600 12px DMS;color:var(--muted)}
+/* profile */
+.banner{height:92px;background:var(--lilac);border-bottom:2.5px solid var(--ink);position:relative;overflow:hidden}
+.sun{position:absolute;right:-30px;top:-40px;width:130px;height:130px;border:2.5px solid var(--ink);border-radius:50%;background:var(--sun)}
+.pav{display:grid;place-items:center;width:78px;height:78px;margin:-34px 0 0 18px;position:relative;border:2.5px solid var(--ink);border-radius:24px;background:var(--coral);box-shadow:4px 4px 0 var(--ink);font:800 36px Brico}
+.pname{padding:10px 18px 0;font:800 25px Brico}
+.box{margin:14px 18px 0;padding:14px;border:2.5px solid var(--ink);border-radius:22px;background:#fff;box-shadow:4px 4px 0 var(--ink)}
+.box h4{margin:0;font:800 19px Brico}.box .only{margin:2px 0 10px;font:600 12.5px DMS;color:var(--muted)}
+.prop{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1.5px solid var(--line);font:700 15px DMS}
+.prop .e{font-size:22px}.prop .n{margin-left:auto;font:800 17px Brico}
+.bar{height:8px;margin-top:4px;border-radius:9px;background:var(--grape);transform-origin:left;animation:grow .8s ease both}
+/* share */
+.story{position:absolute;left:40px;right:40px;top:60px;height:520px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;border:3px solid var(--ink);border-radius:30px;background:linear-gradient(160deg,#c4a8ff,#8b5cf6);box-shadow:6px 6px 0 var(--ink);color:#fff;text-align:center}
+.story .big{font-size:84px;animation:float 2.4s ease-in-out infinite}
+.story h3{margin:0;font:800 34px/1.1 Brico;text-shadow:0 2px 0 var(--ink)}
+.story .x{padding:6px 16px;border:2.5px solid var(--ink);border-radius:999px;background:var(--sun);color:var(--ink);font:800 20px Brico}
+.story small{font:700 14px DMS;opacity:.9}
+.sheet{position:absolute;left:0;right:0;bottom:0;padding:16px 18px 30px;border-top:2.5px solid var(--ink);border-radius:28px 28px 0 0;background:var(--cream);animation:rise .5s ease both}
+.apps{display:flex;justify-content:space-around;margin-top:12px}
+.app{display:flex;flex-direction:column;align-items:center;gap:6px;font:700 12px DMS}
+.app i{display:grid;place-items:center;width:56px;height:56px;border:2px solid var(--ink);border-radius:18px;font-style:normal;font-size:24px}
+/* locked */
+.faces{display:flex;gap:8px;justify-content:center}
+.ghost{display:grid;place-items:center;width:52px;height:52px;border:2px dashed var(--ink);border-radius:16px;background:rgba(255,255,255,.5);font:800 22px Brico}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border:2.5px solid var(--ink);border-radius:16px;background:var(--coral);box-shadow:3px 3px 0 var(--ink);font:800 17px Brico}
+
+/* ── hype edition ── */
+.hbg{position:absolute;inset:0;overflow:hidden}
+.hbg .b{position:absolute;border:3px solid var(--ink);border-radius:50%;animation:beat .5s ease-in-out infinite}
+.hbg .t{position:absolute;border:3px solid var(--ink);border-radius:22px;animation:spin 6s linear infinite}
+@keyframes beat{0%,100%{transform:scale(1)}15%{transform:scale(1.07)}}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.phone{animation:phonein .7s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes phonein{from{opacity:0;transform:translateY(80px) rotate(-8deg) scale(.82)}to{opacity:1;transform:none}}
+.cap{top:792px;left:22px;right:22px}
+.cap span.box{display:inline-block;padding:10px 18px;border:3px solid var(--ink);border-radius:20px;background:#fff;box-shadow:5px 5px 0 var(--ink);font:800 28px/1.15 Brico;animation:cappop .45s .15s cubic-bezier(.2,1.6,.4,1) both;transform-origin:50% 100%}
+.cap b{color:var(--ink);background:var(--sun);padding:0 6px;border-radius:8px}
+@keyframes cappop{from{opacity:0;transform:scale(.5) rotate(-6deg)}to{opacity:1;transform:rotate(-1.5deg)}}
+.stk{position:absolute;z-index:60;padding:8px 16px;border:3px solid var(--ink);border-radius:16px;background:var(--coral);box-shadow:5px 5px 0 var(--ink);font:800 30px Brico;color:var(--ink);white-space:nowrap;animation:slam .45s cubic-bezier(.2,1.7,.4,1) both}
+@keyframes slam{0%{opacity:0;transform:scale(2.4) rotate(var(--r,-10deg))}100%{opacity:1;transform:scale(1) rotate(var(--r,-10deg))}}
+.flt{position:absolute;bottom:-40px;font-size:30px;opacity:.9;animation:up 3.2s linear infinite}
+@keyframes up{from{transform:translateY(0) rotate(0)}to{transform:translateY(-1050px) rotate(40deg)}}
+.big{font:800 96px/0.95 Brico;letter-spacing:-.04em}
+.big span{display:inline-block;animation:bounceL .6s cubic-bezier(.2,1.8,.4,1) both}
+@keyframes bounceL{from{opacity:0;transform:translateY(-140px) rotate(-20deg)}to{opacity:1;transform:none}}
+</style></head><body>
+<div class="bg" style="display:none"><span class="blob" style="width:260px;height:260px;right:-110px;top:-90px;background:var(--sun)"></span><span class="blob" style="width:180px;height:180px;left:-80px;top:560px;background:var(--lilac)"></span><span class="blob" style="width:90px;height:90px;right:30px;top:640px;background:var(--mint);border-radius:26px;transform:rotate(14deg)"></span></div>
+<div id="scenes"></div>
+<script>
+const D = window.DURS || [2.9,7.4,4.9,5.5,5.9,5.3,4.1,4.1,8.0];
+const PAD = 0.55;
+const st = '<div class="status"><span>6:24</span><span>●●● ▮</span></div>';
+const topBar = '<header class="top"><span class="brand"><span class="mark">👀</span><span class="word">eithr<b>?</b></span></span><span class="ib">🔔</span></header><div class="tabs"><span class="tab on">For you</span><span class="tab">New</span><span class="tab">Friends</span></div>';
+const nav = '<div class="nav"><span class="navp"><span class="on">⌂ Feed</span><span>👥</span><span>🏆</span><span>👤</span></span><span class="plus">+</span></div>';
+const f = (n, c, bg) => ({ n, c, bg });
+const setA = [f('@priya','P','var(--sky)'), f('@aman','A','var(--mint)'), f('@zoya','Z','var(--coral)'), f('@ravi','R','var(--sun)')];
+const setB = [f('@sanyam','S','var(--sun)'), f('@neha','N','var(--sky)'), f('@zoya','Z','var(--coral)'), f('@kabir','K','var(--mint)')];
+const rows = (set, delay0, cls='') => set.map((p, i) => `<div class="a ${cls}" style="animation:rise .45s ${delay0 + i*0.08}s both"><span class="av" style="background:${p.bg}">${p.c}</span>${p.n}</div>`).join('');
+const propsCard = (inner) => `<div class="card" style="animation:rise .6s .2s both"><span class="chip">💜 About your friends</span><p class="q">Who has the best laugh?</p><p class="sub">Anonymous: they'll never know it was you.</p>${inner}</div>`;
+const phone = (screen) => `<div class="phone"><div class="screen">${st}${screen}</div></div>`;
+const S = [];
+// 1 title
+S.push(`<div class="title"><span class="bigmark" style="animation:pop .7s .1s both">💜</span><div class="big">${[...'PROPS!'].map((c,k)=>`<span style="animation-delay:${0.25+k*0.09}s">${c}</span>`).join('')}</div><div class="tag" style="animation:fadein .5s 1.1s both;color:var(--ink)">Compliment polls about your friends 💜</div></div>`);
+// 2 feed card appears
+S.push(phone(`${topBar}<div class="stage">${propsCard(`<div class="ans">${rows(setA, 0.9)}</div><div class="foot"><span>🔀 Shuffle</span><span class="muted">Skip</span></div>`)}</div>${nav}`) + `<div class="cap" style="animation:fadein .4s both">A question about <b>your friends</b> in your feed</div>`);
+// 3 shuffle
+S.push(phone(`${topBar}<div class="stage">${propsCard(`<div class="ans" style="position:relative"><div style="animation:fadeout .3s 1.8s both">${'<div class="ans">'+rows(setA,0)+'</div>'}</div><div class="ans" style="position:absolute;inset:0;opacity:0;animation:fadein .35s 2.0s both">${rows(setB, 2.0)}</div></div><div class="foot"><span class="pill" style="background:var(--sun)">🔀 Shuffle</span><span class="muted">Skip</span></div>`)}</div>${nav}<span class="tap" style="left:99px;top:593px;animation-delay:1.5s"></span>`) + `<div class="cap">Four of your friends. <b>Shuffle</b> for others.</div>`);
+// 4 pick -> sent
+const hearts = Array.from({length:10},(_,i)=>{const a=i/10*Math.PI*2;return `<span class="hrt" style="--dx:${Math.round(Math.cos(a)*120)}px;--dy:${Math.round(Math.sin(a)*120)}px;animation-delay:${1.75+i*0.02}s">💜</span>`}).join('');
+S.push(phone(`${topBar}<div class="stage">${propsCard(`<div class="ans">${rows(setB,0).replace('>Z</span>@zoya', '>Z</span>@zoya<span style="position:absolute;inset:0;background:var(--sun);opacity:0;animation:fadein .2s 1.3s both;mix-blend-mode:multiply"></span>')}</div><div class="foot"><span>🔀 Shuffle</span><span class="muted">Skip</span></div>`)}<div class="sent" style="left:18px;right:18px;animation:fadein .35s 1.7s both"><span style="font-size:64px;animation:pop .6s 1.8s both">💜</span><h3>Props sent!</h3><p>@zoya gets a ping that someone thinks so.<br><b>Never who.</b></p><span class="pill">Next question →</span><p class="muted" style="font-size:13px">3 of 10 today</p></div>${hearts}</div>${nav}<span class="tap" style="left:150px;top:463px;animation-delay:1.1s"></span>`) + `<div class="cap">Give props. It's <b>anonymous.</b></div>`);
+// 5 notification
+S.push(`<div class="phone"><div class="screen"><div class="lock">${st.replace('class="status"','class="status" style="color:#fff"')}<div class="clock">6:24</div><div class="date">Saturday, 25 October</div><div class="notif" style="animation-delay:.8s"><span class="ic">💜</span><span><b>You got props!</b><span>A friend picked you for “Best laugh in the group” 😂</span></span><small>now</small></div></div></div></div><div class="cap">When a friend picks you, <b>you get a ping</b></div>`);
+// 6 profile
+const pr = [['😂','Best laugh',7,100],['🧠','Best advice',5,72],['🍕','Orders food at 2am',3,44],['🎤','Best singer',2,30]];
+S.push(phone(`<div class="banner"><span class="sun"></span></div><div class="pav">M</div><div class="pname">@mayankbinayake</div><div class="box" style="animation:rise .5s .5s both"><h4>💜 What friends say about you</h4><div class="only">🔒 Only you can see this</div>${pr.map(([e,t,n,w],i)=>`<div class="prop" style="animation:rise .4s ${0.9+i*0.15}s both"><span class="e">${e}</span><span style="flex:1">${t}<div class="bar" style="width:${w}%;animation-delay:${1.1+i*0.15}s"></div></span><span class="n">×${n}</span></div>`).join('')}</div>${nav.replace('<span class="on">⌂ Feed</span>','<span>⌂</span>').replace('<span>👤</span>','<span class="on">👤 Profile</span>')}`) + `<div class="cap">What friends say about you. <b>Only you</b> see it.</div>`);
+// 7 share
+S.push(phone(`<div class="story" style="animation:pop .6s .2s both"><span class="big">😂</span><h3>My friends say I have the best laugh</h3><span class="x">×7 props</span><small>eithr.app · give your friends props</small></div><div class="sheet" style="animation-delay:.9s"><b style="font:800 18px Brico">Share your props</b><div class="apps"><span class="app"><i style="background:#25d366">💬</i>WhatsApp</span><span class="app"><i style="background:linear-gradient(135deg,#feda75,#d62976,#4f5bd5)">📷</i>Story</span><span class="app"><i style="background:#fff">🔗</i>Copy link</span></div></div><span class="tap" style="left:195px;top:756px;animation-delay:1.8s"></span>`) + `<div class="cap">Share it to your <b>story</b> or the group chat</div>`);
+// 8 locked
+S.push(phone(`${topBar}<div class="stage"><div class="card" style="animation:rise .6s .2s both"><span class="chip">💜 About your friends</span><p class="q">Unlock Props</p><p class="sub">Props needs 4 friends to pick from. You have 2.</p><div class="faces"><span class="av" style="width:52px;height:52px;border-radius:16px;background:var(--sky)">P</span><span class="av" style="width:52px;height:52px;border-radius:16px;background:var(--mint)">A</span><span class="ghost" style="animation:pop .5s 1.2s both">+</span><span class="ghost" style="animation:pop .5s 1.35s both">+</span></div><span class="btn" style="animation:pop .5s 1.8s both">Invite friends</span><p class="sub" style="text-align:center">Whoever opens your link becomes your friend.</p></div></div>${nav}<span class="tap" style="left:195px;top:375px;animation-delay:2.6s"></span>`) + `<div class="cap">Need <b>4 friends</b> to unlock</div>`);
+// 9 outro
+S.push(`<div class="title"><span class="bigmark" style="animation:pop .7s .1s both">💜</span><div class="big">${[...'PROPS!'].map((c,k)=>`<span style="animation-delay:${0.2+k*0.07}s">${c}</span>`).join('')}</div><div class="tag" style="animation:fadein .5s .9s both;color:var(--ink)">10 a day · always kind · on Eithr</div><div style="margin-top:22px;padding:10px 20px;border:3px solid var(--ink);border-radius:20px;background:var(--coral);box-shadow:5px 5px 0 var(--ink);font:800 32px Brico;animation:slam .5s 3.0s cubic-bezier(.2,1.7,.4,1) both">Make someone's day! 💜</div></div>`);
+const BG = ['var(--sun)','var(--lilac)','#ffb59c','#9ee8cc','#a9d2ff','var(--lilac)','#ffd6e8','#9ee8cc','var(--sun)'];
+const ACC = [['var(--coral)','var(--lilac)'],['var(--sun)','var(--coral)'],['var(--sun)','var(--lilac)'],['var(--coral)','var(--sun)'],['var(--sun)','var(--mint)'],['var(--sun)','var(--coral)'],['var(--lilac)','var(--sun)'],['var(--coral)','var(--lilac)'],['var(--coral)','var(--mint)']];
+const STK = [null, ['BOOM! 💥', 300, 70, '8deg'], ['SHUFFLE! 🔀', 20, 300, '-9deg'], ['ANONYMOUS 🤫', 200, 66, '6deg'], ['DING! 🔔', 330, 110, '10deg'], ['ONLY YOU 🔒', 20, 120, '-8deg'], ['SHARE IT ✨', 300, 30, '8deg'], ['INVITE 👯', 18, 560, '-8deg'], null];
+const STKAT = [0, 0.9, 1.7, 2.2, 1.0, 1.4, 0.7, 2.0, 0];
+const EMO = ['💜','✨','💜','😂','💜','🔥','💜','✨'];
+const wrapScene = (i, html) => {
+  const [a1, a2] = ACC[i];
+  const bg = `<div class="hbg" style="background:${BG[i]}"><span class="b" style="width:280px;height:280px;right:-120px;top:-100px;background:${a1}"></span><span class="b" style="width:200px;height:200px;left:-90px;top:600px;background:${a2};animation-delay:.25s"></span><span class="t" style="width:80px;height:80px;right:26px;top:660px;background:#fff"></span>${EMO.map((e,k)=>`<span class="flt" style="left:${20+k*66}px;animation-delay:${-(k*0.43)}s;animation-duration:${2.6+(k%3)*0.5}s">${e}</span>`).join('')}</div>`;
+  const st = STK[i] ? `<span class="stk" style="left:${STK[i][1]}px;top:${STK[i][2]}px;--r:${STK[i][3]};animation-delay:${STKAT[i]}s">${STK[i][0]}</span>` : '';
+  return bg + html.replace(/<div class="cap"([^>]*)>([\s\S]*?)<\/div>$/, '<div class="cap"$1><span class="box">$2</span></div>') + st;
+};
+const root = document.getElementById('scenes');
+let t = 0; const starts = [];
+S.forEach((html, i) => { const el = document.createElement('div'); el.className = 'scene'; el.innerHTML = wrapScene(i, html); el.dataset.i = i; root.appendChild(el); starts.push(t); t += D[i] + PAD; });
+window.TOTAL = t; window.STARTS = starts;
+// fades between scenes
+window.seek = (time) => {
+  const scenes = [...document.querySelectorAll('.scene')];
+  scenes.forEach((el, i) => {
+    const s = starts[i], e = s + D[i] + PAD;
+    let o = 0;
+    if (time >= s && time < e) o = Math.min(1, (time - s) / 0.25, (e - time) / 0.25);
+    el.style.opacity = o;
+    el.style.display = o > 0 ? 'block' : 'none';
+  });
+  document.body.offsetHeight;
+  for (const a of document.getAnimations()) {
+    const sc = a.effect?.target?.closest?.('.scene');
+    if (!sc) continue;
+    a.currentTime = Math.max(0, (time - starts[+sc.dataset.i]) * 1000);
+  }
+};
+</script></body></html>

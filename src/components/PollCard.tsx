@@ -65,7 +65,7 @@ type Props = {
   openComments?: boolean;
 };
 
-/** Docchi's own polls carry a tick. */
+/** Eithr's own polls carry a tick. */
 export function VerifiedTick() {
   return (
     <span className="verified" role="img" aria-label="Verified">

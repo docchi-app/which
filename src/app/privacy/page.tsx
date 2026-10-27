@@ -1,22 +1,22 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/LegalPage";
 
-export const metadata: Metadata = { title: "Privacy · Docchi" };
+export const metadata: Metadata = { title: "Privacy · Eithr" };
 
 export default function PrivacyPage() {
   return (
     <LegalPage
       path="/privacy"
       title="Privacy policy"
-      intro="We collect as little as we can to run Docchi. We don't sell your data and there are no ads."
+      intro="We collect as little as we can to run Eithr. We don't sell your data and there are no ads."
     >
       <h2>What we collect</h2>
       <ul>
         <li><strong>From Google, when you sign in:</strong> your name, email address and profile photo. Your name and photo help suggest a username; your email is never shown to anyone.</li>
-        <li><strong>What you do on Docchi:</strong> your username, the polls you post, your votes, shares, friends, friend requests and lists, link-only polls you&apos;ve opened, blocks and reports.</li>
+        <li><strong>What you do on Eithr:</strong> your username, the polls you post, your votes, shares, friends, friend requests and lists, link-only polls you&apos;ve opened, blocks and reports.</li>
         <li><strong>Snap photos:</strong> shrunk on your phone (location data removed) before upload. They&apos;re deleted after the snap&apos;s 24 hours, or when it&apos;s turned down.</li>
         <li><strong>Props:</strong> when you give a friend props, we store who you picked, for which question, and when. That&apos;s needed for the daily limit and for safety.</li>
-        <li><strong>Visits:</strong> a random ID stored in your browser, which days you opened Docchi and how many times. We use it to count visitors and see whether people come back. It isn&apos;t linked to ads or other sites.</li>
+        <li><strong>Visits:</strong> a random ID stored in your browser, which days you opened Eithr and how many times. We use it to count visitors and see whether people come back. It isn&apos;t linked to ads or other sites.</li>
         <li><strong>Views:</strong> that you saw a poll (its card was on your screen for a second), so we can count how many people saw it. If you&apos;re not signed in, you&apos;re counted as a scrambled code made from your connection and browser, never your IP address itself. Nobody is shown who viewed a poll, only the total.</li>
         <li><strong>Technical logs</strong> kept by our hosting providers (like IP address and browser) for security, for a short time.</li>
       </ul>
@@ -26,8 +26,8 @@ export default function PrivacyPage() {
         <li><strong>Everyone:</strong> your username, photo and public polls. Votes on public polls are only shown as totals.</li>
         <li><strong>Your friends:</strong> your friends list, your friends-only polls and who picked what on them, and that you voted on a poll they also voted on (never your pick).</li>
         <li><strong>Props are anonymous:</strong> the friend you picked sees only that a friend gave them props for a question, and their own counts. Nobody, including them, is ever shown who picked them. Your counts are visible only to you, unless you share them.</li>
-        <li><strong>Docchi&apos;s team:</strong> reports and the content they point to, to keep the app safe.</li>
-        <li><strong>Service providers</strong> that run Docchi for us: Supabase (database, sign-in and snap photos), Vercel (hosting) and OpenAI (an automatic safety check of snap photos before they go live; it isn&apos;t used to train their models). They process data only to provide their service.</li>
+        <li><strong>Eithr&apos;s team:</strong> reports and the content they point to, to keep the app safe.</li>
+        <li><strong>Service providers</strong> that run Eithr for us: Supabase (database, sign-in and snap photos), Vercel (hosting) and OpenAI (an automatic safety check of snap photos before they go live; it isn&apos;t used to train their models). They process data only to provide their service.</li>
         <li><strong>Authorities</strong>, only when Indian law requires it.</li>
       </ul>
 
@@ -56,8 +56,8 @@ export default function PrivacyPage() {
 
       <h2>Kids</h2>
       <p>
-        Docchi isn&apos;t for children under 13. If you&apos;re under 18, use it only with a parent or guardian&apos;s
-        permission. If you think a child is using Docchi without that, tell us and we&apos;ll remove the account.
+        Eithr isn&apos;t for children under 13. If you&apos;re under 18, use it only with a parent or guardian&apos;s
+        permission. If you think a child is using Eithr without that, tell us and we&apos;ll remove the account.
       </p>
     </LegalPage>
   );

@@ -66,7 +66,7 @@ export function SignInSheet({ pick, onClose }: Props) {
               <strong className="sheet-pick" style={{ background: pick.color }}>
                 {pick.text}
               </strong>
-              . One vote per person keeps Docchi fair. One tap and you&apos;re in.
+              . One vote per person keeps Eithr fair. One tap and you&apos;re in.
             </p>
           </>
         ) : (
@@ -120,11 +120,11 @@ function GoogleG() {
   );
 }
 
-/** Exactly what Docchi gets from Google, and what it never does. */
+/** Exactly what Eithr gets from Google, and what it never does. */
 export function GoogleTrust() {
   return (
     <div className="trust">
-      <h3>What Docchi gets from Google</h3>
+      <h3>What Eithr gets from Google</h3>
       <ul>
         <li>
           <span aria-hidden="true">👤</span>

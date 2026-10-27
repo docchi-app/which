@@ -42,7 +42,7 @@ export function DeleteAccountSheet({ username, onClose }: { username: string | n
             <h2 id="delete-title" className="sheet-title">
               Your account is deleted
             </h2>
-            <p className="sheet-text">Everything&apos;s gone. Thanks for trying Docchi. You&apos;re always welcome back.</p>
+            <p className="sheet-text">Everything&apos;s gone. Thanks for trying Eithr. You&apos;re always welcome back.</p>
             {/* A full reload, so nothing of the old account stays in memory. */}
             <button type="button" className="post-btn press" onClick={() => window.location.assign("/")}>
               Back to the feed
