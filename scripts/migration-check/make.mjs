@@ -1,7 +1,8 @@
 // Migration check: builds supabase/checks/migration-check.sql, a read-only query that lists every
 // migration that hasn't fully run on a database (missing functions or columns, or an older
 // version of a function). It runs all migrations on a throwaway in-memory Postgres, records
-// what each one leaves behind, and writes that list into the query. See "Migration check" in
+// what each one leaves behind (functions compared without spacing or line endings; functions
+// that come with extensions like citext left out), and writes that list into the query. See "Migration check" in
 // the README. Run it again after adding a migration:
 //
 //   npm i --no-save @electric-sql/pglite      (once)
@@ -43,8 +44,9 @@ const q = async (s) => (await db.query(s)).rows;
 
 const fns = async () =>
   new Map(
-    (await q(`select p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' n, md5(p.prosrc) h
-              from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.prokind = 'f'`)).map((r) => [r.n, r.h]),
+    (await q(`select p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' n, md5(regexp_replace(p.prosrc, '\\s', '', 'g')) h
+              from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.prokind = 'f'
+                and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')`)).map((r) => [r.n, r.h]),
   );
 const cols = async () =>
   new Set((await q(`select table_name || '.' || column_name n from information_schema.columns where table_schema = 'public'`)).map((r) => r.n));
@@ -76,7 +78,8 @@ ${fRows.join(",\n")}
 ), want_col(col, migration) as (values
 ${cRows.join(",\n")}
 ), have_fn as (
-  select p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' fn, md5(p.prosrc) hash
+  -- Spacing and line endings don't count: code pasted into the SQL editor can come with Windows ones.
+  select p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' fn, md5(regexp_replace(p.prosrc, '\\s', '', 'g')) hash
   from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.prokind = 'f'
 ), have_col as (
   select table_name || '.' || column_name col from information_schema.columns where table_schema = 'public'
