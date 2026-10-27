@@ -113,6 +113,40 @@ const SCREENS = ["/friends", "/leaders", "/profile", "/settings", "/activity", "
     }
   }
 
+  // Everyday content on full-size phones: once voted, the card fits without scrolling (a card
+  // that scrolls by a few pixels jumps under your thumb), and ✓ stays on your pick's line.
+  for (const [w, h] of [[390, 844], [411, 851], [412, 892]]) {
+    await p.setViewportSize({ width: w, height: h });
+    await go("/p/a9000000-0000-4000-8000-000000000009");
+    const answer = p.locator(".swipe-card .answer").first();
+    if (await answer.count()) {
+      await answer.click();
+      await p.waitForTimeout(2200);
+    }
+    await p.addStyleTag({ content: "*{animation:none!important;transition:none!important}" });
+    await p.waitForTimeout(300);
+    const bad = await p.evaluate(() => {
+      const card = document.querySelector(".swipe-card .poll-card");
+      const over = card.scrollHeight - card.clientHeight;
+      if (over > 1) return `scrolls by ${over}px`;
+      const check = card.querySelector(".result-check");
+      const text = check?.nextSibling;
+      if (!check || !text) return "no ✓ on your pick";
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      const first = range.getClientRects()[0];
+      const c = check.getBoundingClientRect();
+      if (!first || Math.abs(first.top + first.height / 2 - (c.top + c.height / 2)) > 6) return "✓ on its own line";
+      return null;
+    });
+    if (!bad) passed++;
+    else {
+      failed++;
+      console.log(`✗ everyday mystery ${w}x${h} after vote: ${bad}`);
+      await p.screenshot({ path: `${OUT}everyday-${w}x${h}.png` });
+    }
+  }
+
   // Every main screen, plus the comments and share sheets.
   for (const [w, h] of SCREEN_SIZES) {
     await p.setViewportSize({ width: w, height: h });

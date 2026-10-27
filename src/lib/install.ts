@@ -14,6 +14,23 @@ let deferred: PromptEvent | null = null;
 const listeners = new Set<() => void>();
 const SNOOZE_KEY = "docchi.installSnooze";
 const VOTES_KEY = "docchi.votesHere";
+/** Set when Eithr was just installed on Android: notifications get turned on inside the installed app. */
+export const NOTIFY_IN_APP_KEY = "eithr.notifyInApp";
+
+/** Installed on Android from this browser, and notifications not yet turned on in the app. */
+export function notifyInAppPending(): boolean {
+  try {
+    return localStorage.getItem(NOTIFY_IN_APP_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function clearNotifyInApp() {
+  try {
+    localStorage.removeItem(NOTIFY_IN_APP_KEY);
+  } catch {}
+}
 
 /** Call once at app start: keeps Chrome's install prompt for later. */
 export function captureInstallPrompt() {
@@ -27,6 +44,12 @@ export function captureInstallPrompt() {
   window.addEventListener("appinstalled", () => {
     deferred = null;
     snoozeInstall(3650);
+    // Android moves notification permission to the installed app: ask there, on its first open.
+    if (/Android/i.test(navigator.userAgent)) {
+      try {
+        localStorage.setItem(NOTIFY_IN_APP_KEY, "1");
+      } catch {}
+    }
     listeners.forEach((f) => f());
   });
 }

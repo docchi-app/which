@@ -17,6 +17,8 @@ const polls = [
   mk('a6000000-0000-4000-8000-000000000006', 'Which outfit should I wear tonight for the big party with everyone?', ['Blanket fully covered 🛌', 'Supercalifragilisticexpi', 'A really long answer her', 'Ok'], [3, 1, 2, 2], { kind: 'snap', creator: U20, is_system: false, visibility: 'circle' }),
   mk('a7000000-0000-4000-8000-000000000007', 'Rate it', ['🔥', '😍', '😬', '💀'], [3, 1, 2, 2], { kind: 'snap', creator: U20, is_system: false }),
   mk('a8000000-0000-4000-8000-000000000008', 'Three long ones', ['Supercalifragilisticexpi', 'Supercalifragilisticexpi', 'Supercalifragilisticexpi'], [1, 1, 1], { kind: 'snap', creator: U20, is_system: false }),
+  // Everyday content (a real poll), not the longest: a voted card like this must fit without scrolling.
+  mk('a9000000-0000-4000-8000-000000000009', 'Jio Platforms lists on 28 Oct. What happens on Day 1?', ['Rocket listing, GMP was right 🚀', 'Flat. Big IPO, small pop', "No allotment, so I don't care 😮‍💨", 'Dips, I sell and then it takes offff'], [0, 0, 0, 0], { kind: 'mystery', teaser: 'IPO day: rocket or dud?', creator: 'mayank', is_system: false }),
 ];
 const votes = {};
 let pOffer = null, pUsed = 0, pSeen = false, pOff = false; const pLocked = process.env.PROPS_LOCKED === '1';

@@ -431,7 +431,7 @@ export function PollCard({
                     )}
                     <span className="result-row">
                       <span className="result-text">
-                        {mine && showResults && <span aria-hidden="true">✓</span>}
+                        {mine && showResults && <span className="result-check" aria-hidden="true">✓</span>}
                         {o.text}
                         {mine && <span className="chip chip-small">{guestVote && !closed ? "Your pick · not counted yet" : "Your pick"}</span>}
                       </span>

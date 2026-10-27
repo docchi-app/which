@@ -157,7 +157,7 @@ export function GoogleTrust() {
         </li>
         <li>
           <span aria-hidden="true">✕</span>
-          <span>No ads, never sold</span>
+          <span>Your data is never sold</span>
         </li>
       </ul>
     </div>

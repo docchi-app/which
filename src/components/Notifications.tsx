@@ -102,7 +102,7 @@ function statusText(support: PushSupport, state: State) {
  * on Profile, and on a poll you just posted (with its own pitch). ✕ hides it
  * for a month; once they're on, it says so and goes away.
  */
-export function NotificationPrompt({ pitch }: { pitch?: ReactNode } = {}) {
+export function NotificationPrompt({ pitch, inSheet = false }: { pitch?: ReactNode; inSheet?: boolean } = {}) {
   const { support, state, busy, note, on } = usePush();
   const [hidden, setHidden] = useState(true);
   const [justOn, setJustOn] = useState(false);
@@ -152,8 +152,18 @@ export function NotificationPrompt({ pitch }: { pitch?: ReactNode } = {}) {
       </div>
     );
   }
+  // In a sheet that asks for exactly this, a blocked permission gets said, not hidden.
+  if (inSheet && support === "ready" && state === "denied") {
+    return (
+      <div className="notif-prompt notif-prompt-done" role="status">
+        <span className="notif-prompt-text">
+          <strong>Notifications are blocked.</strong> Allow them for Eithr in your phone or browser settings, then come back.
+        </span>
+      </div>
+    );
+  }
   const wanted = support === "install" || (support === "ready" && state === "off");
-  if (!support || hidden || !wanted) return null;
+  if (!support || (hidden && !inSheet) || !wanted) return null;
 
   return (
     <div className="notif-prompt">
@@ -181,9 +191,11 @@ export function NotificationPrompt({ pitch }: { pitch?: ReactNode } = {}) {
           {busy ? "…" : "Turn on"}
         </button>
       )}
-      <button type="button" className="notif-prompt-x" aria-label="Hide for now" onClick={hide}>
-        ✕
-      </button>
+      {!inSheet && (
+        <button type="button" className="notif-prompt-x" aria-label="Hide for now" onClick={hide}>
+          ✕
+        </button>
+      )}
       {howTo && <InstallSheet reason="notifications" onClose={() => setHowTo(false)} />}
     </div>
   );
