@@ -22,7 +22,8 @@ export async function POST(request: Request) {
       const message = e instanceof Error ? e.message : String(e);
       console.error("push run:", message);
       const error = message.includes("forbidden") ? "secret_mismatch" : "collect_failed";
-      return Response.json({ error, ...total }, { status: 500 });
+      // Only the cron (which knows the secret) sees this; it lands in net._http_response.
+      return Response.json({ error, detail: message.slice(0, 300), ...total }, { status: 500 });
     }
     if (!rows.length) break;
     const result = await sendAll(rows.map((r) => ({ target: r, payload: r.payload })));
