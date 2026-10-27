@@ -3630,3 +3630,14 @@ button.ghost-action { cursor: pointer; }
   .nav-item:active { transform: none; }
 }
 .comment-pending { opacity: 0.6; }
+
+/* ─── Docchi is now Eithr: moving from the old address ─────────────────── */
+
+.move-mark { display: flex; justify-content: center; }
+.move-note { margin: 0; padding: 10px 12px; border: 2px solid var(--line); border-radius: 14px; background: var(--white); font-size: 14px; line-height: 1.4; }
+.move-go { width: 100%; height: 52px; font-size: 17px; }
+.move-step { width: 100%; justify-content: flex-start; }
+.move-arrival { display: flex; min-height: 100dvh; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px 20px; text-align: center; }
+.move-title { margin: 6px 0 0; font-family: var(--font-display); font-size: 32px; font-weight: 800; letter-spacing: -0.03em; }
+.move-text { margin: 0 0 6px; color: var(--muted); font-size: 16px; line-height: 1.45; }
+.move-arrival .move-go { max-width: 360px; }

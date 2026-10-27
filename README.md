@@ -286,6 +286,8 @@ Failures come with screenshots in `scripts/layout-check/out/`.
 
 Name, pronunciation ("ee-ther"), logo, colours and taglines: [`docs/brand.md`](docs/brand.md).
 Promo videos with a voice-over that says the name right: [`scripts/video-kit/`](scripts/video-kit/README.md).
+Moving people from the old address (dochhi.vercel.app) to eithr.app, signed in, in one tap:
+[`docs/moving-to-eithr.md`](docs/moving-to-eithr.md) (the one-time notification and the redirect).
 
 ## Supabase setup (free tier)
 
