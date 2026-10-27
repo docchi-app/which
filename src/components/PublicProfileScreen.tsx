@@ -114,7 +114,7 @@ export function PublicProfileScreen({ username }: { username: string }) {
       <div className="screen">
         <section className="poll-card soon">
           <h1 className="poll-question">No one here</h1>
-          <p className="poll-foot-note">There&apos;s no @{username} on Docchi, or they&apos;re not available.</p>
+          <p className="poll-foot-note">There&apos;s no @{username} on Eithr, or they&apos;re not available.</p>
           <Link href="/" className="btn btn-coral press">
             Back to the feed
           </Link>

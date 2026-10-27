@@ -16,7 +16,7 @@ export function LegalPage({ path, title, intro, children }: { path: string; titl
   return (
     <div className="screen">
       <header className="app-header">
-        <Link href="/" className="brand" aria-label="Docchi home">
+        <Link href="/" className="brand" aria-label="Eithr home">
           <LogoMark />
           <Wordmark />
         </Link>

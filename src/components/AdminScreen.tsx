@@ -53,7 +53,7 @@ export function AdminScreen() {
   return (
     <div className="screen admin">
       <header className="app-header">
-        <Link href="/" className="brand" aria-label="Docchi home">
+        <Link href="/" className="brand" aria-label="Eithr home">
           <LogoMark />
           <Wordmark />
         </Link>
@@ -64,7 +64,7 @@ export function AdminScreen() {
         <p className="admin-empty" aria-busy="true">Checking…</p>
       ) : !allowed ? (
         <section className="poll-card soon">
-          <h1 className="poll-question">This page is for the Docchi team.</h1>
+          <h1 className="poll-question">This page is for the Eithr team.</h1>
           <Link href="/" className="btn btn-coral press">
             Back to the feed
           </Link>

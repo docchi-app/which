@@ -37,7 +37,7 @@ Show the scarcity ("12 of 50 taken") from day one. It's real, and it creates urg
 
 **WhatsApp, to a friend:**
 
-> Hey! I'm building Docchi, a poll app where people settle debates (cricket, Bollywood, office
+> Hey! I'm building Eithr, a poll app where people settle debates (cricket, Bollywood, office
 > drama, food fights). I'm picking 50 founding creators and you're one of the first people I
 > thought of, because you're always the one starting debates 😄
 > You get a permanent ✦ Founding creator badge, your number (#7), creator stats, and you'd shape
@@ -45,7 +45,7 @@ Show the scarcity ("12 of 50 taken") from day one. It's real, and it creates urg
 
 **DM, to a small creator:**
 
-> Love your takes on <topic>. I'm building Docchi, a poll app for India where every question is a
+> Love your takes on <topic>. I'm building Eithr, a poll app for India where every question is a
 > debate, and I'm hand-picking 50 founding creators. No posting schedule or contract: post polls on
 > <topic> when you feel like it, and your followers vote and argue. You'd get a ✦ badge, your
 > founding number, and stats on every poll. Interested? <link>
@@ -68,7 +68,7 @@ Status and attention matter more than features:
 
 - **A private WhatsApp group** of founding creators, with you in it: share wins ("this poll got 400
   votes"), feedback, ideas.
-- **Weekly spotlight:** "Creator of the week", pinned for a day, plus a shout-out on Docchi's
+- **Weekly spotlight:** "Creator of the week", pinned for a day, plus a shout-out on Eithr's
   Instagram or X.
 - **Creator stats** (views, votes, best poll, vote rate): people post more when they can see their
   impact.

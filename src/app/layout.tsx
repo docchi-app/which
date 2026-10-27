@@ -22,10 +22,10 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   metadataBase: siteUrl(),
-  title: "Docchi. Which one?",
+  title: "Eithr? Pick a side.",
   description: "Tap a side. See where everyone else landed.",
-  applicationName: "Docchi",
-  appleWebApp: { capable: true, title: "Docchi", statusBarStyle: "default" },
+  applicationName: "Eithr",
+  appleWebApp: { capable: true, title: "Eithr", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

@@ -79,7 +79,7 @@ export class DeleteAccountError extends Error {
 /**
  * Deletes my account for good. Snap photos first (Storage can't be cleared
  * from SQL, and the database refuses while any are left), then everything
- * else in one go, then this device forgets the session and Docchi's settings.
+ * else in one go, then this device forgets the session and Eithr's settings.
  */
 export async function deleteMyAccount(confirm: string): Promise<void> {
   const supabase = getSupabase();

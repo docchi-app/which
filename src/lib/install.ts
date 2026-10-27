@@ -1,5 +1,5 @@
 /**
- * Getting Docchi onto the Home Screen.
+ * Getting Eithr onto the Home Screen.
  *   installed: already opened from the Home Screen
  *   android:   Chrome & co. — a real install prompt when the browser offers one
  *   ios:       Safari (or another iPhone browser) — Share → Add to Home Screen

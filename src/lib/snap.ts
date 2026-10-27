@@ -176,7 +176,7 @@ export const SNAP_ERRORS: Record<string, string> = {
   not_yours: "You can only delete your own snap.",
   blocked_words: "Let's keep it friendly: some of those words aren't allowed.",
   too_big: "That photo is too big. Try another one.",
-  not_set_up: "Snaps aren't set up yet. (Whoever runs Docchi: run the Quick snap migrations.)",
+  not_set_up: "Snaps aren't set up yet. (Whoever runs Eithr: run the Quick snap migrations.)",
   upload: "Couldn't upload the photo. Check your connection and try again.",
   no_photo: "The photo didn't upload. Try again.",
   demo: "Demo mode: snaps need Supabase.",

@@ -149,7 +149,7 @@ export function takeReturnTo(): string | null {
 }
 
 // Picks made as a guest. Linking Google keeps them on the same account, but
-// if that Google account already had Docchi the guest is left behind, so
+// if that Google account already had Eithr the guest is left behind, so
 // /auth/callback casts them again as the real account.
 
 const GUEST_PICKS_KEY = "docchi.guestPicks";

@@ -1,4 +1,4 @@
-// Docchi service worker: opens the app without a connection, shows push
+// Eithr service worker: opens the app without a connection, shows push
 // notifications and opens the app on tap.
 //
 // Caching, kept safe from stale apps:
@@ -99,9 +99,9 @@ self.addEventListener("push", (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch {
-    data = { title: "Docchi", body: event.data ? event.data.text() : "" };
+    data = { title: "Eithr", body: event.data ? event.data.text() : "" };
   }
-  const title = data.title || "Docchi";
+  const title = data.title || "Eithr";
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || "",

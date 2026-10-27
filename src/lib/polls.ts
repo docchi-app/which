@@ -141,7 +141,7 @@ export async function castVote(pollId: string, optionId: string): Promise<VoteRe
 const hoursFromNow = (h: number) => new Date(Date.now() + h * 3_600_000).toISOString();
 
 const DEMO: Poll[] = [
-  demo("d1", "Tea or coffee to start the day?", "docchi", true, -1, 18, 38, [
+  demo("d1", "Tea or coffee to start the day?", "eithr", true, -1, 18, 38, [
     ["Coffee", 554], ["Tea", 385], ["Both, obviously", 181], ["Neither", 84],
   ]),
   demo("d2", "Pineapple on pizza: crime or genius?", "pizza_judge", false, -20, 48, 412, [
@@ -154,13 +154,13 @@ const DEMO: Poll[] = [
     ["Home, forever", 2677], ["Office", 965], ["Hybrid", 746],
   ]),
   {
-    ...demo("d5", "Idli is boring. The chutney is doing all the work.", "docchi", false, -3, 60, 211, [
+    ...demo("d5", "Idli is boring. The chutney is doing all the work.", "eithr", false, -3, 60, 211, [
       ["Agree", 2597], ["Disagree", 3305],
     ]),
     kind: "hot_take",
   },
   {
-    ...demo("d6", "Where would you go if you quit your job tomorrow?", "docchi", false, -4, 70, 64, [
+    ...demo("d6", "Where would you go if you quit your job tomorrow?", "eithr", false, -4, 70, 64, [
       ["Mountains", 412], ["A beach shack", 240], ["A new city", 160], ["My bed", 519],
     ]),
     kind: "mystery",
@@ -173,7 +173,7 @@ function demo(
   ageHours: number, closesInHours: number, comments: number, opts: [string, number][],
 ): Poll {
   return {
-    id, kind: "classic", question, teaser: null, visibility: "public", locked: false, audience: null, isMine: false, shareCount: 0, creator, isSystem: creator === "docchi", featuredToday: featured,
+    id, kind: "classic", question, teaser: null, visibility: "public", locked: false, audience: null, isMine: false, shareCount: 0, creator, isSystem: creator === "eithr", featuredToday: featured,
     voteCount: opts.reduce((n, [, v]) => n + v, 0),
     commentCount: comments,
     createdAt: hoursFromNow(ageHours),

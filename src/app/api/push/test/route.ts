@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   const result = await sendAll(
     targets.map((target) => ({
       target,
-      payload: { title: "Notifications are on 🎉", body: "This is how Docchi taps you on the shoulder.", url: "/profile", tag: "test" },
+      payload: { title: "Notifications are on 🎉", body: "This is how Eithr taps you on the shoulder.", url: "/profile", tag: "test" },
     })),
   );
   if (result.gone.length) await rpc("push_gone", { secret: cronSecret, endpoints: result.gone });

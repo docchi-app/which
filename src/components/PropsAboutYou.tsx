@@ -26,15 +26,15 @@ export function PropsAboutYou() {
     setSharing(item.label);
     try {
       const blob = await propsShareImage(item);
-      const file = new File([blob], "docchi-props.png", { type: "image/png" });
-      const text = `My friends say I have the ${item.label.toLowerCase()} 💜 Give your friends props on Docchi.`;
+      const file = new File([blob], "eithr-props.png", { type: "image/png" });
+      const text = `My friends say I have the ${item.label.toLowerCase()} 💜 Give your friends props on Eithr.`;
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], text });
       } else {
         // No file sharing here (most desktops): save the picture instead.
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = "docchi-props.png";
+        a.download = "eithr-props.png";
         a.click();
         window.setTimeout(() => URL.revokeObjectURL(a.href), 2000);
       }

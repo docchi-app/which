@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Docchi",
-    short_name: "Docchi",
-    description: "Docchi. Which one? Tap a side, see where everyone landed.",
+    name: "Eithr",
+    short_name: "Eithr",
+    description: "Eithr? Pick a side. Tap one, see where everyone landed.",
     start_url: "/?src=pwa",
     display: "standalone",
     background_color: "#FFF7EC",

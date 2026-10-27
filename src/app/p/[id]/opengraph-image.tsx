@@ -7,7 +7,7 @@ import { getSharedPoll } from "@/lib/server-poll";
 // The card WhatsApp, X and others show for a shared poll: the question, the
 // answers and the vote count. Never the result: you vote to see that.
 
-export const alt = "A poll on Docchi. Tap to pick a side.";
+export const alt = "A poll on Eithr. Tap to pick a side.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 // Counts in the card can be up to 5 minutes old (apps cache previews anyway).
@@ -35,7 +35,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     font("DMSans-Bold.ttf"),
   ]);
 
-  const { kind, question, cardBg, badge, cta, compact, questionSize, votes, votesNote, options } = cardModel(poll);
+  const { kind, question, cardBg, badge, cta, compact, questionSize, votes, votesNote, options, tagline } = cardModel(poll);
 
   return new ImageResponse(
     (
@@ -55,15 +55,16 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           <svg width="64" height="64" viewBox="0 0 52 52">
             <path d={BUBBLE} transform="translate(3 3)" fill={INK} />
             <path d={BUBBLE} fill="#FFD23F" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
-            <circle cx="17" cy="18" r="7" fill="#FFFFFF" stroke={INK} strokeWidth="2.4" />
-            <circle cx="33" cy="18" r="7" fill="#FFFFFF" stroke={INK} strokeWidth="2.4" />
+            <circle cx="17" cy="18" r="7" fill={COLORS[0]} stroke={INK} strokeWidth="2.4" />
+            <circle cx="33" cy="18" r="7" fill={COLORS[1]} stroke={INK} strokeWidth="2.4" />
             <circle cx="14.5" cy="18" r="3.2" fill={INK} />
             <circle cx="30.5" cy="18" r="3.2" fill={INK} />
             <path d="M21 29Q25 32 29 29" fill="none" stroke={INK} strokeWidth="2.4" strokeLinecap="round" />
           </svg>
           <div style={{ display: "flex", fontFamily: "Bricolage Grotesque", fontSize: 52, letterSpacing: -2 }}>
-            docchi<span style={{ color: "#FF7A59" }}>?</span>
+            eithr<span style={{ color: "#FF7A59" }}>?</span>
           </div>
+          <div style={{ display: "flex", fontSize: 26, color: "#5A5370" }}>{tagline}</div>
           {poll && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", fontSize: 26, color: "#5A5370" }}>
               by <span style={{ color: INK }}>@{poll.creator}</span>

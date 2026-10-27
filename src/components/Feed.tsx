@@ -117,7 +117,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   const [signedIn, setSignedIn] = useState<boolean | null>(isSupabaseConfigured ? null : true);
   // A pick waiting for sign-in (guest voting is off), or "save": a guest asked to make their votes count.
   const [sheet, setSheet] = useState<SheetPick | "save" | null>(null);
-  // First visit: a line saying what Docchi is, until dismissed or the first vote.
+  // First visit: a line saying what Eithr is, until dismissed or the first vote.
   const [welcome, setWelcome] = useState(false);
   // Guest votes waiting to be counted (shown in the bar), and the one-time note after the first.
   const [waiting, setWaiting] = useState(0);
@@ -527,7 +527,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   return (
     <div className="screen screen-feed">
       <header className="app-header">
-        <Link href="/" className="brand" aria-label="Docchi home">
+        <Link href="/" className="brand" aria-label="Eithr home">
           <LogoMark />
           <Wordmark />
         </Link>

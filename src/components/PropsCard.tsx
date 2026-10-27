@@ -24,7 +24,7 @@ const HEARTS = Array.from({ length: 12 }, (_, n) => {
 });
 
 /**
- * "💜 About your friends": a question Docchi wrote, with 4 of your friends as
+ * "💜 About your friends": a question Eithr wrote, with 4 of your friends as
  * answers. Pick one (anonymously), shuffle, or skip. In the feed, `onNext`
  * moves on to the next poll.
  */

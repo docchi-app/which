@@ -1,6 +1,6 @@
 import { getSupabase } from "./supabase";
 
-// Props: compliment polls about your friends. Docchi writes the questions,
+// Props: compliment polls about your friends. Eithr writes the questions,
 // the server picks the 4 friends, and who picked whom never reaches the app.
 
 export type PropsState = {
@@ -168,7 +168,7 @@ export async function propsShareImage(item: { emoji: string; label: string; coun
   g.fillText(pill, W / 2, 1352);
   g.fillStyle = "#ffffff";
   g.font = `700 44px ${display}`;
-  g.fillText("docchi · give your friends props 💜", W / 2, H - 120);
+  g.fillText("eithr.app · give your friends props 💜", W / 2, H - 120);
   return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error("no image"))), "image/png"));
 }
 
@@ -211,7 +211,7 @@ export function propsSlot(n: number) {
     audience: null,
     isMine: false,
     shareCount: 0,
-    creator: "docchi",
+    creator: "eithr",
     isSystem: true,
     featuredToday: false,
     voteCount: 0,

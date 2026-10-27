@@ -14,7 +14,7 @@ type Props = {
 type CamState = "starting" | "ready" | "unavailable";
 
 /**
- * The camera, inside Docchi. The frame on screen is exactly the snap card
+ * The camera, inside Eithr. The frame on screen is exactly the snap card
  * (3:4), so what you see is what friends see. Nothing else on it: the
  * question comes after the photo.
  */
@@ -83,7 +83,7 @@ export function SnapCamera({ onShot, onPick }: Props) {
         {state === "unavailable" && (
           <div className="cam-off">
             <p>
-              <strong>The camera isn&apos;t available here.</strong> Allow camera access for Docchi, or use one of these:
+              <strong>The camera isn&apos;t available here.</strong> Allow camera access for Eithr, or use one of these:
             </p>
             <button type="button" className="mini-btn mini-btn-coral" onClick={() => phoneCamRef.current?.click()}>
               📸 Phone camera

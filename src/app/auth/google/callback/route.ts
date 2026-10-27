@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
   const credentials = { provider: "google", token: tokens.idToken, access_token: tokens.accessToken, nonce };
 
   // A guest (anonymous account): link Google to it, so it keeps its id and its
-  // votes start counting. If this Google account already has Docchi (or
+  // votes start counting. If this Google account already has Eithr (or
   // linking is switched off), sign in to that account instead; /auth/callback
   // then casts the guest's picks again there.
   const { data } = await supabase.auth.getSession();
