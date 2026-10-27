@@ -605,14 +605,14 @@ button {
   font-size: 16px;
   font-weight: 700;
 }
+/* ✓, the answer and "Your pick" flow as one line of text, so a long answer
+   wraps once instead of stacking them on three lines. */
 .result-text {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.result-check { margin-right: 6px; }
+.result-text .chip { margin-left: 8px; vertical-align: 1px; }
 .result-pct {
   flex: none;
   font-family: var(--font-display);

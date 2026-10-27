@@ -270,7 +270,9 @@ with the longest content allowed (140-character questions, 60-character answers,
 words, 24-character snap answers, 20-character usernames, 999K views with 99 comments), before
 and after voting, at 320, 360, 390 and 412px wide, plus every main screen and sheet, and fails if
 any text spills out, gets cut off, makes the page scroll sideways, or if a card's action row
-wraps, grows or has anything past its edge. It runs against a pretend Supabase (`scripts/layout-check/`),
+wraps, grows or has anything past its edge. It also opens an everyday voted mystery poll on
+full-size phones (390×844, 411×851, 412×892) and fails if the card scrolls at all (a few pixels of
+scroll makes it jump under your thumb) or if ✓ ends up alone on its line. It runs against a pretend Supabase (`scripts/layout-check/`),
 so no real data is touched. Run it before shipping UI changes:
 
 ```bash

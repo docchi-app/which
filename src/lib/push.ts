@@ -10,6 +10,23 @@ export type PushKinds = { votes: boolean; comments: boolean; circle: boolean; re
 export type PushSupport = "ready" | "install" | "unsupported" | "off";
 
 const VAPID_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+/** Set when notifications were turned off on this device, so they're never turned back on by themselves. */
+const OFF_KEY = "eithr.pushOff";
+
+function setTurnedOff(off: boolean) {
+  try {
+    if (off) localStorage.setItem(OFF_KEY, "1");
+    else localStorage.removeItem(OFF_KEY);
+  } catch {}
+}
+
+function turnedOff(): boolean {
+  try {
+    return localStorage.getItem(OFF_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 function isIOS() {
   return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -78,10 +95,12 @@ export async function turnOnPush(): Promise<"on" | "denied"> {
     (await reg.pushManager.getSubscription()) ??
     (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(VAPID_KEY!) }));
   await save(sub);
+  setTurnedOff(false);
   return "on";
 }
 
 export async function turnOffPush(): Promise<void> {
+  setTurnedOff(true);
   const sub = await currentSubscription();
   if (!sub) return;
   await getSupabase()?.rpc("delete_push_subscription", { endpoint: sub.endpoint });
@@ -110,7 +129,9 @@ export async function syncPush(): Promise<void> {
     let sub = await currentSubscription();
     // Allowed but not subscribed (the subscription was lost, e.g. when Android moved the
     // permission to the installed app): subscribe again, no tap needed since it's allowed.
+    // Never when they were turned off here on purpose.
     if (!sub) {
+      if (turnedOff()) return;
       const reg = await registerWorker();
       const ready = await Promise.race([navigator.serviceWorker.ready, new Promise<null>((r) => setTimeout(() => r(null), 10_000))]);
       if (!reg || !ready) return;

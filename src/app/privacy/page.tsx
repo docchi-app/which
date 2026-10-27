@@ -8,7 +8,7 @@ export default function PrivacyPage() {
     <LegalPage
       path="/privacy"
       title="Privacy policy"
-      intro="We collect as little as we can to run Eithr. We don't sell your data and there are no ads."
+      intro="We collect as little as we can to run Eithr. We don't sell your data."
     >
       <h2>What we collect</h2>
       <ul>
@@ -16,7 +16,7 @@ export default function PrivacyPage() {
         <li><strong>What you do on Eithr:</strong> your username, the polls you post, your votes, shares, friends, friend requests and lists, link-only polls you&apos;ve opened, blocks and reports.</li>
         <li><strong>Snap photos:</strong> shrunk on your phone (location data removed) before upload. They&apos;re deleted after the snap&apos;s 24 hours, or when it&apos;s turned down.</li>
         <li><strong>Props:</strong> when you give a friend props, we store who you picked, for which question, and when. That&apos;s needed for the daily limit and for safety.</li>
-        <li><strong>Visits:</strong> a random ID stored in your browser, which days you opened Eithr and how many times. We use it to count visitors and see whether people come back. It isn&apos;t linked to ads or other sites.</li>
+        <li><strong>Visits:</strong> a random ID stored in your browser, which days you opened Eithr and how many times. We use it to count visitors and see whether people come back. It isn&apos;t shared with other sites.</li>
         <li><strong>Views:</strong> that you saw a poll (its card was on your screen for a second), so we can count how many people saw it. If you&apos;re not signed in, you&apos;re counted as a scrambled code made from your connection and browser, never your IP address itself. Nobody is shown who viewed a poll, only the total.</li>
         <li><strong>Technical logs</strong> kept by our hosting providers (like IP address and browser) for security, for a short time.</li>
       </ul>
@@ -34,7 +34,7 @@ export default function PrivacyPage() {
       <h2>Cookies and storage</h2>
       <p>
         We use a sign-in cookie to keep you logged in, and your browser&apos;s storage for the visit ID, the polls you&apos;ve already seen (so each counts once) and small settings.
-        No advertising or cross-site tracking cookies.
+        No cross-site tracking cookies.
       </p>
 
       <h2>How long we keep it</h2>
