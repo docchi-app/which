@@ -31,10 +31,14 @@ The first slice of the build order:
   **Count my vote**. Nothing blocks browsing or voting.
 - **What we get from Google, said up front:** the sign-in sheet lists it (name for a @username,
   profile photo, email kept private) and what Eithr never does (post for you, read contacts or other
-  Google data, ads); other sign-in buttons carry a one-line version.
+  Google data, sell your data); other sign-in buttons carry a one-line version.
   If guest sign-ins are switched off, the first tap opens the old "Lock in your pick" sheet.
-- **First visit:** a one-line welcome above the tabs says what Eithr is, until it's dismissed or
-  the first vote. An unvoted card with fewer than 10 votes says "Be the first to vote" / "Be one of
+- **First visit:** a "How Eithr works" sheet loops through the three moves on a small poll (tap a
+  side, see where everyone lands, swipe up), with captions, once per device. Brand-new visitors,
+  guests and accounts under a day old see it; people signing in on a new phone or moving from the
+  old address don't. It waits for any other sheet to close; with reduced motion it shows the steps
+  as a list. After the first vote, a "Next one ↑" bubble points at Next until they move on (once).
+  An unvoted card with fewer than 10 votes says "Be the first to vote" / "Be one of
   the first to vote" instead of a tiny count, and a poll with no comments shows the bubble without
   a "0".
 - **Animated results:** bars grow in from the left (900ms, 80ms apart), percentages pop,
@@ -284,7 +288,9 @@ and after voting, at 320, 360, 390 and 412px wide, plus every main screen and sh
 any text spills out, gets cut off, makes the page scroll sideways, or if a card's action row
 wraps, grows or has anything past its edge. It also opens an everyday voted mystery poll on
 full-size phones (390×844, 411×851, 412×892) and fails if the card scrolls at all (a few pixels of
-scroll makes it jump under your thumb) or if ✓ ends up alone on its line. It runs against a pretend Supabase (`scripts/layout-check/`),
+scroll makes it jump under your thumb) or if ✓ ends up alone on its line, and the first-visit
+"How Eithr works" sheet at every width, with and without motion, fails if it scrolls or any
+caption spills. It runs against a pretend Supabase (`scripts/layout-check/`),
 so no real data is touched. Run it before shipping UI changes:
 
 ```bash

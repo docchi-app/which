@@ -16,8 +16,11 @@ window.__overflow = (root) => {
     const el = n.parentElement;
     if (!el || el.closest('[aria-hidden="true"]') || getComputedStyle(el).visibility === 'hidden') continue;
     const r = document.createRange(); r.selectNodeContents(n);
-    // Screen-reader-only text lives in a 1px box on purpose.
-    if (el.getBoundingClientRect().width <= 1 || getComputedStyle(el).clipPath !== 'none' || getComputedStyle(el).clip !== 'auto') continue;
+    // Screen-reader-only text lives in a 1px, clipped box on purpose (sometimes a parent's).
+    if (el.getBoundingClientRect().width <= 1 || getComputedStyle(el).clip !== 'auto') continue;
+    let hidden = false;
+    for (let a = el; a && !hidden; a = a.parentElement) hidden = getComputedStyle(a).clipPath !== 'none';
+    if (hidden) continue;
     const a = clipAncestor(el);
     const top = a === document.body || a === document.documentElement;
     // The page itself scrolls up and down; only its sides are a hard edge.
@@ -43,6 +46,8 @@ window.__overflow = (root) => {
   // Text that's cut with an ellipsis is fine; text cut silently by nowrap is not.
   for (const el of root.querySelectorAll('*')) {
     const s = getComputedStyle(el);
+    // Visually hidden (screen-reader-only) boxes are clipped on purpose.
+    if (s.clipPath !== 'none' || el.closest('[aria-hidden="true"]')) continue;
     if (el.scrollWidth > el.clientWidth + 1 && s.overflowX === 'hidden' && s.textOverflow !== 'ellipsis' && el.clientWidth > 1 && el !== document.body) {
       const t = el.textContent.trim().slice(0, 40);
       if (t) out.push({ text: t, in: el.className, box: el.className, how: `content ${el.scrollWidth}px in ${el.clientWidth}px box` });

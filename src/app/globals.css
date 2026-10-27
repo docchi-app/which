@@ -180,37 +180,6 @@ button {
   line-height: 1.4;
 }
 
-/* First visit: what Eithr is, in one line. */
-.welcome {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 6px 20px 0;
-  padding: 10px 8px 10px 14px;
-  border: var(--outline);
-  border-radius: 14px;
-  background: var(--sun);
-  box-shadow: var(--shadow-sm);
-  animation: rise 0.45s var(--ease-pop) both;
-}
-.welcome p {
-  flex: 1;
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.35;
-}
-.welcome-close {
-  flex: none;
-  width: 32px;
-  height: 32px;
-  margin: -4px 0;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  font-size: 24px;
-  line-height: 1;
-}
-
 .tabs {
   display: flex;
   gap: 8px;
@@ -3641,3 +3610,150 @@ button.ghost-action { cursor: pointer; }
 .move-title { margin: 6px 0 0; font-family: var(--font-display); font-size: 32px; font-weight: 800; letter-spacing: -0.03em; }
 .move-text { margin: 0 0 6px; color: var(--muted); font-size: 16px; line-height: 1.45; }
 .move-arrival .move-go { max-width: 360px; }
+
+/* ─── First visit: how Eithr works ───────────────────────────────────────
+   A small poll loops through the three moves every 6s: a tap lands on Chai, the results
+   fill in, the card swipes up to the next one. The captions and dots follow along. At rest
+   (reduced motion) it shows the results and the steps as a list. */
+.howto-sheet { --loop: 6s; align-items: center; gap: 12px; text-align: center; }
+.howto-sheet .sheet-title { font-size: 26px; }
+.howto-demo {
+  position: relative;
+  width: min(260px, 100%);
+  height: 150px;
+  flex: none;
+  overflow: hidden;
+  border: var(--outline);
+  border-radius: 20px;
+  background: var(--white);
+  box-shadow: var(--shadow);
+  text-align: left;
+}
+.howto-stack { position: absolute; inset: 0; animation: howto-swipe var(--loop) var(--ease-pop) infinite; }
+.howto-card { display: flex; height: 100%; flex-direction: column; justify-content: center; gap: 8px; padding: 12px 14px; }
+.howto-next { position: absolute; top: 100%; right: 0; left: 0; }
+.howto-q { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 800; line-height: 1.15; }
+.howto-opt {
+  position: relative;
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  overflow: hidden;
+  padding: 0 10px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--cream);
+  font-size: 14px;
+  font-weight: 700;
+}
+.howto-opt em { position: relative; margin-left: auto; font-family: var(--font-display); font-style: normal; animation: howto-pct var(--loop) linear infinite; }
+.howto-text { position: relative; }
+.howto-bar { position: absolute; inset: 0 auto 0 0; border-right: 2px solid var(--ink); }
+.howto-mine .howto-bar { width: 62%; background: var(--coral); animation: howto-bar-a var(--loop) linear infinite; }
+.howto-mine + .howto-opt .howto-bar { width: 38%; background: var(--sky); animation: howto-bar-b var(--loop) linear infinite; }
+.howto-mine { animation: howto-mine var(--loop) linear infinite; }
+.howto-tap,
+.howto-swipe {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.85);
+  opacity: 0;
+}
+.howto-tap { top: 38%; left: 72%; animation: howto-tap var(--loop) var(--ease-pop) infinite; }
+.howto-tap::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border: 2px solid var(--coral);
+  border-radius: 50%;
+  opacity: 0;
+  animation: howto-ripple var(--loop) ease-out infinite;
+}
+.howto-swipe { bottom: 10px; left: calc(50% - 11px); animation: howto-swipe-hint var(--loop) var(--ease-pop) infinite; }
+.howto-caps { display: grid; width: 100%; min-height: 44px; font-size: 14px; line-height: 1.35; color: var(--muted); }
+.howto-caps p { grid-area: 1 / 1; margin: 0; opacity: 0; }
+.howto-caps p:nth-child(1) { opacity: 1; animation: howto-cap1 var(--loop) linear infinite; }
+.howto-caps p:nth-child(2) { animation: howto-cap2 var(--loop) linear infinite; }
+.howto-caps p:nth-child(3) { animation: howto-cap3 var(--loop) linear infinite; }
+.howto-caps strong { display: block; color: var(--ink); font-family: var(--font-display); font-size: 17px; }
+.howto-steps { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.howto-dots { display: flex; gap: 6px; }
+.howto-dots i { width: 8px; height: 8px; border: 1.5px solid var(--ink); border-radius: 50%; background: var(--white); }
+.howto-dots i:nth-child(1) { background: var(--ink); animation: howto-dot1 var(--loop) linear infinite; }
+.howto-dots i:nth-child(2) { animation: howto-dot2 var(--loop) linear infinite; }
+.howto-dots i:nth-child(3) { animation: howto-dot3 var(--loop) linear infinite; }
+.howto-go { width: 100%; height: 52px; font-size: 17px; }
+@keyframes howto-tap {
+  0% { opacity: 0; transform: translate(40%, 120%); }
+  8% { opacity: 1; }
+  22% { opacity: 1; transform: translate(0, 0) scale(1); }
+  27% { transform: translate(0, 0) scale(0.72); }
+  32% { opacity: 1; transform: translate(0, 0) scale(1); }
+  40%, 100% { opacity: 0; transform: translate(0, 0); }
+}
+@keyframes howto-ripple { 0%, 26% { opacity: 0; transform: scale(1); } 28% { opacity: 1; transform: scale(1); } 40%, 100% { opacity: 0; transform: scale(2.4); } }
+@keyframes howto-bar-a { 0%, 30% { width: 0; } 44%, 95% { width: 62%; } 100% { width: 0; } }
+@keyframes howto-bar-b { 0%, 32% { width: 0; } 46%, 95% { width: 38%; } 100% { width: 0; } }
+@keyframes howto-pct { 0%, 38% { opacity: 0; } 46%, 95% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes howto-mine { 0%, 27% { border-width: 2px; } 28%, 95% { border-width: 3px; } 100% { border-width: 2px; } }
+@keyframes howto-swipe-hint { 0%, 62% { opacity: 0; transform: translateY(0); } 66% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; transform: translateY(-260%); } 86%, 100% { opacity: 0; transform: translateY(-260%); } }
+@keyframes howto-swipe { 0%, 70% { transform: translateY(0); } 84%, 97% { transform: translateY(-100%); } 97.01%, 100% { transform: translateY(0); } }
+@keyframes howto-cap1 { 0%, 31% { opacity: 1; } 34%, 97% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes howto-cap2 { 0%, 31% { opacity: 0; } 34%, 64% { opacity: 1; } 67%, 100% { opacity: 0; } }
+@keyframes howto-cap3 { 0%, 64% { opacity: 0; } 67%, 97% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes howto-dot1 { 0%, 32% { background: var(--ink); } 33%, 100% { background: var(--white); } }
+@keyframes howto-dot2 { 0%, 32% { background: var(--white); } 33%, 65% { background: var(--ink); } 66%, 100% { background: var(--white); } }
+@keyframes howto-dot3 { 0%, 65% { background: var(--white); } 66%, 100% { background: var(--ink); } }
+@media (prefers-reduced-motion: reduce) {
+  .howto-caps, .howto-dots { display: none; }
+  .howto-steps {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding-left: 20px;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.35;
+    text-align: left;
+    white-space: normal;
+  }
+  .howto-steps strong { color: var(--ink); }
+}
+
+/* After the first vote on this device: a bubble over Next until they move on. */
+.next-btn { position: relative; }
+.next-nudge {
+  position: absolute;
+  right: -2px;
+  bottom: calc(100% + 8px);
+  padding: 6px 10px;
+  border: var(--outline);
+  border-radius: 12px;
+  background: var(--ink);
+  box-shadow: var(--shadow-sm);
+  color: var(--cream);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: pop 0.4s var(--ease-pop) 1.2s both, next-nudge 1.4s ease-in-out 1.6s infinite;
+}
+.next-nudge::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 22px;
+  border: 7px solid transparent;
+  border-top-color: var(--ink);
+}
+@keyframes next-nudge { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }

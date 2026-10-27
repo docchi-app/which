@@ -24,6 +24,7 @@ import { BottomNav } from "./BottomNav";
 import { InstallSheet } from "./InstallSheet";
 import { Bell } from "./Bell";
 import { StreakChip } from "./StreakChip";
+import { HowItWorks, HOW_IT_WORKS_KEY } from "./HowItWorks";
 
 const TABS: { id: FeedTab; label: string }[] = [
   { id: "trending", label: "For you" },
@@ -37,7 +38,8 @@ const NEW_POLLS_CHECK_MS = 45_000;
 // A guest's 3rd vote is when we ask them to sign in so their votes count.
 const SAVE_VOTES_AFTER = 3;
 const SAVE_ASKED_KEY = "docchi.saveVotesAsked";
-const WELCOMED_KEY = "docchi.welcomed";
+// After the first vote on this device, a "Next one ↑" bubble points at Next until they move on (once).
+const NEXT_NUDGE_KEY = "eithr.nextNudged";
 // The "Unlock Props" card shows at most once a day.
 const PROPS_LOCKED_KEY = "docchi.propsLockedDay";
 const today = () => new Date().toLocaleDateString("en-CA");
@@ -117,8 +119,8 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   const [signedIn, setSignedIn] = useState<boolean | null>(isSupabaseConfigured ? null : true);
   // A pick waiting for sign-in (guest voting is off), or "save": a guest asked to make their votes count.
   const [sheet, setSheet] = useState<SheetPick | "save" | null>(null);
-  // First visit: a line saying what Eithr is, until dismissed or the first vote.
-  const [welcome, setWelcome] = useState(false);
+  // The poll whose Next button has the one-time "Next one ↑" bubble.
+  const [nudgeId, setNudgeId] = useState<string | null>(null);
   // Guest votes waiting to be counted (shown in the bar), and the one-time note after the first.
   const [waiting, setWaiting] = useState(0);
   const [guestBarHidden, setGuestBarHidden] = useState(true);
@@ -161,7 +163,6 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   useEffect(() => {
     // Reads localStorage, so it can only run after hydration.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (signedIn === false && !stored(WELCOMED_KEY)) setWelcome(true);
     setWaiting(signedIn === false ? guestPicks().length : 0);
     let until = 0;
     try {
@@ -186,11 +187,6 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
     const t = window.setTimeout(() => setGuestToast(false), 6000);
     return () => window.clearTimeout(t);
   }, [guestToast]);
-
-  const dismissWelcome = useCallback(() => {
-    store(WELCOMED_KEY);
-    setWelcome(false);
-  }, []);
 
   const load = useCallback(async (which: FeedTab) => {
     const token = ++loadToken.current;
@@ -339,7 +335,8 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   }, [index, polls, hasMore, tab]);
 
   const onVoted = useCallback((pollId: string, r: VoteResult) => {
-    dismissWelcome();
+    store(HOW_IT_WORKS_KEY);
+    if (!stored(NEXT_NUDGE_KEY)) setNudgeId((id) => id ?? pollId);
     announceVote();
     if (signedInRef.current === false) {
       setWaiting(guestPicks().length);
@@ -365,7 +362,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
           : p,
       ) ?? null,
     );
-  }, [dismissWelcome]);
+  }, []);
 
   const onRefresh = useCallback((fresh: Poll) => {
     setPolls((list) => list?.map((p) => (p.id === fresh.id ? fresh : p)) ?? null);
@@ -408,10 +405,14 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   const go = useCallback(
     (delta: 1 | -1) => {
       if (!polls) return;
+      if (nudgeId) {
+        store(NEXT_NUDGE_KEY);
+        setNudgeId(null);
+      }
       setDir(delta === 1 ? "next" : "prev");
       setIndex((i) => Math.min(Math.max(i + delta, 0), polls.length));
     },
-    [polls],
+    [polls, nudgeId],
   );
 
   // Latest values for the native touch handlers below.
@@ -537,18 +538,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
         </div>
       </header>
 
-      {welcome && (
-        <div className="welcome" role="note">
-          <p>
-            <strong>Vote on what everyone argues about.</strong> See where you land.
-          </p>
-          <button type="button" className="welcome-close" aria-label="Got it" onClick={dismissWelcome}>
-            ×
-          </button>
-        </div>
-      )}
-
-      {waiting > 0 && !guestBarHidden && !welcome && (
+      {waiting > 0 && !guestBarHidden && (
         <div className="guest-bar" role="status">
           <span aria-hidden="true">🕒</span>
           <p>
@@ -644,6 +634,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
                   onSaveVotes={() => setSheet("save")}
                   onShare={() => setSharing(poll)}
                   onNext={() => go(1)}
+                  nudgeNext={poll.id === nudgeId}
                   onReported={(id) => setPolls((list) => list?.filter((p) => p.id !== id) ?? null)}
                   onDeleted={(id) => setPolls((list) => list?.filter((p) => p.id !== id) ?? null)}
                   openComments={poll.id === commentsFor}
@@ -710,6 +701,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
       )}
       {sheet && <SignInSheet pick={sheet === "save" ? undefined : sheet} onClose={closeSheet} />}
       {sharing && <ShareSheet poll={sharing} onClose={() => setSharing(null)} />}
+      <HowItWorks />
       {installNudge && !sheet && !sharing && <InstallSheet reason="nudge" onClose={() => setInstallNudge(false)} />}
     </div>
   );

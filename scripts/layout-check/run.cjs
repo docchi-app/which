@@ -147,6 +147,44 @@ const SCREENS = ["/friends", "/leaders", "/profile", "/settings", "/activity", "
     }
   }
 
+  // First visit: the "How Eithr works" sheet fits every phone without scrolling, with motion
+  // (captions that change) and without it (the steps as a list).
+  for (const reduced of [false, true]) {
+    const fresh = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, reducedMotion: reduced ? "reduce" : "no-preference" });
+    await fresh.addInitScript({ path: `${__dirname}/detect.js` });
+    for (const [w, h] of CARD_SIZES) {
+      const fp = await fresh.newPage();
+      fp.on("pageerror", (e) => errors.push(e.message));
+      await fp.setViewportSize({ width: w, height: h });
+      await fp.goto(BASE + "/");
+      await fp.waitForTimeout(1800);
+      const label = `first-visit sheet ${w}px${reduced ? " (reduced motion)" : ""}`;
+      const bad = await fp.evaluate(() => {
+        const sheet = document.querySelector(".howto-sheet");
+        if (!sheet) return ["no sheet"];
+        const out = window.__overflow(sheet).map((x) => `"${x.text}" → ${x.how}`);
+        if (sheet.scrollHeight > sheet.clientHeight + 1) out.push(`sheet scrolls by ${sheet.scrollHeight - sheet.clientHeight}px`);
+        if (sheet.getBoundingClientRect().top < 0) out.push("sheet taller than the screen");
+        // The changing captions are hidden from the detector (screen readers get the list).
+        for (const c of document.querySelectorAll(".howto-caps p")) {
+          if (c.scrollWidth > c.clientWidth + 1) out.push(`caption "${c.textContent.slice(0, 30)}" spills sideways`);
+        }
+        const caps = document.querySelector(".howto-caps");
+        if (caps && getComputedStyle(caps).display !== "none" && caps.scrollHeight > caps.clientHeight + 1) out.push("captions taller than their box");
+        return out;
+      });
+      if (!bad.length) passed++;
+      else {
+        failed++;
+        console.log(`✗ ${label}`);
+        for (const x of bad) console.log(`    ${x}`);
+        await fp.screenshot({ path: `${OUT}${label.replace(/[^a-z0-9]+/gi, "-")}.png` });
+      }
+      await fp.close();
+    }
+    await fresh.close();
+  }
+
   // Every main screen, plus the comments and share sheets.
   for (const [w, h] of SCREEN_SIZES) {
     await p.setViewportSize({ width: w, height: h });

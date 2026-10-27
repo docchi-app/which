@@ -57,6 +57,8 @@ type Props = {
   onSaveVotes?: () => void;
   onShare: () => void;
   onNext: () => void;
+  /** First vote on this device: a "Next one ↑" bubble points at Next. */
+  nudgeNext?: boolean;
   /** The viewer reported this poll. */
   onReported?: (pollId: string) => void;
   /** The viewer deleted their own snap. */
@@ -104,6 +106,7 @@ export function PollCard({
   onSaveVotes,
   onShare,
   onNext,
+  nudgeNext = false,
   onReported,
   onDeleted,
   openComments = false,
@@ -532,6 +535,11 @@ export function PollCard({
         {showResults || lockingId ? (
           <button type="button" className="btn btn-coral press next-btn" aria-label="Next poll" onClick={onNext}>
             <span className="next-label">Next</span> <ArrowIcon size={18} />
+            {nudgeNext && showResults && (
+              <span className="next-nudge" aria-hidden="true">
+                Next one ↑
+              </span>
+            )}
           </button>
         ) : (
           <button type="button" className="skip-btn" onClick={onNext} aria-label="Skip to next poll">
