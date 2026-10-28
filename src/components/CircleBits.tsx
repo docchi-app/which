@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { continueWithGoogle, saveReturnTo } from "@/lib/auth";
 import { addFriend, announceCircleChange, circleErrorText, getCirclePicks, getFriendsVoted, type CirclePick, type FriendsVoted } from "@/lib/circle";
 import type { Poll } from "@/lib/types";
@@ -140,31 +140,13 @@ export function FriendsVotedRow({ poll, compact = false, top = false }: { poll: 
     };
   }, [poll.id, voted]);
 
-  // The feed card is sized to fit the screen without scrolling. On a short screen where this line
-  // would make it scroll, it stays hidden (it still shows in the footer after you vote).
-  const fitRef = useRef<HTMLParagraphElement>(null);
-  const shown = top && !!data && data.count > 0;
-  useLayoutEffect(() => {
-    const el = fitRef.current;
-    const card = el?.closest<HTMLElement>(".poll-card");
-    if (!shown || !el || !card) return;
-    const check = () => {
-      el.style.display = "";
-      if (card.scrollHeight > card.clientHeight + 1) el.style.display = "none";
-    };
-    check();
-    const ro = new ResizeObserver(check);
-    ro.observe(card);
-    return () => ro.disconnect();
-  }, [shown]);
-
   if (!data || data.count === 0) return null;
   const [first] = data.people;
   const rest = data.count - 1;
   if (top) {
     // Before you vote: "(faces) @priya +2 voted" under the creator's name.
     return (
-      <p ref={fitRef} className="friends-voted-inline friends-voted-top">
+      <p className="friends-voted-inline friends-voted-top">
         <span className="avatar-stack" aria-hidden="true">
           {data.people.slice(0, 3).map((p) => (
             <Avatar key={p.username} name={p.username} url={p.avatarUrl} size={20} />

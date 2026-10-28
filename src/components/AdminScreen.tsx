@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   fetchLog,
   fetchMetrics,
+  fetchViewStats,
   fetchQueue,
   moderate,
   type AdminAction,
@@ -306,6 +307,7 @@ const TARGETS = {
 function Metrics() {
   const [days, setDays] = useState(14);
   const [rows, setRows] = useState<DayMetrics[] | null>(null);
+  const [views, setViews] = useState<Map<string, { views: number; per100: number | null }> | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -313,6 +315,7 @@ function Metrics() {
     fetchMetrics(days)
       .then((r) => live && setRows(r))
       .catch(() => live && setError(true));
+    fetchViewStats(days).then((v) => live && setViews(v));
     return () => {
       live = false;
     };
@@ -333,6 +336,9 @@ function Metrics() {
     d1: pct(sum((r) => ((r.d1 ?? 0) * r.newVisitors) / 100, withD1), sum((r) => r.newVisitors, withD1)),
     d7: pct(sum((r) => ((r.d7 ?? 0) * r.newVisitors) / 100, withD7), sum((r) => r.newVisitors, withD7)),
   };
+  // Votes per 100 views, over the days that have views counted.
+  const viewDays = (rows ?? []).filter((r) => (views?.get(r.day)?.views ?? 0) > 0);
+  const per100 = pct(sum((r) => r.votes, viewDays), sum((r) => views?.get(r.day)?.views ?? 0, viewDays));
 
   return (
     <section className="admin-metrics">
@@ -353,6 +359,7 @@ function Metrics() {
             <Stat label="Votes" value={summary.votes.toLocaleString("en-IN")} />
             <Stat label="Visitors who vote" value={summary.votePct} unit="%" target={TARGETS.votePct} />
             <Stat label="Votes per session" value={summary.votesPerSession} target={TARGETS.votesPerSession} />
+            <Stat label="Votes per 100 views" value={per100} />
             <Stat label="Share rate (shares ÷ votes)" value={summary.shareRate} unit="%" target={TARGETS.shareRate} />
             <Stat label="Back next day (D1)" value={summary.d1} unit="%" target={TARGETS.d1} />
             <Stat label="Back after a week (D7)" value={summary.d7} unit="%" target={TARGETS.d7} />
@@ -369,6 +376,8 @@ function Metrics() {
                   <th scope="col">Votes</th>
                   <th scope="col">Vote %</th>
                   <th scope="col">Votes / session</th>
+                  <th scope="col">Views</th>
+                  <th scope="col">Votes / 100 views</th>
                   <th scope="col">Shares</th>
                   <th scope="col">Polls</th>
                   <th scope="col">Sign-ups</th>
@@ -386,6 +395,8 @@ function Metrics() {
                     <td>{r.votes}</td>
                     <td>{r.votePct ?? "–"}</td>
                     <td>{r.votesPerSession ?? "–"}</td>
+                    <td>{views?.get(r.day)?.views || "–"}</td>
+                    <td>{views?.get(r.day)?.per100 ?? "–"}</td>
                     <td>{r.shares}</td>
                     <td>{r.polls}</td>
                     <td>{r.signups}</td>
@@ -398,7 +409,7 @@ function Metrics() {
           </div>
           <p className="admin-meta admin-note">
             Days are India time. Visitors are browsers (a random id, no personal data); votes per session counts signed-in
-            sessions; D1 / D7 are the share of each day&apos;s new visitors who came back 1 / 7 days later, shown once that
+            sessions; views are counted from the day the live-feed update was installed; D1 / D7 are the share of each day&apos;s new visitors who came back 1 / 7 days later, shown once that
             day is over.
           </p>
         </>

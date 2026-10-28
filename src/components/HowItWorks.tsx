@@ -3,17 +3,16 @@
 import { useEffect, useState } from "react";
 import { onUserChange } from "@/lib/auth";
 import { MOVED_KEY } from "@/lib/move";
+import { HOW_IT_WORKS_KEY } from "@/lib/tips";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
-/** Set once the sheet has been seen (it replaced the first-visit banner, so it shares its key). */
-export const HOW_IT_WORKS_KEY = "docchi.welcomed";
 // Accounts older than this already know how Eithr works (say, signing in on a new phone).
 const NEW_ACCOUNT_MS = 864e5;
 
 const STEPS = [
   ["Tap the side you’re on", "No sign-up needed."],
   ["See where everyone lands", "Results show the moment you vote."],
-  ["Swipe up for the next one", "New polls every day."],
+  ["Scroll for more", "New polls every day."],
 ] as const;
 
 function seen() {
@@ -25,8 +24,8 @@ function seen() {
 }
 
 /**
- * First visit on this device: a sheet that shows, on a small looping poll, the three moves
- * (tap a side, see the results, swipe up). Waits for any other sheet to close first.
+ * First visit on this device: a sheet that shows, on a small looping feed, the three moves
+ * (tap a side, see the results, scroll on). Waits for any other sheet to close first.
  */
 export function HowItWorks() {
   const [open, setOpen] = useState(false);

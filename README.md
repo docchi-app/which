@@ -11,11 +11,26 @@ linked in the handoff.
 
 The first slice of the build order:
 
-- **Feed:** For you (trending), New and Friends tabs, Poll of the Day pinned on top, a card stack with Next and Skip,
-  and an "all caught up" card at the end. A shared link (`/?poll=<id>`) puts that poll first.
-- **Swipe pager:** the feed is one fixed screen. Swipe up for the next poll, down for the
-  previous one (the card follows your finger). A long poll scrolls inside its card first. The page
-  never scrolls, so there's no accidental pull-to-refresh. On desktop: ↓/↑ or `j`/`k`.
+- **Feed:** For you (trending), New and Friends tabs, Poll of the Day pinned on top, and an "All
+  caught up" card at the end (with Snap one / Type a poll and Back to top). A shared link
+  (`/?poll=<id>` or `/p/<id>`) puts that poll first under "Shared with you", then "More polls".
+- **A feed you scroll, like X and Instagram:** cards sit in a list sized to their content, so the
+  next poll is already in view; nothing scrolls inside a card. Polls you've already voted on
+  follow under "Polls you've voted on". The next page loads well before the end (grey ghost cards
+  if it's still coming), new cards fade in, and in a long session the oldest items above the
+  screen are let go (about 60 kept) without moving what you're looking at, so the page stays light.
+  On desktop: scroll, or `j`/`k` for the next / previous poll.
+- **Header that gets out of the way:** scrolling down slides the logo row away and the tabs stay
+  as a slim bar (with a small bell, so new activity is never missed); the first bit of scrolling
+  up brings the full header back. The bottom bar dims a little while you scroll. Tapping the tab
+  you're on, or Feed in the bottom bar, goes back to the top; each tab keeps its own place.
+- **Pull to refresh:** at the top, pull down and let go: the list follows your finger, the eithr
+  eyes spin, and fresh polls load. Newly posted polls also show a "New polls ↑" pill under the
+  tabs; tapping it goes to the top with them.
+- **Opens instantly:** the first 15 polls of For you are kept on the phone, so opening the app
+  shows them straight away while the fresh list loads. If you've already scrolled or voted when it
+  arrives, it waits behind the "New polls" pill instead of swapping under your thumb. Only shown
+  to the person who saved it; wiped on sign-out or when someone else signs in.
 - **One-tap voting:** results stay hidden until you vote. The tap responds instantly: your pick
   locks in and the bars fill in as soon as the server answers. The database enforces one vote per
   person.
@@ -33,12 +48,11 @@ The first slice of the build order:
   profile photo, email kept private) and what Eithr never does (post for you, read contacts or other
   Google data, sell your data); other sign-in buttons carry a one-line version.
   If guest sign-ins are switched off, the first tap opens the old "Lock in your pick" sheet.
-- **First visit:** a "How Eithr works" sheet loops through the three moves on a small poll (tap a
-  side, see where everyone lands, swipe up), with captions, once per device. Brand-new visitors,
-  guests and accounts under a day old see it; people signing in on a new phone or moving from the
-  old address don't. It waits for any other sheet to close; with reduced motion it shows the steps
-  as a list. After the first vote, a "Next one ↑" bubble points at Next until they move on (once).
-  An unvoted card with fewer than 10 votes says "Be the first to vote" / "Be one of
+- **First visit:** a "How Eithr works" sheet loops through the three moves on a small feed (tap a
+  side, see where everyone lands, scroll for more), with captions, once per device. Brand-new
+  visitors, guests and accounts under a day old see it; people signing in on a new phone or moving
+  from the old address don't. It waits for any other sheet to close; with reduced motion it shows
+  the steps as a list. An unvoted card with fewer than 10 votes says "Be the first to vote" / "Be one of
   the first to vote" instead of a tiny count, and a poll with no comments shows the bubble without
   a "0".
 - **Animated results:** bars grow in from the left (900ms, 80ms apart), percentages pop,
@@ -46,11 +60,11 @@ The first slice of the build order:
   stops when the phone's "reduce motion" setting is on.
 - **Compact cards:** results fill the same rows as the answers (✓ and a "Your pick" tag on yours),
   "You're with the X%" is one line under them, and friends who voted join the footer line
-  ("@priya +2 friends voted · 1,204 votes · live"), so a voted card doesn't grow. Comment, Share
-  and Next stay pinned at the bottom of the card; a 4-answer card fits a normal phone screen.
+  ("@priya +2 friends voted · 1,204 votes · live"), so a voted card barely grows. Comment, Share,
+  views and ••• sit on one line at the bottom. A tiny buzz when your vote locks in (Android).
 - **Instant screens:** Feed, Profile, Leaders, Friends and Activity remember what they last showed
   (in memory, for this visit only; cleared on sign-out). Coming back shows it straight away and
-  refreshes quietly; the feed returns to the card you were on. Profile is loaded in the
+  refreshes quietly; the feed returns to exactly where you were scrolled. Profile is loaded in the
   background once the feed is in, so the first tap on it is instant too; Friends, Activity and
   Leaders are warmed the same way a moment later. A poll opened from a list shows at once, and
   `/p/…` and `/u/…` have loading screens, so every tap answers right away.
@@ -65,11 +79,17 @@ The first slice of the build order:
   result. The Share button opens a sheet with WhatsApp, X, the phone's share menu and Copy link;
   links are tagged `?src=whatsapp|x|native|copy`. Each signed-in person counts once per poll
   toward `share_count` (for the leaderboard).
-- **Live updates:** while a poll is on screen, its numbers refresh every 5 seconds and the bars
-  slide to the new values (before you vote, only the total moves). Every 45 seconds the feed checks
-  for newly posted polls and shows a "Fresh polls ↑" pill; tapping it reloads the feed. Nothing
-  runs while the tab is hidden. This is simple polling; Supabase Realtime can replace it once
-  traffic grows.
+- **Live numbers:** votes and views move on the cards you're looking at. One small request
+  (`live_counts`) every 5 seconds asks for the counts of the cards on screen only (at most 12),
+  never one request per card. New numbers count up over a few seconds instead of jumping, the bars
+  glide, and "+3" pops when other people's votes land; busy polls show "🔥 41 in the last hour"
+  (votes in the last hour, worked out once a minute by the views rollup). Only real numbers move.
+  When nothing has changed for a minute it asks every 15 seconds; it stops while the app is in the
+  background or nobody has touched it for a minute, and starts again on the next scroll or tap.
+  Every 45 seconds the feed checks for newly posted polls ("New polls ↑" pill). This is polling;
+  Supabase Realtime can replace it once traffic grows. Friends who voted and snap photos load only
+  once a card is about a screen away, and a snap's own colour (saved in its photo's file name)
+  shows while the photo loads.
 - **Poll formats:** besides classic polls there are **hot takes** (a bold statement, Agree /
   Disagree, with a spice meter showing how split people are and a "Settle this" share button when
   it's close) and **mystery polls** (people see a teaser like "Pick a colour" and the answers; the
@@ -118,9 +138,10 @@ The first slice of the build order:
 - **Views:** how many people saw a poll, in the card's action row (X-style): ✨ **New** under 5,
   👀 **Noticed** under 10 (tap for "People are noticing"), then the count (3.4K, 12K, 1.2M). Your own
   polls always show the exact number, here and on your profile rows ("61 views · 12 votes"). A view
-  is one person seeing the card (half on screen for a second, or voting); each person counts once
+  is one person seeing the card (half on screen for a second, or most of the screen for a card
+  taller than it, or voting); each person counts once
   per poll, the creator never does, and views never show below votes. The action row never grows:
-  if it would overflow, it gives up the least first (Share's word, then Next's, then "Noticed",
+  if it would overflow, it gives up the least first (Share's word, then "Noticed",
   then spacing), checked by `npm run check:layout`.
   *How it scales:* the phone remembers what it already counted and sends new views in batches (2
   seconds after the first, then at most every 10 seconds, and on leaving), signed in straight to
@@ -161,10 +182,11 @@ The first slice of the build order:
   hidden). **Schedule** shows Poll of the Day for the next three weeks, flags empty days, and adds, edits
   or removes one (classic, hot take or mystery; open 1–7 days; goes live at midnight India time).
   **Done** lists recent actions with Undo. **Metrics** shows visitors, votes, % of
-  visitors who vote, votes per session, share rate and D1/D7 retention against the launch targets,
-  plus a table by day.
+  visitors who vote, votes per session, votes per 100 views, share rate and D1/D7 retention
+  against the launch targets, plus a table by day.
 - **Tips, one at a time:** a small dark bubble beside the thing it explains, shown once, at the
-  moment it's useful: + after your 2nd vote, 💬 when you vote on a poll that has comments, Leaders
+  moment it's useful: + after your 2nd vote, 💬 when you vote on a poll that has comments (on that
+  poll's card), Leaders
   after your first poll (or 6 votes), the Friends tab after 8 votes, the bell when your polls have
   news. Never more than one every 2 minutes, never while a sheet is open, never blocks a tap; any
   tap, scroll or 7 seconds hides it (`src/lib/tips.ts`, `TipLayer`).
@@ -287,10 +309,11 @@ words, 24-character snap answers, 20-character usernames, 999K views with 99 com
 and after voting, at 320, 360, 390 and 412px wide, plus every main screen and sheet, and fails if
 any text spills out, gets cut off, makes the page scroll sideways, or if a card's action row
 wraps, grows or has anything past its edge. It also opens an everyday voted mystery poll on
-full-size phones (390×844, 411×851, 412×892) and fails if the card scrolls at all (a few pixels of
-scroll makes it jump under your thumb) or if ✓ ends up alone on its line, and the first-visit
-"How Eithr works" sheet at every width, with and without motion, fails if it scrolls or any
-caption spills. It runs against a pretend Supabase (`scripts/layout-check/`),
+full-size phones (390×844, 411×851, 412×892) and fails if the card scrolls inside itself or if ✓
+ends up alone on its line; scrolls the feed at every width and fails if the slim bar (tabs + bell)
+wraps, spills or sits off the top, or if any card in the list scrolls inside itself; and opens the
+first-visit "How Eithr works" sheet at every width, with and without motion, failing if it scrolls
+or any caption spills. It runs against a pretend Supabase (`scripts/layout-check/`),
 so no real data is touched. Run it before shipping UI changes:
 
 ```bash
@@ -338,7 +361,7 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261119000000_security_hardening.sql`, `20261120000000_friends_voted_early.sql`,
    `20261121000000_notification_fixes.sql`, `20261122000000_views.sql`,
    `20261123000000_docchi_poll_pushes.sql`, `20261124000000_rename_eithr.sql`,
-   `20261125000000_push_repair.sql`, …),
+   `20261125000000_push_repair.sql`, `20261126000000_live_feed.sql`, …),
    in date order,
    each one once.
    Then paste `supabase/checks/migration-check.sql` and run it: no rows means every migration is
@@ -361,7 +384,7 @@ Editor. It adds 49 more verified system polls (61 in all), mixing classic polls,
 mystery polls:
 - a Poll of the Day for each of the next 14 days (unlocks at 00:00 India time, open 3 days);
 - one new poll each morning for 15 days (09:00 India time, open 7 days), so the New tab and the
-  "Fresh polls" pill stay alive;
+  "New polls" pill stay alive;
 - 20 evergreen polls, live now and open for 30 days.
 
 It also keeps the original `seed.sql` polls open for 30 more days. It's safe to re-run, and dates
@@ -562,8 +585,8 @@ per Supabase auth user, created automatically by a database trigger.
 | Only the app's sender can collect and send pushes | `push_collect()`, `push_gone()`, `push_test_targets()` need the `PUSH_CRON_SECRET` (stored hashed in `push_config`) |
 | Data is deleted on schedule (as the Privacy page says) | `purge_old_records()` daily via pg_cron: removed polls, old comments and resolved reports after 180 days, visits after 2 years |
 
-**The feed** (`get_feed`) shows open polls, 30 per page ("load more" fetches the next page a few
-cards before the end). On For you and New, polls you haven't voted on come first, with today's
+**The feed** (`get_feed`) shows open polls, 30 per page (the next page loads when the end of the
+list is within about two screens). On For you and New, polls you haven't voted on come first, with today's
 Poll of the Day on top of Trending; ones you've voted on follow at the end. **Trending** ranks by `polls.hot_score`, votes with a time
 decay (Hacker News style). **New** is newest first.
 
@@ -595,7 +618,9 @@ after it has closed (`get_poll`).
 `track_visit()` when the app opens or comes back after 30 minutes), plus the votes, shares, polls
 and profiles tables. Finished days are counted once into `metrics_daily`, so the admin page stays
 fast as votes grow. The targets (from `docs/poll-app-validation.md`): ≥60% of visitors vote, ≥8
-votes per session, 3–5% share rate, D1 ≥30%, D7 ≥12%.
+votes per session, 3–5% share rate, D1 ≥30%, D7 ≥12%. Views per day (`views_daily`, added up by the
+views rollup) start counting when the live-feed migration runs; `admin_view_stats()` turns them into
+votes per 100 views.
 
 **Poll of the Day** is the system poll whose `featured_on` is today's date in India time
 (`Asia/Kolkata`). Schedule them in **Admin → Schedule** (`admin_schedule_poll()`); each stays hidden

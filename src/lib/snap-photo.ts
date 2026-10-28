@@ -91,3 +91,13 @@ export function drawFromVideo(video: HTMLVideoElement, mirror: boolean): HTMLCan
   ctx.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, SNAP_W, SNAP_H);
   return c;
 }
+
+/** The photo's average colour as 6 hex digits ("3a6ea5"), for a placeholder while it loads. */
+export async function averageColor(blob: Blob): Promise<string> {
+  const bitmap = await createImageBitmap(blob);
+  const { ctx } = canvas(1, 1);
+  ctx.drawImage(bitmap, 0, 0, 1, 1);
+  bitmap.close?.();
+  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+  return [r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("");
+}

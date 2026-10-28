@@ -14,6 +14,8 @@ export const TIPS: Record<TipId, { text: string; anchor: string; skipOn?: string
 };
 
 export const TIP_EVENT = "docchi:tip";
+/** Set once the first-visit "How Eithr works" sheet has been seen (or the first vote cast). */
+export const HOW_IT_WORKS_KEY = "docchi.welcomed";
 const SEEN_KEY = "docchi.tipsSeen";
 const LAST_KEY = "docchi.tipLast";
 const VOTES_KEY = "docchi.tipVotes";
@@ -53,19 +55,21 @@ export function tipAllowed(id: TipId): boolean {
   return Date.now() - Number(s.getItem(LAST_KEY) ?? 0) > GAP_MS;
 }
 
+export type TipRequest = { id: TipId; /** Only inside this poll's card (the feed shows many). */ poll?: string };
+
 /** Ask for a tip; the tip layer shows it when the screen is free. */
-export function showTip(id: TipId) {
+export function showTip(id: TipId, poll?: string) {
   if (typeof window === "undefined" || !tipAllowed(id)) return;
-  window.dispatchEvent(new CustomEvent<TipId>(TIP_EVENT, { detail: id }));
+  window.dispatchEvent(new CustomEvent<TipRequest>(TIP_EVENT, { detail: { id, poll } }));
 }
 
 /** After each vote in this browser: the tips that make sense at that point. */
-export function tipsAfterVote(pollHasComments: boolean) {
+export function tipsAfterVote(pollHasComments: boolean, pollId?: string) {
   const s = store();
   if (!s) return;
   const n = Number(s.getItem(VOTES_KEY) ?? 0) + 1;
   s.setItem(VOTES_KEY, String(n));
-  if (pollHasComments && !seen().has("comments")) return showTip("comments");
+  if (pollHasComments && !seen().has("comments")) return showTip("comments", pollId);
   if (n >= 2) showTip("create");
   if (n >= 6) showTip("leaders");
   if (n >= 8) showTip("circle");

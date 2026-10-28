@@ -59,7 +59,10 @@ http.createServer((req, res) => {
       if (req.method === 'GET' && (rest.startsWith('public-ish/snaps/') || rest.startsWith('authenticated/snaps/'))) { const p = rest.replace(/^(public-ish|authenticated)\/snaps\//, ''); const f = files[p]; if (!f) return json(404, {}); res.writeHead(200, { ...cors, 'content-type': f.type }); return res.end(f.buf); }
       if (req.method === 'DELETE' && rest === 'snaps') { const a2 = JSON.parse(raw.toString()); for (const p of a2.prefixes) delete files[p]; log.push('REMOVE ' + a2.prefixes.join(',')); return json(200, a2.prefixes.map((n) => ({ name: n }))); }
     }
+    // Tests: other people voting on a poll (live numbers), e.g. /__bump?id=…&n=3
+    if (url.pathname === '/__bump') { const p = polls.find((x) => x.id === url.searchParams.get('id')); const n = Number(url.searchParams.get('n') || 1); if (p) { p.vote_count += n; p.options[0]._v += n; p.recent_votes = (p.recent_votes || 0) + n; p.view_count = (p.view_count || 0) + n * 2; } return json(200, !!p); }
     switch (url.pathname.replace('/rest/v1/rpc/', '')) {
+      case 'live_counts': return json(200, a.ids.slice(0, 12).map((id) => polls.find((p) => p.id === id)).filter(Boolean).map((p) => { const v = view(p); return { id: p.id, vote_count: p.vote_count, view_count: Math.max(p.view_count || 0, p.vote_count), comment_count: p.comment_count || 0, recent_votes: p.recent_votes || 0, options: v.options.map((o) => ({ id: o.id, votes: o.votes })) }; }));
       case 'create_snap': {
         if (!files[a.photo_path]) return json(400, { message: 'docchi:no_photo' });
         const id = 'bbbbbbbb-0000-4000-8000-00000000000' + polls.length;

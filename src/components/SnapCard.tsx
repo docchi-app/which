@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { isEmojiAnswers, snapInfo, snapPhotoUrl } from "@/lib/snap";
+import { isEmojiAnswers, photoTint, snapInfo, snapPhotoUrl } from "@/lib/snap";
 import type { Poll } from "@/lib/types";
 
 /**
@@ -12,6 +12,7 @@ import type { Poll } from "@/lib/types";
  */
 export function SnapCardShell({
   src,
+  tint,
   live,
   who,
   href,
@@ -22,6 +23,8 @@ export function SnapCardShell({
   children,
 }: {
   src: string | null | undefined;
+  /** The photo's own colour, shown while it loads (no white flash). */
+  tint?: string | null;
   live: boolean;
   who: string;
   /** Their profile, when the name should link there. */
@@ -47,11 +50,21 @@ export function SnapCardShell({
     </>
   );
   return (
-    <div className="snapc">
+    <div className="snapc" style={tint ? { background: tint } : undefined}>
       {src ? (
         // A signed link (or local preview) of a private photo; next/image can't optimise it.
         // eslint-disable-next-line @next/next/no-img-element
-        <img className="snapc-img" src={src} alt="" />
+        <img
+          className="snapc-img"
+          src={src}
+          alt=""
+          decoding="async"
+          onLoad={(e) => e.currentTarget.classList.add("snapc-img-in")}
+          ref={(img) => {
+            // Already in the browser's cache: no fade.
+            if (img?.complete) img.classList.add("snapc-img-in");
+          }}
+        />
       ) : (
         <div className="snapc-empty">{src === null ? (gone ? "👻 This snap has disappeared" : "📷 Photo unavailable") : null}</div>
       )}
@@ -85,6 +98,7 @@ export function SnapPoll({
   poll,
   sub,
   closed,
+  near = true,
   showResults,
   pcts,
   mineId,
@@ -95,6 +109,8 @@ export function SnapPoll({
   poll: Poll;
   sub: ReactNode;
   closed: boolean;
+  /** The card is about a screen away: time to fetch the photo. */
+  near?: boolean;
   /** Voted (or closed): the answers fill with their share. */
   showResults: boolean;
   pcts: number[];
@@ -107,12 +123,16 @@ export function SnapPoll({
 }) {
   // undefined: loading · null: no photo (it has disappeared)
   const [src, setSrc] = useState<string | null | undefined>(undefined);
+  const [tint, setTint] = useState<string | null>(null);
   const [live, setLive] = useState(false);
 
   useEffect(() => {
+    if (!near) return;
     let stale = false;
     (async () => {
       const info = await snapInfo(poll.id).catch(() => null);
+      if (stale) return;
+      setTint(photoTint(info?.path));
       const url = info?.path ? await snapPhotoUrl(info.path).catch(() => null) : null;
       if (stale) return;
       setLive(!!info?.live);
@@ -121,7 +141,7 @@ export function SnapPoll({
     return () => {
       stale = true;
     };
-  }, [poll.id]);
+  }, [poll.id, near]);
 
   // "Rate it": four emoji, shown as big tap targets. Three or four words: two by two.
   const emoji = isEmojiAnswers(poll.options.map((o) => o.text));
@@ -131,6 +151,7 @@ export function SnapPoll({
   return (
     <SnapCardShell
       src={src}
+      tint={tint}
       live={live && !!src}
       who={`@${poll.creator}`}
       href={poll.isSystem ? undefined : `/u/${poll.creator}`}

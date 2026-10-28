@@ -129,8 +129,9 @@ async function flush(leaving: boolean) {
 }
 
 /**
- * Counts a view once the element (a poll card) has been at least half on screen
- * for a second. onCounted runs when this person's view is new.
+ * Counts a view once the element (a poll card) has been at least half on screen for a
+ * second, or, for a card taller than the screen, once it fills most of it. onCounted runs
+ * when this person's view is new.
  */
 export function useCountView(ref: RefObject<Element | null>, pollId: string, skip: boolean, onCounted: () => void) {
   useEffect(() => {
@@ -139,7 +140,9 @@ export function useCountView(ref: RefObject<Element | null>, pollId: string, ski
     let wait: ReturnType<typeof setTimeout> | null = null;
     const io = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
+        const seenEnough =
+          entry.isIntersecting && (entry.intersectionRatio >= 0.5 || entry.intersectionRect.height >= 0.6 * window.innerHeight);
+        if (seenEnough) {
           wait ??= setTimeout(() => {
             io.disconnect();
             if (recordView(pollId)) onCounted();
@@ -149,7 +152,7 @@ export function useCountView(ref: RefObject<Element | null>, pollId: string, ski
           wait = null;
         }
       },
-      { threshold: 0.5 },
+      { threshold: [0, 0.2, 0.35, 0.5, 0.65, 0.8, 1] },
     );
     io.observe(el);
     return () => {
