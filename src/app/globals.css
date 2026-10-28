@@ -2901,7 +2901,14 @@ button.ghost-action { cursor: pointer; }
 }
 .ask-screen .cam-top { padding: 0 12px 10px; }
 .ask-card { width: min(calc(100% - 64px), 400px, calc((100dvh - 370px - env(safe-area-inset-top)) * 0.75)); flex: none; transition: width 0.25s var(--ease-pop); }
-.ask-card-typing { width: min(calc(100% - 96px), 320px, calc((100dvh - 330px) * 0.62)); }
+.ask-card-typing { width: max(210px, min(calc(100% - 96px), 320px, calc((100dvh - 330px) * 0.62))); }
+/* While typing (a smaller card): just the photo, the question and the answers. */
+.ask-card-typing .snapc-badges,
+.ask-card-typing .snapc-name small { display: none; }
+.ask-card-typing .snapc-answers { gap: 6px; }
+.ask-card-typing .snapc-answers:has(.snapc-add):not(.snapc-grid) { grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)) 32px; }
+.ask-card-typing .snapc-answer { min-height: 40px; padding-inline: 4px; font-size: 13px; }
+.ask-card-typing .snapc-add { min-width: 32px; min-height: 40px; font-size: 18px; }
 .ask-card .snapc { border-color: rgb(255 255 255 / 0.2); }
 .snapc-q-input {
   width: 100%;

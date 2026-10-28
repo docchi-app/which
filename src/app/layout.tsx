@@ -36,6 +36,9 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // Android: the keyboard shrinks the page instead of covering it, so Send / Post and the
+  // box you're typing in stay above it.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

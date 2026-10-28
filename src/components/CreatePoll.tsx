@@ -328,6 +328,12 @@ export function CreatePoll() {
             }
             value={draft.question}
             onChange={(e) => set({ question: e.target.value.replace(/\n/g, " ") })}
+            // Enter goes on to the next box (the teaser, or the first answer).
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              (document.getElementById("teaser") ?? document.querySelector<HTMLInputElement>(".answer-row input"))?.focus();
+            }}
           />
           <span className={`counter${draft.question.length > 120 ? " counter-warn" : ""}`}>
             {draft.question.length} / {QUESTION_MAX}
@@ -370,6 +376,15 @@ export function CreatePoll() {
                   placeholder="Type an answer"
                   value={a}
                   onChange={(e) => setAnswer(i, e.target.value)}
+                  // Enter (the keyboard's Go) moves on to the next answer; it never posts.
+                  enterKeyHint={i < draft.answers.length - 1 ? "next" : "done"}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter") return;
+                    e.preventDefault();
+                    const next = document.querySelectorAll<HTMLInputElement>(".answer-row input")[i + 1];
+                    if (next) next.focus();
+                    else e.currentTarget.blur();
+                  }}
                 />
                 {draft.answers.length > 2 && (
                   <button
@@ -460,7 +475,16 @@ export function CreatePoll() {
                   role="radio"
                   aria-checked={kind === f.kind}
                   className="style-chip press"
-                  onClick={() => set({ kind: f.kind })}
+                  onClick={() => {
+                    set({ kind: f.kind });
+                    // Mystery adds a teaser above: take them to it.
+                    if (f.kind === "mystery" && !draft.teaser)
+                      requestAnimationFrame(() => {
+                        const t = document.getElementById("teaser");
+                        t?.scrollIntoView({ block: "center", behavior: "smooth" });
+                        t?.focus({ preventScroll: true });
+                      });
+                  }}
                 >
                   {f.label}
                 </button>
