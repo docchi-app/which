@@ -40,6 +40,18 @@ let requests = [{ username: 'zoya', avatar_url: null, at: iso(-1) }];
 let members = [{ username: 'priya', avatar_url: null, since: iso(-48), groups: [] }];
 const status = { zoya: ['none', 'pending'], priya: ['member', 'member'], aman: ['none', 'none'], ravi: ['none', 'none'] };
 const LAT = Number(process.env.LAT || 0);
+let testAccounts = [];
+// Admin → Metrics: the shape of the real first two weeks (visitors, new, voters, votes), newest first.
+const METRIC_DAYS = [[69, 64, 15, 97], [98, 95, 6, 18], [20, 16, 7, 27], [21, 17, 3, 19], [62, 59, 10, 74], [25, 25, 13, 204]];
+const metricDays = (n = 14) => Array.from({ length: n }, (_, i) => {
+  const [visitors, fresh, voters, votes] = METRIC_DAYS[i] ?? [0, 0, 0, 0];
+  const day = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
+  return { day, visitors, new_visitors: fresh, signed_in: voters, sessions: visitors + 5, signed_sessions: voters + 3, voters, votes, shares: Math.round(votes / 20), polls: 2, signups: 3,
+    vote_pct: visitors ? Math.round((1000 * voters) / visitors) / 10 : null, votes_per_session: voters ? Math.round((10 * votes) / (voters + 3)) / 10 : null, share_rate: 4.8, d1: i > 1 ? 4.3 : null, d7: null };
+});
+const events = [{ at: new Date(Date.now() - 3600e3).toISOString(), action: 'word_added', detail: 'zhantu (word)', admin: 'mayank' }];
+// The signed-in user's id, from the request's JWT.
+const whoIs = (req) => { try { return JSON.parse(Buffer.from(String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').split('.')[1], 'base64url').toString()).sub; } catch { return null; } };
 let propsNoWait = false;
 http.createServer((req, res) => {
   if (LAT && req.method !== 'OPTIONS' && !req.url.startsWith('/__log')) { const orig = res.end.bind(res); res.end = (...args) => { setTimeout(() => orig(...args), LAT); return res; }; }
@@ -98,6 +110,11 @@ http.createServer((req, res) => {
       case 'set_props_off': pOff = a.off; log.push('PROPS_OFF ' + a.off); return json(200, null);
       case 'mark_snap_photos_deleted': log.push('MARK ' + a.paths.join(',')); return json(200, null);
       case '/__log': return json(200, log);
+      case 'admin_test_accounts': return json(200, testAccounts.map((u) => ({ username: u, avatar_url: null, joined: iso(-72), votes: 3 })));
+      case 'admin_set_test': { const u = String(a.username).toLowerCase(); if (u === 'mayank') return json(400, { message: 'docchi:own_account' }); if (!/^[a-z0-9_.]+$/.test(u) || u === 'nobody') return json(400, { message: 'docchi:not_found' }); testAccounts = a.on_now ? [...new Set([...testAccounts, u])] : testAccounts.filter((x) => x !== u); events.unshift({ at: iso(0), action: a.on_now ? 'test_added' : 'test_removed', detail: '@' + u, admin: 'mayank' }); log.push(`TEST ${u} ${a.on_now}`); return json(200, null); }
+      case 'admin_events_list': return json(200, events);
+      case 'admin_metrics': return json(200, metricDays(a.days));
+      case 'admin_view_stats': return json(200, metricDays(a.days).map((d) => ({ day: d.day, views: d.votes * 2, votes: d.votes, votes_per_100_views: d.votes ? 50 : null })));
       case 'admin_props_no_wait': if (a.on_now !== null && a.on_now !== undefined) { propsNoWait = a.on_now; log.push('PROPS_NOWAIT ' + a.on_now); } return json(200, propsNoWait);
       // A poll hidden or removed behind the app's back (e.g. by an admin on another phone).
       case '/__hide': { const i = polls.findIndex((p) => p.id === url.searchParams.get('id')); if (i >= 0) polls.splice(i, 1); log.push('HIDE ' + url.searchParams.get('id')); return json(200, null); }
@@ -113,7 +130,7 @@ http.createServer((req, res) => {
       case 'circle_badge': return json(200, { requests: requests.length, accepted_recently: 0 });
       case 'my_activity': if (activitySeen) return json(200, { votes: 0, comments: 0, polls: [] }); return json(200, { votes: 5, comments: 1, polls: [{ poll_id: '99999999-0000-4000-8000-000000000009', question: 'Pineapple on pizza?', votes: 5, comments: 1 }] });
       case 'mark_activity_seen': activitySeen = true; log.push('SEEN'); return json(200, null);
-      case 'my_profile': return json(200, { is_admin: true,  username: 'mayank', username_confirmed: true, avatar_url: null, joined: iso(-500), polls_made: 2, votes_received: 40, shares: 3, votes_cast: 10 });
+      case 'my_profile': return json(200, { is_admin: !!whoIs(req) && whoIs(req) !== 'notadmin',  username: 'mayank', username_confirmed: true, avatar_url: null, joined: iso(-500), polls_made: 2, votes_received: 40, shares: 3, votes_cast: 10 });
       case 'my_polls': {
         const mineList = [
           mk('61000000-0000-4000-8000-000000000001', 'Mittal ke shadi me dance karna hai ki nai bhai??', ['Haan', 'Nahi'], [2, 0], { visibility: 'link', creator: 'mayank', is_system: false, is_mine: true, share_count: 1, closes_at: iso(45) }),
