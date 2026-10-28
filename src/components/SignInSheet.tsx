@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { continueWithGoogle, guestPicks } from "@/lib/auth";
+import { useBackClose } from "@/lib/back";
 
 export type SheetPick = { text: string; color: string };
 
@@ -14,6 +15,8 @@ type Props = {
 
 /** Slides up when a vote needs Google, or after a guest's first few votes. */
 export function SignInSheet({ pick, onClose }: Props) {
+  // Back closes it too (and the phone's back button doesn't leave the screen).
+  const close = useBackClose(true, onClose);
   const [votes] = useState(() => guestPicks().length);
   const googleRef = useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = useState(false);
@@ -21,10 +24,10 @@ export function SignInSheet({ pick, onClose }: Props) {
 
   useEffect(() => {
     googleRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [close]);
 
   async function google() {
     setBusy(true);
@@ -40,7 +43,7 @@ export function SignInSheet({ pick, onClose }: Props) {
 
   return (
     <div className="sheet-layer">
-      <div className="sheet-backdrop" aria-hidden="true" onClick={onClose} />
+      <div className="sheet-backdrop" aria-hidden="true" onClick={close} />
       <section role="dialog" aria-modal="true" aria-labelledby="signin-title" className="sheet">
         <div className="sheet-handle" aria-hidden="true" />
 
@@ -99,7 +102,7 @@ export function SignInSheet({ pick, onClose }: Props) {
           </p>
         )}
 
-        <button type="button" className="sheet-later" onClick={onClose}>
+        <button type="button" className="sheet-later" onClick={close}>
           Not now, keep browsing
         </button>
       </section>

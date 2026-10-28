@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { isOldAddress, moveAccount, moveToNewAddress, NEW_ORIGIN } from "@/lib/move";
 import { LogoMark } from "./Logo";
+import { useBackClose } from "@/lib/back";
 
 const SNOOZE_KEY = "eithr.moveLater";
 
@@ -30,6 +31,9 @@ export function MoveSheet() {
     });
   }, []);
 
+  // The back button counts as "later".
+  const close = useBackClose(open, later);
+
   if (!open) return null;
   const host = NEW_ORIGIN.replace(/^https?:\/\//, "");
 
@@ -51,7 +55,7 @@ export function MoveSheet() {
 
   return (
     <div className="sheet-layer">
-      <div className="sheet-backdrop" aria-hidden="true" onClick={later} />
+      <div className="sheet-backdrop" aria-hidden="true" onClick={close} />
       <section role="dialog" aria-modal="true" aria-labelledby="move-title" className="sheet move-sheet">
         <div className="sheet-handle" aria-hidden="true" />
         <div className="move-mark" aria-hidden="true">
@@ -76,7 +80,7 @@ export function MoveSheet() {
         <button type="button" className="btn btn-coral press move-go" onClick={go} disabled={busy}>
           {busy ? "Opening Eithr…" : "Open Eithr →"}
         </button>
-        <button type="button" className="sheet-later" onClick={later} disabled={busy}>
+        <button type="button" className="sheet-later" onClick={close} disabled={busy}>
           Later
         </button>
       </section>

@@ -22,6 +22,7 @@ import { getMyProfile } from "@/lib/profile";
 import { ANSWER_COLORS } from "./PollCard";
 import { ArrowIcon, PlusIcon } from "./icons";
 import { SignInNote } from "./SignInSheet";
+import { leaveScreen } from "@/lib/back";
 
 const QUESTION_MAX = 140;
 const ANSWER_MAX = 40;
@@ -257,7 +258,8 @@ export function CreatePoll() {
       });
       sessionStorage.removeItem(DRAFT_KEY);
       openingFeedOnPoll();
-      router.push(`/?poll=${id}&created=1`);
+      // Replaces this screen: back from your new poll doesn't return to an empty form.
+      router.replace(`/?poll=${id}&created=1`);
     } catch (e) {
       setPosting(false);
       if (e instanceof CreatePollError) {
@@ -290,11 +292,11 @@ export function CreatePoll() {
   return (
     <div className="create-screen">
       <header className="create-header">
-        <Link href="/" aria-label="Close" className="icon-btn icon-btn-white press">
+        <button type="button" aria-label="Close" className="icon-btn icon-btn-white press" onClick={() => leaveScreen(router, "/")}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
-        </Link>
+        </button>
         <h1 className="create-title">Type a poll</h1>
         <span className="create-spacer" />
       </header>

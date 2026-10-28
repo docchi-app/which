@@ -11,6 +11,7 @@ import {
   snoozeInstall,
   type InstallPlatform,
 } from "@/lib/install";
+import { useBackClose } from "@/lib/back";
 
 type Props = {
   /** notifications: from the notifications prompt or settings · nudge: after a few votes · app: Settings → The app. */
@@ -39,17 +40,19 @@ export function InstallSheet({ reason, onClose }: Props) {
   // Safari keeps Share in the bottom bar; Chrome/Firefox/Edge on iPhone put it at the top.
   const otherIosBrowser = /CriOS|FxiOS|EdgiOS/.test(ua);
   const host = IN_APP_NAMES.find(([re]) => re.test(ua))?.[1] ?? "this app";
+  // The back button counts as "later".
+  const dismiss = useBackClose(true, later);
 
   useEffect(() => {
     titleRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && later();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && dismiss();
     window.addEventListener("keydown", onKey);
     const off = onInstallChange(() => setCanPrompt(canPromptInstall()));
     return () => {
       window.removeEventListener("keydown", onKey);
       off();
     };
-    // later() only snoozes and closes.
+    // dismiss() only snoozes and closes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -60,7 +63,7 @@ export function InstallSheet({ reason, onClose }: Props) {
 
   async function install() {
     const accepted = await promptInstall();
-    if (accepted) onClose();
+    if (accepted) dismiss();
   }
 
   async function copyLink() {
@@ -83,7 +86,7 @@ export function InstallSheet({ reason, onClose }: Props) {
 
   return createPortal(
     <div className="sheet-layer">
-      <div className="sheet-backdrop" aria-hidden="true" onClick={later} />
+      <div className="sheet-backdrop" aria-hidden="true" onClick={dismiss} />
       {arrow === "top" && (
         <div className="install-arrow install-arrow-top" aria-hidden="true">
           <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
@@ -196,7 +199,7 @@ export function InstallSheet({ reason, onClose }: Props) {
           </>
         )}
 
-        <button type="button" className="sheet-later" onClick={later}>
+        <button type="button" className="sheet-later" onClick={dismiss}>
           {reason === "nudge" ? "Not now" : "Close"}
         </button>
         {arrow === "bottom" && (

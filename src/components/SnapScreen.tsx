@@ -29,6 +29,7 @@ import { SignInNote } from "./SignInSheet";
 import { SnapCamera } from "./SnapCamera";
 import { SnapCardShell } from "./SnapCard";
 import { SnapFramer } from "./SnapFramer";
+import { dropLayer, leaveScreen, useBackClose } from "@/lib/back";
 
 type Phase = "camera" | "frame" | "ask" | "checking" | "review" | "rejected";
 
@@ -165,6 +166,8 @@ export function SnapScreen() {
   async function send() {
     if (!photo || problem) return;
     setError(null);
+    // Sent: back no longer means "retake".
+    dropLayer();
     setPhase("checking");
     try {
       const id = await postSnap({ photo, question: q, answers: clean, audience, live });
@@ -177,7 +180,8 @@ export function SnapScreen() {
       }
       if (status === "live") {
         openingFeedOnPoll();
-        router.push(`/?poll=${id}&created=1`);
+        // Replaces this screen: back from your snap doesn't return to the camera.
+        router.replace(`/?poll=${id}&created=1`);
       } else setPhase(status === "rejected" ? "rejected" : "review");
     } catch (e) {
       setError(snapErrorText(e));
@@ -190,6 +194,8 @@ export function SnapScreen() {
     setTyping(false);
     setPhase("camera");
   }
+  // After the photo, back goes back to the camera (not out of /snap).
+  const backToCamera = useBackClose(phase === "frame" || phase === "ask", retake);
 
   async function signIn() {
     saveReturnTo("/snap");
@@ -246,7 +252,7 @@ export function SnapScreen() {
           bitmap={framing.bitmap}
           url={framing.url}
           onDone={(blob) => showPreview(blob, framing.live)}
-          onCancel={() => setPhase("camera")}
+          onCancel={backToCamera}
         />
       </div>
     );
@@ -258,7 +264,7 @@ export function SnapScreen() {
     return (
       <div className="ask-screen">
         <div className="cam-top">
-          <button type="button" className="cam-icon" aria-label="Retake" onClick={retake}>
+          <button type="button" className="cam-icon" aria-label="Retake" onClick={backToCamera}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 5l-7 7 7 7" />
             </svg>
@@ -412,13 +418,14 @@ export function SnapScreen() {
 }
 
 function SnapHeader({ title, right }: { title: string; right?: React.ReactNode }) {
+  const router = useRouter();
   return (
     <header className="create-header">
-      <Link href="/" aria-label="Close" className="icon-btn icon-btn-white press">
+      <button type="button" aria-label="Close" className="icon-btn icon-btn-white press" onClick={() => leaveScreen(router, "/")}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
           <path d="M6 6l12 12M18 6L6 18" />
         </svg>
-      </Link>
+      </button>
       <h1 className="create-title">{title}</h1>
       {right ?? <span className="create-spacer" />}
     </header>

@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { drawFromVideo } from "@/lib/snap-photo";
+import { leaveScreen } from "@/lib/back";
 
 type Props = {
   /** A photo taken here: an exact 3:4 frame. */
@@ -47,6 +48,7 @@ const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n
  * up top. Controls the phone doesn't allow are done on the photo, or left out.
  */
 export function SnapCamera({ onShot, onPick }: Props) {
+  const router = useRouter();
   const video = useRef<HTMLVideoElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -249,11 +251,11 @@ export function SnapCamera({ onShot, onPick }: Props) {
   return (
     <div className="cam-screen">
       <div className="cam-top">
-        <Link href="/" className="cam-icon" aria-label="Close">
+        <button type="button" className="cam-icon" aria-label="Close" onClick={() => leaveScreen(router, "/")}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
-        </Link>
+        </button>
         <div className="cam-tools">
           {canFlash && (
             <button type="button" className="cam-tool" aria-pressed={flash} onClick={() => setFlash((f) => !f)} disabled={state !== "ready"}>

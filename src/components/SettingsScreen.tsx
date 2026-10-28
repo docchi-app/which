@@ -13,6 +13,7 @@ import { BottomNav } from "./BottomNav";
 import { DeleteAccountSheet } from "./DeleteAccountSheet";
 import { InstallSheet } from "./InstallSheet";
 import { NotificationSettings } from "./Notifications";
+import { leaveScreen } from "@/lib/back";
 
 /** Everything that isn't your polls: notifications, the app, account, policies. */
 export function SettingsScreen() {
@@ -53,11 +54,11 @@ export function SettingsScreen() {
   return (
     <div className="screen settings-screen">
       <header className="settings-top">
-        <Link href="/profile" className="icon-btn press" aria-label="Back to profile">
+        <button type="button" className="icon-btn press" aria-label="Back" onClick={() => leaveScreen(router, "/profile")}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M15 5l-7 7 7 7" />
           </svg>
-        </Link>
+        </button>
         <h1 className="settings-title">Settings</h1>
       </header>
 
@@ -146,7 +147,7 @@ export function SettingsScreen() {
               className="settings-row settings-row-danger"
               onClick={async () => {
                 await signOut();
-                router.push("/profile");
+                router.replace("/profile");
               }}
             >
               <strong>Sign out</strong>

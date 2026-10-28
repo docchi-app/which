@@ -8,6 +8,7 @@ import { deleteComment, fetchThread, postComment, type Thread } from "@/lib/comm
 import { useLiveInterval } from "@/lib/useLiveInterval";
 import { Avatar } from "./Avatar";
 import { ReportSheet } from "./ReportSheet";
+import { useBackClose } from "@/lib/back";
 
 const MAX = 200;
 const REFRESH_MS = 8000;
@@ -32,6 +33,8 @@ function ago(iso: string) {
 
 /** A poll's comments: the conversation, the write box, delete and report. */
 export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount }: Props) {
+  // Back closes it too (and the phone's back button doesn't leave the screen).
+  const close = useBackClose(true, onClose);
   const [thread, setThread] = useState<Thread | null>(null);
   const [text, setText] = useState("");
   const [pending, setPending] = useState<string | null>(null);
@@ -59,10 +62,10 @@ export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount }: Pr
     // Fetching when the sheet opens is what this effect is for.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [load, onClose]);
+  }, [load, close]);
 
   useLiveInterval(load, REFRESH_MS, Boolean(thread?.canRead));
 
@@ -115,7 +118,7 @@ export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount }: Pr
 
   return createPortal(
     <div className="sheet-layer">
-      <div className="sheet-backdrop" aria-hidden="true" onClick={onClose} />
+      <div className="sheet-backdrop" aria-hidden="true" onClick={close} />
       <section role="dialog" aria-modal="true" aria-labelledby="comments-title" className="sheet comments-sheet">
         <div className="sheet-handle" aria-hidden="true" />
         <header className="comments-head">
@@ -123,7 +126,7 @@ export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount }: Pr
             Comments{count ? <span className="comments-count">{count}</span> : null}
           </h2>
           <span className="comments-note">Gone after 24h</span>
-          <button type="button" className="notif-prompt-x" aria-label="Close comments" onClick={onClose}>
+          <button type="button" className="notif-prompt-x" aria-label="Close comments" onClick={close}>
             ✕
           </button>
         </header>
@@ -139,7 +142,7 @@ export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount }: Pr
                 <p className="comments-empty">
                   <span aria-hidden="true">👀</span> Vote first, then see what everyone&apos;s saying.
                 </p>
-                <button type="button" className="post-btn press" onClick={onClose}>
+                <button type="button" className="post-btn press" onClick={close}>
                   Back to the poll
                 </button>
               </>

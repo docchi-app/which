@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FriendsIcon, HomeIcon, PlusIcon, TrophyIcon, UserIcon } from "./icons";
 import { NavBadge } from "./NavBadge";
+import { useBackClose } from "@/lib/back";
 
 type Section = "feed" | "friends" | "leaders" | "profile" | "create";
 
@@ -25,12 +26,15 @@ export function BottomNav({ current }: { current?: Section }) {
   // The + menu: Snap it or Type it, one tap from any screen.
   const [menu, setMenu] = useState(false);
 
+  // Back closes it (and doesn't leave the screen).
+  const closeMenu = useBackClose(menu, () => setMenu(false));
+
   useEffect(() => {
     if (!menu) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenu(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeMenu();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu]);
+  }, [menu, closeMenu]);
   // Going to another screen (the back button too) closes it.
   const [menuPath, setMenuPath] = useState(path);
   if (menuPath !== path) {
@@ -40,7 +44,7 @@ export function BottomNav({ current }: { current?: Section }) {
 
   return (
     <>
-      {menu && <div className="create-scrim" aria-hidden="true" onClick={() => setMenu(false)} />}
+      {menu && <div className="create-scrim" aria-hidden="true" onClick={closeMenu} />}
       <div className="bottom-bar">
         <nav aria-label="Main" className="nav-pill">
           {ITEMS.map(({ id, href, label, Icon }) =>
@@ -71,14 +75,14 @@ export function BottomNav({ current }: { current?: Section }) {
         </nav>
         {menu && (
           <div id="create-menu" className="create-menu" role="menu" aria-label="Make a poll">
-            <Link href="/snap" role="menuitem" className="create-choice create-choice-snap press" onClick={() => setMenu(false)}>
+            <Link href="/snap" replace role="menuitem" className="create-choice create-choice-snap press" onClick={() => setMenu(false)}>
               <span className="create-choice-icon" aria-hidden="true">
                 📸
               </span>
               <strong>Snap it</strong>
               <small>Photo poll, gone in 24 hours</small>
             </Link>
-            <Link href="/create" role="menuitem" className="create-choice create-choice-type press" onClick={() => setMenu(false)}>
+            <Link href="/create" replace role="menuitem" className="create-choice create-choice-type press" onClick={() => setMenu(false)}>
               <span className="create-choice-icon" aria-hidden="true">
                 ✍️
               </span>
@@ -95,7 +99,7 @@ export function BottomNav({ current }: { current?: Section }) {
           aria-controls={menu ? "create-menu" : undefined}
           className={`create-btn press${menu ? " create-btn-open" : ""}`}
           data-tip="create"
-          onClick={() => setMenu((m) => !m)}
+          onClick={() => (menu ? closeMenu() : setMenu(true))}
         >
           <PlusIcon size={28} />
         </button>

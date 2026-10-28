@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { DELETE_ERRORS, DeleteAccountError, deleteMyAccount } from "@/lib/profile";
+import { useBackClose } from "@/lib/back";
 
 /** Settings → Delete account: say what goes, type DELETE, gone for good. */
 export function DeleteAccountSheet({ username, onClose }: { username: string | null; onClose: () => void }) {
+  // Back closes it too (and the phone's back button doesn't leave the screen).
+  const close = useBackClose(true, onClose);
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -12,10 +15,10 @@ export function DeleteAccountSheet({ username, onClose }: { username: string | n
 
   useEffect(() => {
     if (done) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !busy && close();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [busy, done, onClose]);
+  }, [busy, done, close]);
 
   async function remove() {
     setBusy(true);
@@ -34,7 +37,7 @@ export function DeleteAccountSheet({ username, onClose }: { username: string | n
 
   return (
     <div className="sheet-layer">
-      <div className="sheet-backdrop" aria-hidden="true" onClick={busy || done ? undefined : onClose} />
+      <div className="sheet-backdrop" aria-hidden="true" onClick={busy || done ? undefined : close} />
       <section role="alertdialog" aria-modal="true" aria-labelledby="delete-title" className="sheet">
         <div className="sheet-handle" aria-hidden="true" />
         {done ? (
@@ -83,7 +86,7 @@ export function DeleteAccountSheet({ username, onClose }: { username: string | n
             <button type="button" className="post-btn post-btn-danger press" onClick={remove} disabled={!ready || busy}>
               {busy ? "Deleting…" : "Delete my account"}
             </button>
-            <button type="button" className="sheet-later" onClick={onClose} disabled={busy}>
+            <button type="button" className="sheet-later" onClick={close} disabled={busy}>
               Keep my account
             </button>
           </>
