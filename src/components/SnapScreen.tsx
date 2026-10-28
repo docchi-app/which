@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { continueWithGoogle, isSignedIn, onUserChange, saveReturnTo } from "@/lib/auth";
 import {
   ANSWER_MAX,
@@ -34,21 +35,18 @@ import { dropLayer, leaveScreen, useBackClose } from "@/lib/back";
 
 type Phase = "camera" | "frame" | "ask" | "checking" | "review" | "rejected";
 
-const EMOJI_SET = ["🔥", "😍", "😐", "🙅"];
-const same = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x.trim() === b[i].trim());
-
 const AUDIENCES: { id: SnapAudience; name: string; text: string; send: string }[] = [
-  { id: "circle", name: "👥 Friends", text: "see who picked", send: "Send to friends →" },
-  { id: "public", name: "🌍 Everyone", text: "counts only", send: "Send to everyone →" },
-  { id: "link", name: "🔗 Link only", text: "you send it", send: "Send and get the link →" },
+  { id: "circle", name: "👥 Friends", text: "See who picked what", send: "Send to friends →" },
+  { id: "public", name: "🌍 Everyone", text: "Counts only, names hidden", send: "Send to everyone →" },
+  { id: "link", name: "🔗 Link only", text: "Only people you send it to", send: "Send and get the link →" },
 ];
 const DAY = 864e5;
 
 /**
  * /snap: Shoot → Ask → Send. The camera opens at once (3:4, exactly the card).
- * Then one screen finishes it: the question sits on the photo (last idea filled
- * in, tap it to type your own), ideas wrap below, who sees it is three plain
- * choices, and Send. Link only opens the share sheet right after.
+ * Then one page finishes it, scrolling like the feed: the photo on its own, the
+ * question and its answers (last idea filled in), ideas, who sees it, and Send
+ * pinned at the bottom. Link only opens the share sheet right after.
  */
 export function SnapScreen() {
   const router = useRouter();
@@ -57,9 +55,8 @@ export function SnapScreen() {
   const [idea, setIdea] = useState<SnapIdea | null>("buy");
   const [question, setQuestion] = useState<string>(SNAP_IDEAS[0].question);
   const [answers, setAnswers] = useState<string[]>([...SNAP_IDEAS[0].answers]);
-  // Answers picked or typed by hand stay put; otherwise they follow the question ("X or Y?").
-  const [answersSet, setAnswersSet] = useState(true);
-  const [typing, setTyping] = useState(false);
+  // "How friends see it": the photo with the question and answers on it, as in the feed.
+  const [look, setLook] = useState(false);
   const [audience, setAudience] = useState<SnapAudience>("circle");
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -70,6 +67,7 @@ export function SnapScreen() {
   const [friends, setFriends] = useState<number | null>(null);
   const [tooNew, setTooNew] = useState(false);
   const questionRef = useRef<HTMLTextAreaElement>(null);
+  const answersRef = useRef<HTMLDivElement>(null);
   const sending = useRef(false);
 
   useEffect(() => {
@@ -106,32 +104,33 @@ export function SnapScreen() {
     setIdea(id);
     setQuestion(t.question);
     setAnswers([...t.answers]);
-    setAnswersSet(true);
     setError(null);
-    // Still typing: the new idea's text is selected, so typing replaces it.
-    const box = questionRef.current;
-    if (box && document.activeElement === box) requestAnimationFrame(() => box.select());
   }
 
   function editQuestion(text: string) {
     const q = text.replace(/\n/g, " ").slice(0, QUESTION_MAX);
+    // Your own question needs your own answers: typing over an idea, or clearing the
+    // question, takes the answers away (picking an idea brings them back).
+    if (idea || !q.trim()) setAnswers([]);
     setQuestion(q);
     setIdea(null);
-    // Typing over an idea: its answers go too, and new ones follow the question ("X or Y?").
-    if (idea) setAnswersSet(false);
-    if (idea || !answersSet) setAnswers(eitherOr(q) ?? [...YES_NO]);
+    setError(null);
   }
 
   function editAnswer(i: number, text: string) {
     setAnswers((list) => list.map((a, n) => (n === i ? text.slice(0, ANSWER_MAX) : a)));
-    setAnswersSet(true);
     setIdea(null);
   }
 
   function pickAnswers(list: readonly string[]) {
     setAnswers([...list]);
-    setAnswersSet(true);
     setIdea(null);
+  }
+
+  /** One more answer box, with the keyboard on it (focused within the tap, so iPhone opens it). */
+  function addAnswer() {
+    flushSync(() => setAnswers((list) => [...list, ""]));
+    answersRef.current?.querySelector<HTMLInputElement>(".ask-answer:last-of-type input")?.focus();
   }
 
   function pickAudience(a: SnapAudience) {
@@ -171,20 +170,26 @@ export function SnapScreen() {
 
   const q = question.trim().replace(/\s+/g, " ");
   const clean = answers.map((a) => a.trim());
-  const problem =
-    q.length < 3
+  const problem = !q
+    ? "Add a question"
+    : q.length < 3
       ? "Type your question"
-      : clean.some((a) => !a)
-        ? "Fill in every answer"
-        : new Set(clean.map((a) => a.toLowerCase())).size < clean.length
-          ? "Two answers are the same"
-          : null;
+      : clean.length === 0
+        ? "Add 2 answers"
+        : clean.length === 1
+          ? "Add one more answer"
+          : clean.some((a) => !a)
+            ? "Fill in every answer"
+            : new Set(clean.map((a) => a.toLowerCase())).size < clean.length
+              ? "Two answers are the same"
+              : null;
   const blocked = (a: SnapAudience) => (a === "circle" && friends === 0) || (a === "public" && tooNew);
   // A remembered choice that can't be used yet becomes Link only (shown as picked).
   const sendTo: SnapAudience = blocked(audience) ? "link" : audience;
   const emoji = isEmojiAnswers(answers);
+  // No answers yet for your own question: pairs to fill in with one tap ("Goa or Manali?" → Goa / Manali).
   const sides = eitherOr(q);
-  const answerIdeas = [...(sides ? [sides] : []), YES_NO, EMOJI_SET].filter((l, i, all) => all.findIndex((x) => same(x, l)) === i);
+  const offers = answers.length === 0 && q ? [...(sides ? [sides] : []), YES_NO] : [];
 
   async function send() {
     if (!photo || problem || sending.current) return;
@@ -216,33 +221,16 @@ export function SnapScreen() {
 
   function retake() {
     setPhoto(null);
-    setTyping(false);
+    setLook(false);
     setPhase("camera");
   }
   // After the photo, back goes back to the camera (not out of /snap).
   const backToCamera = useBackClose(phase === "frame" || phase === "ask", retake);
 
-  // The photo is in: the keyboard comes up on the question (an idea's text selected,
-  // so typing replaces it). Phones that only open it on a tap (iPhone) show the caret, and
-  // the screen stays as it is (who sees it, Send) until a tap brings the keyboard: being
-  // focused by us isn't typing, only a tap or a keyboard that actually shows is.
-  const focusingByUs = useRef(false);
-  useEffect(() => {
-    if (phase !== "ask") return;
-    const box = questionRef.current;
-    if (!box) return;
-    focusingByUs.current = true;
-    box.focus({ preventScroll: true });
-    focusingByUs.current = false;
-    if (idea) box.select();
-    else box.setSelectionRange(box.value.length, box.value.length);
-    // Only when a new photo arrives.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, preview]);
-
   // Is the on-screen keyboard up? (The visible screen is much shorter than it was.) While it is,
-  // only the photo with its question shows. When it goes away, by Done, ‹, or the phone's own
-  // back/hide key, typing is done and everything below comes back.
+  // only the question and answers show, with the photo small in the top bar. When it goes away,
+  // by Done, ‹, or the phone's own back/hide key, the whole page comes back. Nothing is focused
+  // when the page opens: iPhone only brings the keyboard up for a tap, and the photo comes first.
   const [keyboard, setKeyboard] = useState(false);
   useEffect(() => {
     const vv = window.visualViewport;
@@ -262,12 +250,8 @@ export function SnapScreen() {
       up = now;
       setKeyboard(now);
       const box = document.activeElement as HTMLElement | null;
-      if (now) {
-        // Up on a box that was already focused (Android after the photo, or a tap on the
-        // caret on iPhone): that's typing.
-        if (box?.closest(".ask-card")) setTyping(true);
-        requestAnimationFrame(() => box?.scrollIntoView({ block: "center" }));
-      } else if (box?.closest(".ask-card")) box.blur();
+      if (now) requestAnimationFrame(() => box?.scrollIntoView({ block: "center" }));
+      else if (box?.closest(".ask-edit")) box.blur();
     };
     vv.addEventListener("resize", onResize);
     return () => {
@@ -275,6 +259,30 @@ export function SnapScreen() {
       setKeyboard(false);
     };
   }, [phase]);
+
+  // Scrolled past the photo: it shows small in the top bar, so you still know what you're asking about.
+  const photoRef = useRef<HTMLElement>(null);
+  const [photoAway, setPhotoAway] = useState(false);
+  useEffect(() => {
+    const el = photoRef.current;
+    if (phase !== "ask" || !el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => setPhotoAway(!e.isIntersecting), { rootMargin: "-64px 0px 0px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [phase]);
+
+  // The question box grows with the question (Safari has no field-sizing yet).
+  useEffect(() => {
+    const box = questionRef.current;
+    if (!box) return;
+    box.style.height = "auto";
+    box.style.height = `${box.scrollHeight + box.offsetHeight - box.clientHeight}px`;
+  }, [question, phase, keyboard]);
+
+  // A send that failed says why right under the question; bring it into view.
+  useEffect(() => {
+    if (phase === "ask" && error) document.querySelector(".ask-error")?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [phase, error]);
 
   async function signIn() {
     saveReturnTo("/snap");
@@ -338,26 +346,40 @@ export function SnapScreen() {
   }
 
   if (phase === "ask") {
-    // Keeps the text box focused while a chip is tapped.
+    // Keeps the keyboard on the box while a button next to it is tapped.
     const keep = (e: React.PointerEvent) => e.preventDefault();
+    const stopTyping = () => (document.activeElement as HTMLElement | null)?.blur();
+    const nextBox = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      const boxes = [...(answersRef.current?.querySelectorAll<HTMLInputElement>(".ask-answer input") ?? [])];
+      const next = boxes[boxes.indexOf(e.currentTarget) + 1];
+      if (next) next.focus();
+      else e.currentTarget.blur();
+    };
     return (
       <div className="ask-screen">
-        <div className="cam-top">
+        <div className="ask-top">
           <button
             type="button"
             className="cam-icon"
-            aria-label={typing ? "Stop typing" : "Retake"}
-            onPointerDown={typing ? keep : undefined}
+            aria-label={keyboard ? "Stop typing" : "Retake"}
+            onPointerDown={keyboard ? keep : undefined}
             // While typing it only puts the keyboard away; the photo stays.
-            onClick={typing ? () => (document.activeElement as HTMLElement | null)?.blur() : backToCamera}
+            onClick={keyboard ? stopTyping : backToCamera}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 5l-7 7 7 7" />
             </svg>
           </button>
-          <h1 className="cam-title">{typing ? "Your own question" : "Ask about it"}</h1>
-          {typing ? (
-            <button type="button" className="ask-done" onPointerDown={keep} onClick={() => (document.activeElement as HTMLElement | null)?.blur()}>
+          {preview && (
+            // A local preview of the photo just taken.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className={`ask-thumb${keyboard || photoAway ? " ask-thumb-on" : ""}`} src={preview} alt="" aria-hidden="true" />
+          )}
+          <h1 className="cam-title">{keyboard ? "Your question" : "Ask about it"}</h1>
+          {keyboard ? (
+            <button type="button" className="ask-done" onPointerDown={keep} onClick={stopTyping}>
               Done
             </button>
           ) : (
@@ -365,86 +387,89 @@ export function SnapScreen() {
           )}
         </div>
 
-        <div
-          className={`ask-card${keyboard ? " ask-card-typing" : ""}`}
-          onFocus={() => !focusingByUs.current && setTyping(true)}
-          onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && setTyping(false)}
-        >
-          <SnapCardShell src={preview} live={live} who="You" sub="Gone in 24 hours">
+        <div className="ask-body">
+          <section className="ask-photo" ref={photoRef} hidden={keyboard} aria-label="Your photo">
+            {look ? (
+              <SnapCardShell src={preview} live={live} who="You" sub="Gone in 24 hours">
+                <p className="snapc-q">{q || "Your question"}</p>
+                <div className={`snapc-answers${!emoji && answers.length > 2 ? " snapc-grid" : ""}`}>
+                  {answers.map((a, i) => (
+                    <span key={i} className={`snapc-answer${emoji ? " snapc-emoji" : ""}`}>
+                      <span className="snapc-label">{a.trim() || "…"}</span>
+                    </span>
+                  ))}
+                </div>
+              </SnapCardShell>
+            ) : (
+              // A local preview of the photo just taken.
+              // eslint-disable-next-line @next/next/no-img-element
+              preview && <img className="ask-photo-img" src={preview} alt="Your photo" />
+            )}
+            {!look && (
+              <button type="button" className="ask-pchip ask-retake" onClick={backToCamera}>
+                ↺ Retake
+              </button>
+            )}
+            <button type="button" className={`ask-pchip ${look ? "ask-look-off" : "ask-look"}`} aria-pressed={look} onClick={() => setLook(!look)}>
+              {look ? "✕ Just the photo" : "👁 How friends see it"}
+            </button>
+          </section>
+
+          <section className="ask-sec ask-edit">
+            <label className="ask-label" htmlFor="snap-question">
+              Your question
+            </label>
             <textarea
+              id="snap-question"
               ref={questionRef}
-              className="snapc-q snapc-q-input"
-              aria-label="Your question"
+              className="ask-q"
               placeholder="Type your question…"
               rows={1}
               maxLength={QUESTION_MAX}
               value={question}
               onChange={(e) => editQuestion(e.target.value)}
-              // An idea's question is all selected, so typing replaces it (after the tap has
-              // placed the caret, or the tap would undo it).
-              onFocus={(e) => {
-                const box = e.currentTarget;
-                if (idea) setTimeout(() => box.select(), 0);
-              }}
-              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), (e.target as HTMLElement).blur())}
+              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), e.currentTarget.blur())}
             />
-            <div className={`snapc-answers${emoji ? "" : answers.length > 2 ? " snapc-grid" : ""}`} style={{ "--n": answers.length } as CSSProperties}>
+            {error && (
+              <p className="poll-error ask-error" role="alert">
+                {error}
+              </p>
+            )}
+            <span className="ask-label" id="snap-answers">
+              Answers
+            </span>
+            {/* Long answers get a row each, so they show whole. */}
+            <div className={`ask-answers${answers.some((a) => a.length > 12) ? " ask-answers-wide" : ""}`} ref={answersRef} role="group" aria-labelledby="snap-answers">
               {answers.map((a, i) => (
-                <span key={i} className={`snapc-answer snapc-edit${emoji ? " snapc-emoji" : ""}`}>
-                  <input
-                    aria-label={`Answer ${i + 1}`}
-                    placeholder={`Answer ${i + 1}`}
-                    maxLength={ANSWER_MAX}
-                    value={a}
-                    onChange={(e) => editAnswer(i, e.target.value)}
-                  />
-                  {typing && answers.length > 2 && (
-                    <button
-                      type="button"
-                      className="snapc-x"
-                      aria-label={`Remove answer ${i + 1}`}
-                      onPointerDown={keep}
-                      onClick={() => pickAnswers(answers.filter((_, n) => n !== i))}
-                    >
+                <span key={i} className="ask-answer">
+                  <input aria-label={`Answer ${i + 1}`} placeholder={`Answer ${i + 1}`} maxLength={ANSWER_MAX} value={a} onChange={(e) => editAnswer(i, e.target.value)} onKeyDown={nextBox} />
+                  {answers.length > 2 && (
+                    <button type="button" className="ask-x" aria-label={`Remove answer ${i + 1}`} onPointerDown={keep} onClick={() => pickAnswers(answers.filter((_, n) => n !== i))}>
                       ×
                     </button>
                   )}
                 </span>
               ))}
-              {typing && answers.length < MAX_ANSWERS && (
-                <button type="button" className="snapc-add" aria-label="Add an answer" onPointerDown={keep} onClick={() => pickAnswers([...answers, ""])}>
-                  +
+              {answers.length < MAX_ANSWERS && (
+                <button type="button" className={`ask-add${answers.length === 0 ? " ask-add-first" : ""}`} onPointerDown={keep} onClick={addAnswer}>
+                  + Add answer
                 </button>
               )}
+              {offers.length > 0 && (
+                <div className="ask-offers">
+                  <small>Or tap a pair to fill them in:</small>
+                  {offers.map((list) => (
+                    <button key={list.join("|")} type="button" className="ask-chip" onPointerDown={keep} onClick={() => pickAnswers(list)}>
+                      {list.join(" / ")}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          </SnapCardShell>
-        </div>
+          </section>
 
-        {keyboard ? null : typing && idea ? (
-          <>
-            <p className="ask-label">Type your own, or pick an idea</p>
-            <div className="ask-chips">
-              {SNAP_IDEAS.map((t) => (
-                <button key={t.id} type="button" className="ask-chip" aria-pressed={idea === t.id} onPointerDown={keep} onClick={() => pickIdea(t.id)}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </>
-        ) : typing ? (
-          <>
-            <p className="ask-label">Answers</p>
-            <div className="ask-chips">
-              {answerIdeas.map((list) => (
-                <button key={list.join("|")} type="button" className="ask-chip" aria-pressed={same(answers, list)} onPointerDown={keep} onClick={() => pickAnswers(list)}>
-                  {isEmojiAnswers(list) ? list.join("") : list.join(" / ")}
-                </button>
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="ask-label">Tap the question to type your own, or pick an idea</p>
+          <section className="ask-sec" hidden={keyboard}>
+            <span className="ask-label">Or pick an idea</span>
             <div className="ask-chips">
               {SNAP_IDEAS.map((t) => (
                 <button key={t.id} type="button" className="ask-chip" aria-pressed={idea === t.id} onClick={() => pickIdea(t.id)}>
@@ -452,33 +477,28 @@ export function SnapScreen() {
                 </button>
               ))}
             </div>
-          </>
-        )}
+          </section>
 
-        <div className="ask-bar" hidden={keyboard}>
-          {error && (
-            <p className="poll-error ask-error" role="alert">
-              {error}
-            </p>
-          )}
-          {!typing && (
-            <div className="ask-seg" role="radiogroup" aria-label="Who sees it">
+          <section className="ask-sec" hidden={keyboard}>
+            <span className="ask-label" id="snap-audience">
+              Who sees it
+            </span>
+            <div className="ask-aud" role="radiogroup" aria-labelledby="snap-audience">
               {AUDIENCES.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={sendTo === o.id}
-                  disabled={blocked(o.id)}
-                  onClick={() => pickAudience(o.id)}
-                >
-                  {o.name}
-                  <small>{o.id === "circle" && friends === 0 ? "add friends first" : o.id === "public" && tooNew ? "from tomorrow" : o.text}</small>
+                <button key={o.id} type="button" role="radio" aria-checked={sendTo === o.id} disabled={blocked(o.id)} onClick={() => pickAudience(o.id)}>
+                  <span>
+                    <b>{o.name}</b>
+                    <small>{o.id === "circle" && friends === 0 ? "Add friends first" : o.id === "public" && tooNew ? "From tomorrow (new accounts wait a day)" : o.text}</small>
+                  </span>
+                  <span className="ask-dot" aria-hidden="true" />
                 </button>
               ))}
             </div>
-          )}
-          <button type="button" className="ask-send press" onPointerDown={keep} onClick={send} disabled={!!problem}>
+          </section>
+        </div>
+
+        <div className="ask-bar" hidden={keyboard}>
+          <button type="button" className="ask-send press" onClick={send} disabled={!!problem}>
             {problem ?? AUDIENCES.find((o) => o.id === sendTo)!.send}
           </button>
         </div>

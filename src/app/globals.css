@@ -2905,66 +2905,101 @@ button.ghost-action { cursor: pointer; }
 /* Snap screens. */
 .cam-title { margin: 0; color: var(--white); font-family: var(--font-display); font-size: 18px; font-weight: 800; }
 
-/* Ask: the card is the editor. Dark, like the camera before it. */
+/* Three or four worded answers: two by two. */
+.snapc-grid { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
+
+/* Ask: one page that scrolls like the feed, dark like the camera before it. The photo on its
+   own (half the screen at most, so the question starts on screen), the question and answers,
+   ideas, who sees it; Send stays pinned. With the keyboard up only the question and answers show. */
 .ask-screen {
   position: fixed;
   inset: 0;
   z-index: 40;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   overflow-y: auto;
-  padding: calc(10px + env(safe-area-inset-top)) 0 0;
+  overscroll-behavior: contain;
   background: #0d0a18;
   color: var(--white);
 }
-.ask-screen .cam-top { padding: 0 12px 10px; }
-.ask-card { width: min(calc(100% - 64px), 400px, calc((100dvh - 370px - env(safe-area-inset-top)) * 0.75)); flex: none; transition: width 0.25s var(--ease-pop); }
-.ask-card-typing { width: max(210px, min(calc(100% - 64px), 400px, calc((100dvh - 90px - env(safe-area-inset-top)) * 0.75))); }
-/* Keyboard up: only the card (fitted above the keyboard), and on it just the photo, question and answers. */
-.ask-card-typing .snapc-badges,
-.ask-card-typing .snapc-name small { display: none; }
-.ask-card-typing .snapc-answers { gap: 6px; }
-.ask-card-typing .snapc-answers:has(.snapc-add):not(.snapc-grid) { grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)) 32px; }
-.ask-card-typing .snapc-answer { min-height: 40px; padding-inline: 4px; font-size: 13px; }
-.ask-card-typing .snapc-add { min-width: 32px; min-height: 40px; font-size: 18px; }
-.ask-card .snapc { border-color: rgb(255 255 255 / 0.2); }
-.snapc-q-input {
-  width: 100%;
-  min-height: 1.15em;
-  padding: 0;
+.ask-screen [hidden] { display: none; }
+.ask-top {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+  background: #0d0a18;
+}
+.ask-top .cam-title { flex: 1; min-width: 0; text-align: center; }
+.ask-thumb { width: 30px; height: 40px; flex: none; border-radius: 8px; object-fit: cover; opacity: 0; transform: scale(0.8); transition: opacity 0.2s, transform 0.2s; }
+.ask-thumb-on { opacity: 1; transform: none; }
+.ask-body { display: flex; flex-direction: column; gap: 22px; padding: 4px 16px 24px; }
+.ask-photo { position: relative; align-self: center; width: min(100%, 420px, calc(50dvh * 0.75)); }
+.ask-photo-img { display: block; width: 100%; aspect-ratio: 3 / 4; border: 2px solid rgb(255 255 255 / 0.18); border-radius: 22px; object-fit: cover; }
+.ask-photo .snapc { border-color: rgb(255 255 255 / 0.2); }
+.ask-pchip {
+  position: absolute;
+  z-index: 2;
+  padding: 7px 12px;
   border: 0;
-  border-radius: 6px;
-  background: transparent;
+  border-radius: 999px;
+  background: rgb(13 10 24 / 0.72);
   color: var(--white);
+  font-size: 13px;
+  font-weight: 800;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.ask-retake { top: 10px; left: 10px; }
+.ask-look { right: 10px; bottom: 10px; }
+/* On the preview, out of the way of the card's own name and answers. */
+.ask-look-off { top: -14px; right: 10px; background: var(--sun); color: var(--ink); }
+.ask-sec { display: flex; flex-direction: column; gap: 10px; }
+.ask-label { color: rgb(255 255 255 / 0.7); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.ask-q {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid rgb(255 255 255 / 0.16);
+  border-radius: 18px;
+  background: rgb(255 255 255 / 0.07);
+  color: var(--white);
+  caret-color: var(--sun);
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
   resize: none;
   field-sizing: content;
-  caret-color: var(--sun);
   outline: none;
 }
-.snapc-q-input::placeholder { color: rgb(255 255 255 / 0.75); }
-.snapc-q-input:focus { background: rgb(13 10 24 / 0.35); box-shadow: 0 0 0 6px rgb(13 10 24 / 0.35); }
-.snapc-edit { padding: 0 6px; cursor: text; }
-.snapc-edit input {
+.ask-q::placeholder { color: rgb(255 255 255 / 0.5); }
+.ask-q:focus, .ask-answer:focus-within { border-color: var(--sun); box-shadow: 0 0 0 3px rgb(255 210 63 / 0.3); }
+.ask-error { margin: 0; padding: 10px 14px; border-radius: 14px; background: var(--white); }
+.ask-answers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ask-answers-wide { grid-template-columns: minmax(0, 1fr); }
+.ask-answer { position: relative; display: flex; min-width: 0; height: 48px; border: 2px solid var(--ink); border-radius: 16px; background: var(--white); box-shadow: 2px 2px 0 #000; }
+.ask-answer input {
   width: 100%;
   min-width: 0;
-  padding: 0;
+  padding: 0 12px;
   border: 0;
   background: transparent;
-  color: inherit;
+  color: var(--ink);
   font: inherit;
+  font-size: 16px;
+  font-weight: 800;
   text-align: center;
   outline: none;
 }
-.snapc-edit input::placeholder { color: var(--muted); font-size: 13px; }
-.snapc-edit:focus-within { box-shadow: 0 0 0 3px var(--sun), var(--shadow-sm); }
-.snapc-x {
+.ask-answer input::placeholder { color: var(--muted); font-size: 14px; font-weight: 600; }
+.ask-x {
   position: absolute;
   top: -1px;
   right: -1px;
   display: grid;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   place-items: center;
   padding: 0;
   border: 0;
@@ -2974,22 +3009,12 @@ button.ghost-action { cursor: pointer; }
   font-size: 14px;
   line-height: 1;
 }
-.snapc-add {
-  min-width: 40px;
-  min-height: 46px;
-  border: 2px solid rgb(255 255 255 / 0.75);
-  border-radius: 16px;
-  background: rgb(255 255 255 / 0.16);
-  color: var(--white);
-  font-size: 22px;
-  font-weight: 800;
-}
-/* While asking: the answers in a row, then a small + (--n is the number of answers). */
-.snapc-answers:has(.snapc-add):not(.snapc-grid) { grid-auto-flow: row; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)) 40px; }
-/* Three or four worded answers: two by two. */
-.snapc-grid { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
-.ask-label { align-self: stretch; margin: 16px 16px 8px; color: rgb(255 255 255 / 0.7); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
-.ask-chips { display: flex; align-self: stretch; flex-wrap: wrap; gap: 8px; padding: 0 16px; }
+.ask-add { height: 48px; border: 2px dashed rgb(255 255 255 / 0.35); border-radius: 16px; background: transparent; color: var(--white); font-size: 15px; font-weight: 800; }
+/* No answers yet: the one thing to do next. */
+.ask-add-first { grid-column: 1 / -1; border-color: var(--sun); color: var(--sun); }
+.ask-offers { display: flex; grid-column: 1 / -1; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ask-offers small { width: 100%; color: rgb(255 255 255 / 0.7); font-size: 13px; }
+.ask-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .ask-chip {
   height: 38px;
   padding: 0 14px;
@@ -3002,34 +3027,32 @@ button.ghost-action { cursor: pointer; }
 }
 .ask-chip[aria-pressed="true"] { background: var(--sun); color: var(--ink); }
 .ask-done { height: 38px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--sun); color: var(--ink); font-weight: 800; }
+/* Who sees it: a row each, with room to say why one can't be picked yet. */
+.ask-aud { display: flex; flex-direction: column; gap: 8px; }
+.ask-aud button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 2px solid rgb(255 255 255 / 0.12);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 0.06);
+  color: var(--white);
+  text-align: left;
+}
+.ask-aud b { display: block; font-size: 16px; font-weight: 800; }
+.ask-aud small { font-size: 13px; opacity: 0.75; }
+.ask-dot { width: 20px; height: 20px; flex: none; margin-left: auto; border: 2px solid rgb(255 255 255 / 0.5); border-radius: 50%; }
+.ask-aud [aria-checked="true"] { border-color: var(--white); background: var(--white); color: var(--ink); }
+.ask-aud [aria-checked="true"] .ask-dot { border: 6px solid var(--ink); }
+.ask-aud button:disabled { opacity: 0.45; }
 .ask-bar {
   position: sticky;
   bottom: 0;
-  align-self: stretch;
-  margin-top: auto;
-  padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
-  background: linear-gradient(transparent, #0d0a18 24%);
+  z-index: 3;
+  padding: 20px 16px calc(14px + env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, #0d0a18 30%);
 }
-.ask-error { margin: 0 0 10px; padding: 10px 14px; border-radius: 14px; background: var(--white); }
-/* Who sees it: three plain choices right above Send. */
-.ask-seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin-bottom: 10px; padding: 4px; border-radius: 18px; background: rgb(255 255 255 / 0.1); }
-.ask-seg button {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 7px 2px;
-  border: 0;
-  border-radius: 14px;
-  background: transparent;
-  color: var(--white);
-  font-size: 13.5px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-.ask-seg small { font-size: 11px; font-weight: 600; opacity: 0.7; }
-.ask-seg [aria-checked="true"] { background: var(--white); color: var(--ink); }
 .ask-send {
   width: 100%;
   height: 56px;

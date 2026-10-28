@@ -233,17 +233,22 @@ The first slice of the build order:
   is one, and the screen lights up white for the front camera. The camera turns off while the app
   is in the background and back on when you return. Camera shots get the 📸 Live badge. A gallery photo
   that's upright goes straight through; any other photo gets a **Frame your photo** step (drag
-  and pinch to fill the card, or **Show whole photo** on a blurred fill). Then one screen
-  finishes it: the last idea is already filled in on the photo (so Send works straight away) and
-  the keyboard comes up on it with its text selected (typing replaces it; iPhone only opens the
-  keyboard on a tap). While the keyboard is up only the photo with its question and answers
-  shows; put it away (Done, ‹, or the phone's own back/hide key: the screen notices) and the
-  ideas, Who sees it and Send come back. Ideas (Buy or skip? / Rate my fit / Should I go? / This or that? / Rate my food / Too
-  much?) wrap, no sideways scrolling. Your own question gets 2–4 answers you can edit (+ to add, × to remove),
-  with suggestions above: the two sides of an "X or Y?" question, Yes / No, or 🔥😍😐🙅.
-  **Who sees it** sits right above Send, and Send says where it's going ("Send to friends →"):
-  👥 Friends (they see who picked what; greyed out with "add friends first" until you have one),
-  🌍 Everyone (counts only; "from tomorrow" for accounts under a day old) or 🔗 Link only (in nobody's feed: after Send, "Send it to someone" opens with
+  and pinch to fill the card, or **Show whole photo** on a blurred fill). Then one page finishes
+  it, scrolling like the feed with **Send** pinned at the bottom: the photo on its own (half the
+  screen at most, with ↺ Retake and **👁 How friends see it**, which shows the card as it will look
+  in the feed), then **Your question** and **Answers** (the last idea is filled in, so Send works
+  straight away), the ideas, and **Who sees it**. Scroll past the photo and it shows small in the
+  top bar. Nothing is focused when the page opens (iPhone only opens the keyboard for a tap); while
+  the keyboard is up only the question and answers show, and putting it away (Done, ‹, or the
+  phone's own back/hide key: the page notices) brings the rest back. Ideas (Buy or skip? / Rate my
+  fit / Should I go? / This or that? / Rate my food / Too much?) wrap, no sideways scrolling.
+  Typing your own question, or clearing it, removes the idea's answers: only **+ Add answer** is
+  left, with pairs to fill in with one tap (the two sides of an "X or Y?" question, or Yes / No),
+  and Send says what's missing ("Add 2 answers"). Picking an idea brings its answers back. 2–4
+  answers (× to remove); long ones get a row each. **Who sees it** is a row per choice, and Send
+  says where it's going ("Send to friends →"):
+  👥 Friends (they see who picked what; greyed out with "Add friends first" until you have one),
+  🌍 Everyone (counts only; "From tomorrow" for accounts under a day old) or 🔗 Link only (in nobody's feed: after Send, "Send it to someone" opens with
   WhatsApp first; whoever opens the link can see it and vote). The last idea and audience are
   remembered. Every photo is made
   exactly 3:4 at 1080 × 1440 on the phone (WebP, about 150–400 KB, location data removed), so
