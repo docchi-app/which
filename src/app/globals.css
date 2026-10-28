@@ -43,7 +43,7 @@ body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
-  /* No pull-to-refresh or rubber-band on the page: swipes belong to the feed. */
+  /* No browser pull-to-refresh or rubber band: the feed has its own pull to refresh. */
   overscroll-behavior-y: none;
 }
 
@@ -201,69 +201,115 @@ button {
   box-shadow: 2px 2px 0 var(--coral);
 }
 
-/* ─── Card stack ─────────────────────────────────────────────────────────── */
+/* ─── The feed: a list you scroll ───────────────────────────────────────── */
 
-.stack {
-  position: relative;
-  flex: 1;
-  padding: 0 20px;
-}
-.stack-deck {
-  position: relative;
-}
+/* The page scrolls (so a browser's address bar slides away too). clip, not hidden: hidden
+   would make .screen a scroll box and break the sticky header. */
+.screen-feed { overflow-x: clip; }
 
-/* The feed is one fixed screen: header, tabs, then the card filling what's
-   left above the nav. A tall card scrolls inside itself, never the page. */
-.screen-feed {
-  height: 100dvh;
-  padding-bottom: 0;
-  overflow: hidden;
+/* Logo row, banners and tabs stick to the top. Scrolling down slides it up by --hide so only
+   the tabs stay (the slim bar); scrolling up brings it back. Moved, never resized: nothing
+   below it shifts. */
+.feed-top {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  background: var(--cream);
+  transition: transform 0.22s var(--ease-pop), box-shadow 0.22s;
 }
-.screen-feed .stack {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  padding-bottom: calc(120px + env(safe-area-inset-bottom));
+.feed-top.slim {
+  transform: translateY(calc(-1 * var(--hide, 0px)));
+  box-shadow: 0 2px 0 var(--line);
 }
-.screen-feed .stack-deck {
-  display: flex;
-  flex-direction: column;
-  flex: 0 1 auto;
-  min-height: 0;
-}
-.swipe-card {
+.feed-top .tabs { position: relative; align-items: center; }
+.tabs-bell { margin-left: auto; transition: opacity 0.18s; }
+.feed-top:not(.slim) .tabs-bell { visibility: hidden; opacity: 0; }
+.bell-mini {
   position: relative;
   display: flex;
-  flex-direction: column;
-  min-height: 0;
-  will-change: transform;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border: var(--outline);
+  border-radius: 12px;
+  background: var(--sun);
+  box-shadow: var(--shadow-sm);
 }
-.swipe-card > .poll-card {
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
-}
-.swipe-card > .poll-card::-webkit-scrollbar { display: none; }
-/* The card scrolls when it must; its parts never get squashed to fit. */
-.swipe-card > .poll-card > * { flex-shrink: 0; }
-/* Decorative cards peeking out behind the current poll; they follow its height. */
-.stack-card {
+.bell-mini .nav-badge, .bell-mini .nav-dot { top: -5px; right: -5px; }
+/* "New polls ↑" floats just under the tabs, over the list. */
+.feed-top .fresh-pill {
   position: absolute;
-  border: var(--outline-bold);
-  border-radius: var(--radius-hero);
+  top: calc(100% + 6px);
+  left: 50%;
+  margin: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }
-.stack-card-back {
-  inset: 18px 10px -18px 14px;
-  background: var(--sky);
-  --r: -4deg;
-  animation: floaty 5s ease-in-out infinite;
+/* The bottom bar steps back a little while you scroll down. */
+.bottom-bar { transition: opacity 0.25s; }
+html.feed-scrolling .bottom-bar { opacity: 0.6; }
+
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 2px 20px 0;
+  /* Its scroll position is kept by hand when old items are let go. */
+  overflow-anchor: none;
 }
-.stack-card-mid {
-  inset: 10px 16px -10px 8px;
+.feed-label, .feed-divider {
+  margin: 4px 4px -6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.feed-label { color: var(--coral); }
+.feed-divider { display: flex; align-items: center; gap: 10px; }
+.feed-divider::before, .feed-divider::after { content: ""; flex: 1; border-top: 2px dashed var(--line); }
+.feed-end { min-height: 0; }
+.feed-end .poll-question { font-size: 24px; }
+.feed-end-marker { height: 1px; }
+.ghost-card { min-height: 0; box-shadow: var(--shadow); opacity: 0.7; animation: none; }
+
+/* Pull to refresh: the eyes come down with the list and spin while it loads. */
+.ptr {
+  position: absolute;
+  top: var(--ptr-top, 120px);
+  left: 50%;
+  z-index: 11;
+  width: 40px;
+  height: 40px;
+  margin-left: -20px;
+  opacity: 0;
+  pointer-events: none;
+}
+.ptr svg { width: 40px; height: 40px; }
+.ptr-spin svg { animation: ptr-spin 0.8s linear infinite; }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }
+
+/* Other people's votes landing on a card you're looking at. */
+.votes-landed {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  padding: 2px 9px;
+  border: var(--outline);
+  border-radius: 999px;
   background: var(--mint);
-  --r: 3deg;
-  animation: floaty 6s ease-in-out infinite;
+  box-shadow: var(--shadow-sm);
+  font-size: 13px;
+  font-weight: 800;
+  animation: landed 1.6s ease both;
+  pointer-events: none;
+}
+@keyframes landed {
+  0% { opacity: 0; transform: translateY(6px) scale(0.9); }
+  15%, 75% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-6px); }
 }
 
 .poll-card {
@@ -277,28 +323,6 @@ button {
   background: var(--white);
   box-shadow: var(--shadow-lg);
   animation: rise 0.55s var(--ease-pop) both;
-}
-
-/* A card brought back with a downward swipe drops in from above. */
-@keyframes drop {
-  from { opacity: 0; transform: translateY(-20px) scale(0.97); }
-  to { opacity: 1; transform: none; }
-}
-.enter-prev .poll-card { animation-name: drop; }
-
-.swipe-hint {
-  position: absolute;
-  top: calc(100% + 22px);
-  left: 0;
-  right: 0;
-  display: none;
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  text-align: center;
-}
-@media (hover: none) {
-  .swipe-hint { display: block; }
 }
 
 .poll-meta {
@@ -2735,12 +2759,11 @@ button.ghost-action { cursor: pointer; }
   background: linear-gradient(170deg, var(--lilac), var(--sky));
   color: var(--white);
 }
-/* In the feed, keep the whole card on screen on short phones. */
-.screen-feed .snapc { width: min(100%, calc((100dvh - 330px) * 0.75)); align-self: center; }
 /* 3:4, unless a long question with long answers needs more room: then the photo gets taller
    rather than the text running into the name on top. */
 .snapc::before { grid-area: 1 / 1; aspect-ratio: 3 / 4; content: ""; }
-.snapc-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.snapc-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.35s; }
+.snapc-img-in { opacity: 1; }
 .snapc-empty {
   position: absolute;
   inset: 0;
@@ -3378,14 +3401,9 @@ button.ghost-action { cursor: pointer; }
 /* Before voting: one slim line under the creator's name, tucked close to it. */
 .friends-voted-top { margin: -6px 0 -2px; }
 .friends-voted-top::after { content: none; }
-.feed-card .poll-actions {
-  position: sticky;
-  bottom: -16px;
-  z-index: 2;
-  margin: 0 -16px -16px;
-  padding: 8px 16px 12px;
-  background: inherit;
-}
+.feed-card .poll-actions { position: relative; padding-top: 8px; }
+/* Report sits at the far end now that Next is gone. */
+.poll-actions .more-btn { margin-left: auto; }
 
 /* ─── Profile: compact header, one stats strip, compact poll rows ──────── */
 .profile-screen .profile-banner { height: 92px; }
@@ -3612,26 +3630,25 @@ button.ghost-action { cursor: pointer; }
 .move-arrival .move-go { max-width: 360px; }
 
 /* ─── First visit: how Eithr works ───────────────────────────────────────
-   A small poll loops through the three moves every 6s: a tap lands on Chai, the results
-   fill in, the card swipes up to the next one. The captions and dots follow along. At rest
+   A small feed loops through the three moves every 6s: a tap lands on Chai, the results
+   fill in, the feed scrolls to the next poll (already peeking in below). The captions and dots follow along. At rest
    (reduced motion) it shows the results and the steps as a list. */
 .howto-sheet { --loop: 6s; align-items: center; gap: 12px; text-align: center; }
 .howto-sheet .sheet-title { font-size: 26px; }
 .howto-demo {
   position: relative;
   width: min(260px, 100%);
-  height: 150px;
+  height: 160px;
   flex: none;
   overflow: hidden;
   border: var(--outline);
   border-radius: 20px;
-  background: var(--white);
+  background: var(--cream);
   box-shadow: var(--shadow);
   text-align: left;
 }
-.howto-stack { position: absolute; inset: 0; animation: howto-swipe var(--loop) var(--ease-pop) infinite; }
-.howto-card { display: flex; height: 100%; flex-direction: column; justify-content: center; gap: 8px; padding: 12px 14px; }
-.howto-next { position: absolute; top: 100%; right: 0; left: 0; }
+.howto-stack { position: absolute; inset: 8px 8px auto; display: flex; flex-direction: column; gap: 10px; animation: howto-swipe var(--loop) var(--ease-pop) infinite; }
+.howto-card { display: flex; height: 112px; flex: none; flex-direction: column; justify-content: center; gap: 8px; padding: 10px 12px; border: 2px solid var(--ink); border-radius: 14px; background: var(--white); }
 .howto-q { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 800; line-height: 1.15; }
 .howto-opt {
   position: relative;
@@ -3662,7 +3679,7 @@ button.ghost-action { cursor: pointer; }
   background: rgb(255 255 255 / 0.85);
   opacity: 0;
 }
-.howto-tap { top: 38%; left: 72%; animation: howto-tap var(--loop) var(--ease-pop) infinite; }
+.howto-tap { top: 31%; left: 72%; animation: howto-tap var(--loop) var(--ease-pop) infinite; }
 .howto-tap::after {
   content: "";
   position: absolute;
@@ -3700,7 +3717,7 @@ button.ghost-action { cursor: pointer; }
 @keyframes howto-pct { 0%, 38% { opacity: 0; } 46%, 95% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes howto-mine { 0%, 27% { border-width: 2px; } 28%, 95% { border-width: 3px; } 100% { border-width: 2px; } }
 @keyframes howto-swipe-hint { 0%, 62% { opacity: 0; transform: translateY(0); } 66% { opacity: 1; transform: translateY(0); } 80% { opacity: 1; transform: translateY(-260%); } 86%, 100% { opacity: 0; transform: translateY(-260%); } }
-@keyframes howto-swipe { 0%, 70% { transform: translateY(0); } 84%, 97% { transform: translateY(-100%); } 97.01%, 100% { transform: translateY(0); } }
+@keyframes howto-swipe { 0%, 70% { transform: translateY(0); } 84%, 97% { transform: translateY(-122px); } 97.01%, 100% { transform: translateY(0); } }
 @keyframes howto-cap1 { 0%, 31% { opacity: 1; } 34%, 97% { opacity: 0; } 100% { opacity: 1; } }
 @keyframes howto-cap2 { 0%, 31% { opacity: 0; } 34%, 64% { opacity: 1; } 67%, 100% { opacity: 0; } }
 @keyframes howto-cap3 { 0%, 64% { opacity: 0; } 67%, 97% { opacity: 1; } 100% { opacity: 0; } }
@@ -3728,32 +3745,3 @@ button.ghost-action { cursor: pointer; }
   .howto-steps strong { color: var(--ink); }
 }
 
-/* After the first vote on this device: a bubble over Next until they move on. */
-.next-btn { position: relative; }
-.next-nudge {
-  position: absolute;
-  right: -2px;
-  bottom: calc(100% + 8px);
-  padding: 6px 10px;
-  border: var(--outline);
-  border-radius: 12px;
-  background: var(--ink);
-  box-shadow: var(--shadow-sm);
-  color: var(--cream);
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.2;
-  white-space: nowrap;
-  pointer-events: none;
-  animation: pop 0.4s var(--ease-pop) 1.2s both, next-nudge 1.4s ease-in-out 1.6s infinite;
-}
-.next-nudge::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  right: 22px;
-  border: 7px solid transparent;
-  border-top-color: var(--ink);
-}
-@keyframes next-nudge { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }

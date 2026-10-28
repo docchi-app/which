@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import { averageColor } from "./snap-photo";
 
 // Quick snap: a photo poll that disappears after 24 hours. Photos are made on
 // the phone as exact 3:4 images (1080 × 1440, see snap-photo.ts), uploaded to
@@ -64,7 +65,9 @@ export async function postSnap(input: {
 
   const blob = input.photo;
   const ext = blob.type === "image/webp" ? "webp" : "jpg";
-  const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+  // The photo's average colour rides in its name, so the feed can paint it while the photo loads.
+  const tint = await averageColor(blob).catch(() => null);
+  const path = `${user.id}/${crypto.randomUUID()}${tint ? `-c${tint}` : ""}.${ext}`;
   const up = await supabase.storage.from("snaps").upload(path, blob, { contentType: blob.type, cacheControl: "86400", upsert: false });
   if (up.error) {
     console.error("snap upload:", up.error.message);
@@ -84,6 +87,12 @@ export async function postSnap(input: {
     throw new SnapError(/docchi:(\w+)/.exec(error.message)?.[1] ?? "failed");
   }
   return id as string;
+}
+
+/** The colour saved in a snap photo's name ("…-c3a6ea5.webp" → "#3a6ea5"), if any. */
+export function photoTint(path: string | null | undefined): string | null {
+  const m = /-c([0-9a-f]{6})\.(?:webp|jpg)$/.exec(path ?? "");
+  return m ? `#${m[1]}` : null;
 }
 
 /** Deletes my snap for everyone, and its photo straight away (the daily clean-up catches it otherwise). */

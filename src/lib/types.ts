@@ -42,8 +42,21 @@ export type Poll = {
   closesAt: string;
   myOptionId: string | null;
   options: PollOption[];
+  /** Votes in the last hour ("🔥 41 in the last hour"); arrives with the live numbers. */
+  recentVotes?: number;
   /** Where the next page starts, for polls that came from a list. */
   cursor?: string;
+};
+
+/** The numbers that move on a card while it's on screen. */
+export type LiveCounts = {
+  id: string;
+  voteCount: number;
+  viewCount: number;
+  commentCount: number;
+  recentVotes: number;
+  /** Each answer's votes, null until you've voted (or the poll closed). */
+  votes: Record<string, number | null>;
 };
 
 export type VoteResult = {

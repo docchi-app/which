@@ -1,6 +1,6 @@
 import { currentOrGuest, rememberGuestPick, SignInRequired } from "./auth";
 import { getSupabase } from "./supabase";
-import type { FeedTab, Poll, PollKind, PollOption, Visibility, VoteResult } from "./types";
+import type { FeedTab, LiveCounts, Poll, PollKind, PollOption, Visibility, VoteResult } from "./types";
 
 type FeedRow = {
   id: string;
@@ -109,6 +109,38 @@ export async function fetchPoll(id: string): Promise<Poll | null> {
   if (error) throw error;
   const row = (data as FeedRow[])[0];
   return row ? toPoll(row) : null;
+}
+
+// Before the live-feed migration, live_counts doesn't exist: ask for each poll instead.
+let liveCountsMissing = false;
+
+/** Votes, views and comments for the cards on screen (at most 12), in one small request. */
+export async function fetchLiveCounts(ids: string[]): Promise<LiveCounts[]> {
+  const supabase = getSupabase();
+  const some = ids.slice(0, 12);
+  if (!some.length) return [];
+  if (supabase && !liveCountsMissing) {
+    const { data, error } = await supabase.rpc("live_counts", { ids: some });
+    if (!error) {
+      type Row = { id: string; vote_count: number; view_count: number; comment_count: number; recent_votes: number; options: { id: string; votes: number | null }[] };
+      return (data as Row[]).map((r) => ({
+        id: r.id,
+        voteCount: r.vote_count,
+        viewCount: r.view_count,
+        commentCount: r.comment_count,
+        recentVotes: r.recent_votes,
+        votes: Object.fromEntries(r.options.map((o) => [o.id, o.votes])),
+      }));
+    }
+    if (error.code !== "PGRST202") throw error;
+    liveCountsMissing = true;
+  }
+  const polls = await Promise.all(some.map((id) => fetchPoll(id).catch(() => null)));
+  return polls.flatMap((p) =>
+    p
+      ? [{ id: p.id, voteCount: p.voteCount, viewCount: p.viewCount ?? 0, commentCount: p.commentCount, recentVotes: p.recentVotes ?? 0, votes: Object.fromEntries(p.options.map((o) => [o.id, o.votes])) }]
+      : [],
+  );
 }
 
 /** Opened a link-only poll: it shows in my feed from now on. */

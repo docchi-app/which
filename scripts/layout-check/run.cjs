@@ -73,7 +73,7 @@ const SCREENS = ["/friends", "/leaders", "/profile", "/settings", "/activity", "
   // The card's action row: one line at its normal height, nothing past its edge.
   async function checkRow(label) {
     const bad = await p.evaluate(() => {
-      const row = document.querySelector(".swipe-card .poll-actions");
+      const row = document.querySelector(".feed-item .poll-actions");
       if (!row) return null;
       const end = row.clientWidth - parseFloat(getComputedStyle(row).paddingRight);
       const kids = [...row.children].filter((c) => c.offsetWidth > 1);
@@ -101,24 +101,24 @@ const SCREENS = ["/friends", "/leaders", "/profile", "/settings", "/activity", "
       for (const [name, id] of Object.entries(POLLS)) {
         await go(`/p/${id}`);
         if (phase === "after vote" && w === CARD_SIZES[0][0]) {
-          const answer = p.locator(".swipe-card .answer, .swipe-card button.snapc-answer").first();
+          const answer = p.locator(".feed-item .answer, .feed-item button.snapc-answer").first();
           if (await answer.count()) {
             await answer.click();
             await p.waitForTimeout(2200);
           }
         }
-        await check(`${name} ${w}px ${phase}`, ".swipe-card .poll-card");
+        await check(`${name} ${w}px ${phase}`, ".feed-item .poll-card");
         await checkRow(`${name} ${w}px ${phase}`);
       }
     }
   }
 
-  // Everyday content on full-size phones: once voted, the card fits without scrolling (a card
-  // that scrolls by a few pixels jumps under your thumb), and ✓ stays on your pick's line.
+  // Everyday content on full-size phones: once voted, nothing scrolls inside the card, and ✓
+  // stays on your pick's line.
   for (const [w, h] of [[390, 844], [411, 851], [412, 892]]) {
     await p.setViewportSize({ width: w, height: h });
     await go("/p/a9000000-0000-4000-8000-000000000009");
-    const answer = p.locator(".swipe-card .answer").first();
+    const answer = p.locator(".feed-item .answer").first();
     if (await answer.count()) {
       await answer.click();
       await p.waitForTimeout(2200);
@@ -126,7 +126,7 @@ const SCREENS = ["/friends", "/leaders", "/profile", "/settings", "/activity", "
     await p.addStyleTag({ content: "*{animation:none!important;transition:none!important}" });
     await p.waitForTimeout(300);
     const bad = await p.evaluate(() => {
-      const card = document.querySelector(".swipe-card .poll-card");
+      const card = document.querySelector(".feed-item .poll-card");
       const over = card.scrollHeight - card.clientHeight;
       if (over > 1) return `scrolls by ${over}px`;
       const check = card.querySelector(".result-check");
@@ -144,6 +144,38 @@ const SCREENS = ["/friends", "/leaders", "/profile", "/settings", "/activity", "
       failed++;
       console.log(`✗ everyday mystery ${w}x${h} after vote: ${bad}`);
       await p.screenshot({ path: `${OUT}everyday-${w}x${h}.png` });
+    }
+  }
+
+  // The scrolling feed: scrolled down, the slim bar keeps all three tabs and the bell on one
+  // line inside the screen; no card in the list ever scrolls inside itself.
+  for (const [w, h] of CARD_SIZES) {
+    await p.setViewportSize({ width: w, height: h });
+    await go("/");
+    await p.mouse.wheel(0, 900);
+    await p.waitForTimeout(800);
+    const bad = await p.evaluate(() => {
+      const out = [];
+      const top = document.querySelector(".feed-top");
+      if (!top?.classList.contains("slim")) out.push("no slim bar after scrolling down");
+      const bar = top?.querySelector(".tabs");
+      const kids = [...(bar?.children ?? [])].filter((c) => c.offsetWidth > 1);
+      const mids = new Set(kids.map((c) => Math.round(c.getBoundingClientRect().top + c.getBoundingClientRect().height / 2)));
+      if (mids.size > 1) out.push("slim bar wraps to a second line");
+      for (const c of kids) if (c.getBoundingClientRect().right > innerWidth - 4) out.push(`slim bar: ${c.className.split(" ")[0] || c.tagName} past the edge`);
+      const barTop = bar?.getBoundingClientRect().top ?? -99;
+      if (barTop < -1 || barTop > 12) out.push(`slim bar sits at ${Math.round(barTop)}px`);
+      for (const c of document.querySelectorAll(".feed-item .poll-card")) {
+        if (c.scrollHeight > c.clientHeight + 1) out.push(`"${c.querySelector("h1")?.textContent?.slice(0, 30)}" scrolls inside itself`);
+      }
+      return out;
+    });
+    if (!bad.length) passed++;
+    else {
+      failed++;
+      console.log(`✗ feed ${w}px scrolled`);
+      for (const x of bad) console.log(`    ${x}`);
+      await p.screenshot({ path: `${OUT}feed-scrolled-${w}.png` });
     }
   }
 
@@ -190,11 +222,11 @@ const SCREENS = ["/friends", "/leaders", "/profile", "/settings", "/activity", "
     await p.setViewportSize({ width: w, height: h });
     await go("/");
     await check(`feed ${w}px`, "body");
-    await p.locator('.swipe-card [aria-label*="omment" i]').first().click().catch(() => {});
+    await p.locator('.feed-item [aria-label*="omment" i]').first().click().catch(() => {});
     await p.waitForTimeout(1200);
     await check(`comments ${w}px`, "body");
     await go("/");
-    await p.locator(".swipe-card button", { hasText: "Share" }).first().click().catch(() => {});
+    await p.locator(".feed-item button", { hasText: "Share" }).first().click().catch(() => {});
     await p.waitForTimeout(1200);
     await check(`share sheet ${w}px`, "body");
     for (const path of SCREENS) {

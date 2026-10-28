@@ -160,6 +160,16 @@ export async function fetchMetrics(days: number): Promise<DayMetrics[]> {
   }));
 }
 
+/** Views per day and votes per 100 views (counted since the live-feed migration ran). Null on an older database. */
+export async function fetchViewStats(days: number): Promise<Map<string, { views: number; per100: number | null }> | null> {
+  try {
+    const rows = await call<Record<string, unknown>[]>("admin_view_stats", { days });
+    return new Map(rows.map((r) => [r.day as string, { views: (r.views as number) ?? 0, per100: num(r.votes_per_100_views) }]));
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchSchedule(days = 21): Promise<ScheduleDay[]> {
   const rows = await call<Record<string, unknown>[]>("admin_schedule", { days });
   return rows.map((r) => ({

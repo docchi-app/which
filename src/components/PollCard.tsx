@@ -1,24 +1,28 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { SignInRequired } from "@/lib/auth";
 import { audienceLabel } from "@/lib/circle";
-import { castVote, fetchPoll } from "@/lib/polls";
-import { useLiveInterval } from "@/lib/useLiveInterval";
+import { castVote } from "@/lib/polls";
+import { useCountUp, useLiveCard, useNearScreen } from "@/lib/live";
 import { formatCount, percentages, timeLeft } from "@/lib/format";
 import type { Poll, VoteResult } from "@/lib/types";
 import { recordView, useCountView } from "@/lib/views";
-import { ArrowIcon, CommentIcon, ShareIcon } from "./icons";
+import { CommentIcon, ShareIcon } from "./icons";
 import { CirclePicks, FriendsVotedRow, LockedCircle } from "./CircleBits";
-import { CommentsSheet } from "./CommentsSheet";
 import { SnapPoll } from "./SnapCard";
-import { DeleteSnapSheet } from "./DeleteSnapSheet";
 import { NotificationPrompt } from "./Notifications";
-import { ReportSheet } from "./ReportSheet";
 import { useFitActions, ViewsAction } from "./ViewsAction";
 
-const LIVE_REFRESH_MS = 5000;
+// Sheets load only when they open: a feed of cards shouldn't carry them all up front.
+const CommentsSheet = dynamic(() => import("./CommentsSheet").then((m) => m.CommentsSheet), { ssr: false });
+const ReportSheet = dynamic(() => import("./ReportSheet").then((m) => m.ReportSheet), { ssr: false });
+const DeleteSnapSheet = dynamic(() => import("./DeleteSnapSheet").then((m) => m.DeleteSnapSheet), { ssr: false });
+
+// Busy enough to say so: "🔥 41 in the last hour".
+const HOT_VOTES = 5;
 // Below this many votes, an unvoted card invites you to be early instead of showing the count.
 const FEW_VOTES = 10;
 
@@ -50,15 +54,12 @@ type Props = {
   /** The viewer just posted this poll: nudge them to share it. */
   justCreated?: boolean;
   onVoted: (pollId: string, result: VoteResult) => void;
-  /** Fresher numbers for this poll arrived (live updates). */
+  /** The poll changed here (a new comment count). */
   onRefresh: (poll: Poll) => void;
   onNeedSignIn: (pollId: string, optionId: string) => void;
   /** A guest tapped "Sign in" to make their votes count. */
   onSaveVotes?: () => void;
   onShare: () => void;
-  onNext: () => void;
-  /** First vote on this device: a "Next one ↑" bubble points at Next. */
-  nudgeNext?: boolean;
   /** The viewer reported this poll. */
   onReported?: (pollId: string) => void;
   /** The viewer deleted their own snap. */
@@ -105,8 +106,6 @@ export function PollCard({
   onNeedSignIn,
   onSaveVotes,
   onShare,
-  onNext,
-  nudgeNext = false,
   onReported,
   onDeleted,
   openComments = false,
@@ -146,15 +145,38 @@ export function PollCard({
   const countSelf = () => setSelfView(poll.viewCount ?? 0);
   useCountView(cardRef, poll.id, poll.isMine || poll.locked, countSelf);
   const serverViews = poll.viewCount ?? 0;
-  const views = Math.max(serverViews + (selfView !== null && serverViews === selfView ? 1 : 0), poll.voteCount);
+  const views = useCountUp(Math.max(serverViews + (selfView !== null && serverViews === selfView ? 1 : 0), poll.voteCount));
+  // Live numbers while the card is on screen (the feed asks for all of them in one request).
+  useLiveCard(cardRef, poll.id, !closed && !poll.locked);
+  // Friends who voted and a snap's photo load once the card is about a screen away.
+  const near = useNearScreen(cardRef);
+
+  // Other people's votes landing: "+3" pops on the card for a moment.
+  const [landed, setLanded] = useState(0);
+  const lastCount = useRef(poll.voteCount);
+  const ownVoteAt = useRef(0);
+  useEffect(() => {
+    const more = poll.voteCount - lastCount.current;
+    lastCount.current = poll.voteCount;
+    if (more <= 0 || Date.now() - ownVoteAt.current < 3000) return;
+    setLanded(more); // a live update arrived: show it, briefly
+    const t = window.setTimeout(() => setLanded(0), 1600);
+    return () => window.clearTimeout(t);
+  }, [poll.voteCount]);
 
   async function vote(optionId: string) {
     if (lockingId || voted) return;
     if (!poll.isMine && recordView(poll.id)) countSelf();
     setLockingId(optionId);
     setError(null);
+    ownVoteAt.current = Date.now();
     try {
       const result = await castVote(poll.id, optionId);
+      ownVoteAt.current = Date.now();
+      // A tiny buzz when the vote locks in (Android; iPhone browsers don't vibrate).
+      try {
+        navigator.vibrate?.(10);
+      } catch {}
       setJustVoted(true);
       setBurst(true);
       onVoted(poll.id, result);
@@ -173,28 +195,6 @@ export function PollCard({
     }
   }
 
-  // Live: while this card is on screen, fetch fresh numbers every few seconds.
-  // Results stay hidden until you vote, so before that only the total moves.
-  useLiveInterval(
-    async () => {
-      if (lockingId) return;
-      try {
-        const fresh = await fetchPoll(poll.id);
-        const changed =
-          fresh &&
-          (fresh.voteCount !== poll.voteCount ||
-            fresh.viewCount !== poll.viewCount ||
-            fresh.commentCount !== poll.commentCount ||
-            fresh.options.some((o, i) => o.votes !== poll.options[i]?.votes));
-        if (changed) onRefresh({ ...fresh, question: fresh.question ?? poll.question });
-      } catch {
-        // Offline for a moment: try again on the next tick.
-      }
-    },
-    LIVE_REFRESH_MS,
-    !closed,
-  );
-
   // A guest's vote stays out of the totals until they sign in, but they should
   // still see themselves in the results.
   const guestVote = signedIn === false && voted;
@@ -202,7 +202,10 @@ export function PollCard({
   const pcts = percentages(shown.options.map((o) => o.votes ?? 0));
   const mineId = poll.myOptionId ?? lockingId;
   const mineIndex = poll.options.findIndex((o) => o.id === mineId);
-  const votesLabel = `${formatCount(shown.voteCount)} ${shown.voteCount === 1 ? "vote" : "votes"}`;
+  const shownVotes = useCountUp(shown.voteCount);
+  const votesLabel = `${formatCount(shownVotes)} ${shownVotes === 1 ? "vote" : "votes"}`;
+  const recent = !closed ? (poll.recentVotes ?? 0) : 0;
+  const hotLabel = recent >= HOT_VOTES ? ` · 🔥 ${formatCount(recent)} in the last hour` : "";
   // A handful of votes reads as "nobody's here"; before voting, say it as an invitation.
   const beforeVoteLabel =
     poll.voteCount === 0 ? "Be the first to vote" : poll.voteCount < FEW_VOTES ? "Be one of the first to vote" : votesLabel;
@@ -213,7 +216,7 @@ export function PollCard({
 
   if (poll.locked) {
     return (
-      <article className="poll-card poll-locked" aria-labelledby={`q-${poll.id}`}>
+      <article ref={cardRef} className="poll-card poll-locked" aria-labelledby={`q-${poll.id}`} data-poll={poll.id}>
         <div className="poll-meta">
           <span className="chip chip-small chip-circle">Friends</span>
           <span className="poll-by">
@@ -224,11 +227,6 @@ export function PollCard({
           </span>
         </div>
         <LockedCircle poll={poll} signedIn={signedIn} />
-        <div className="poll-actions">
-          <button type="button" className="skip-btn" onClick={onNext} aria-label="Skip to next poll">
-            Skip
-          </button>
-        </div>
       </article>
     );
   }
@@ -242,7 +240,12 @@ export function PollCard({
         : `You're with the ${pcts[mineIndex]}%!`;
 
   return (
-    <article ref={cardRef} className={`poll-card feed-card poll-${poll.kind}`} aria-labelledby={`q-${poll.id}`}>
+    <article ref={cardRef} className={`poll-card feed-card poll-${poll.kind}`} aria-labelledby={`q-${poll.id}`} data-poll={poll.id}>
+      {landed > 0 && (
+        <span className="votes-landed" aria-hidden="true">
+          +{landed}
+        </span>
+      )}
       {justCreated && (
         <div className="created-banner" role="status">
           <span>
@@ -296,13 +299,14 @@ export function PollCard({
         </div>
       )}
       {/* Friends who voted, before you do (never what they picked). After voting it moves to the footer line. */}
-      {!isSnap && !isCircle && signedIn && !voted && !poll.isMine && !closed && <FriendsVotedRow poll={poll} top />}
+      {!isSnap && !isCircle && signedIn && !voted && !poll.isMine && !closed && near && <FriendsVotedRow poll={poll} top />}
 
       {isSnap ? (
         <SnapPoll
           poll={poll}
           sub={`${isCircle ? (poll.isMine ? audienceLabel(poll.audience) : "Friends") : poll.visibility === "link" ? "Link only" : "Everyone"} · ${timeLeft(poll.closesAt, now)}`}
           closed={closed}
+          near={near}
           showResults={showResults}
           pcts={pcts}
           mineId={mineId}
@@ -397,7 +401,8 @@ export function PollCard({
             </div>
           )}
           <p className="poll-foot-note">
-            {beforeVoteLabel} · {isTake ? "vote to see how spicy it is" : "vote to see the results"}
+            {beforeVoteLabel}
+            {hotLabel} · {isTake ? "vote to see how spicy it is" : "vote to see the results"}
           </p>
           {isCircle && !poll.isMine && (
             <p className="circle-note">@{poll.creator}&apos;s friends can see your pick.</p>
@@ -482,14 +487,14 @@ export function PollCard({
           )}
           {isCircle && showResults && (voted || poll.isMine) && <CirclePicks poll={poll} />}
           <div className="result-foot">
-            {!isCircle && signedIn && (voted || poll.isMine || closed) && <FriendsVotedRow poll={poll} compact />}
+            {!isCircle && signedIn && (voted || poll.isMine || closed) && near && <FriendsVotedRow poll={poll} compact />}
             <p className="poll-foot-note">
               {!closed && showResults && <span className="live-dot live-dot-small" aria-hidden="true" />}
               {guestVote && !closed
                 ? poll.voteCount === 0
                   ? "Only you so far · not counted yet"
                   : `${formatCount(poll.voteCount)} ${poll.voteCount === 1 ? "vote" : "votes"} · live (yours isn't in yet)`
-                : `${votesLabel} · ${closed ? "final results" : showResults ? "live" : "counting…"}`}
+                : `${votesLabel} · ${closed ? "final results" : showResults ? "live" : "counting…"}${hotLabel}`}
             </p>
           </div>
           {guestVote && !closed && (
@@ -530,20 +535,6 @@ export function PollCard({
         {!poll.isMine && !poll.isSystem && (
           <button type="button" className="more-btn" onClick={() => setReporting(true)} aria-label="Report this poll" title="Report">
             <MoreIcon />
-          </button>
-        )}
-        {showResults || lockingId ? (
-          <button type="button" className="btn btn-coral press next-btn" aria-label="Next poll" onClick={onNext}>
-            <span className="next-label">Next</span> <ArrowIcon size={18} />
-            {nudgeNext && showResults && (
-              <span className="next-nudge" aria-hidden="true">
-                Next one ↑
-              </span>
-            )}
-          </button>
-        ) : (
-          <button type="button" className="skip-btn" onClick={onNext} aria-label="Skip to next poll">
-            Skip
           </button>
         )}
       </div>

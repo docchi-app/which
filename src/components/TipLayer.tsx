@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { markTipSeen, TIP_EVENT, TIPS, tipAllowed, type TipId } from "@/lib/tips";
+import { markTipSeen, TIP_EVENT, TIPS, tipAllowed, type TipId, type TipRequest } from "@/lib/tips";
 
 const SHOW_MS = 7000;
 const WAIT_MS = 20000;
@@ -16,14 +16,14 @@ type Placed = { id: TipId; top: number; left: number; arrow: number; below: bool
  */
 export function TipLayer() {
   const [tip, setTip] = useState<Placed | null>(null);
-  const pending = useRef<{ id: TipId; until: number } | null>(null);
+  const pending = useRef<{ id: TipId; poll?: string; until: number } | null>(null);
   const loadedAt = useRef(0);
 
   useEffect(() => {
     loadedAt.current = Date.now();
     const onTip = (e: Event) => {
-      const id = (e as CustomEvent<TipId>).detail;
-      if (!pending.current && !tip) pending.current = { id, until: Date.now() + WAIT_MS };
+      const { id, poll } = (e as CustomEvent<TipRequest>).detail;
+      if (!pending.current && !tip) pending.current = { id, poll, until: Date.now() + WAIT_MS };
     };
     window.addEventListener(TIP_EVENT, onTip);
 
@@ -40,7 +40,8 @@ export function TipLayer() {
         pending.current = null;
         return;
       }
-      const el = document.querySelector<HTMLElement>(def.anchor);
+      // In the feed, the button on the card it's about (there are many on screen).
+      const el = document.querySelector<HTMLElement>(p.poll ? `[data-poll="${CSS.escape(p.poll)}"] ${def.anchor}` : def.anchor);
       const busy = document.querySelector(".sheet-layer") || Date.now() - loadedAt.current < SETTLE_MS;
       if (!el || busy || !tipAllowed(p.id)) return;
       const r = el.getBoundingClientRect();
