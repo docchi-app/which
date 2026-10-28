@@ -2,24 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { deleteSnap, snapErrorText } from "@/lib/snap";
+import { useBackClose } from "@/lib/back";
 
 /** "Delete this snap?": one confirm, then it's gone for everyone. */
 export function DeleteSnapSheet({ pollId, onClose, onDeleted }: { pollId: string; onClose: () => void; onDeleted: () => void }) {
+  // Back closes it too (and the phone's back button doesn't leave the screen).
+  const close = useBackClose(true, onClose);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [close]);
 
   async function remove() {
     setBusy(true);
     setError(null);
     try {
       await deleteSnap(pollId);
-      onClose();
+      close();
       onDeleted();
     } catch (e) {
       setError(snapErrorText(e));
@@ -29,7 +32,7 @@ export function DeleteSnapSheet({ pollId, onClose, onDeleted }: { pollId: string
 
   return (
     <div className="sheet-layer">
-      <div className="sheet-backdrop" aria-hidden="true" onClick={onClose} />
+      <div className="sheet-backdrop" aria-hidden="true" onClick={close} />
       <section role="alertdialog" aria-modal="true" aria-labelledby="del-title" className="sheet">
         <div className="sheet-handle" aria-hidden="true" />
         <h2 id="del-title" className="sheet-title">
@@ -44,7 +47,7 @@ export function DeleteSnapSheet({ pollId, onClose, onDeleted }: { pollId: string
         <button type="button" className="post-btn post-btn-danger press" onClick={remove} disabled={busy}>
           {busy ? "Deleting…" : "🗑️ Delete snap"}
         </button>
-        <button type="button" className="sheet-later" onClick={onClose}>
+        <button type="button" className="sheet-later" onClick={close}>
           Keep it
         </button>
       </section>

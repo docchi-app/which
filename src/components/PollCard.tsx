@@ -15,6 +15,7 @@ import { CirclePicks, FriendsVotedRow, LockedCircle } from "./CircleBits";
 import { SnapPoll } from "./SnapCard";
 import { NotificationPrompt } from "./Notifications";
 import { useFitActions, ViewsAction } from "./ViewsAction";
+import { useBackClose } from "@/lib/back";
 
 // Sheets load only when they open: a feed of cards shouldn't carry them all up front.
 const CommentsSheet = dynamic(() => import("./CommentsSheet").then((m) => m.CommentsSheet), { ssr: false });
@@ -125,6 +126,8 @@ export function PollCard({
   const [reporting, setReporting] = useState(false);
   const [commenting, setCommenting] = useState(openComments);
   const [snapMenu, setSnapMenu] = useState(false);
+  // Back closes the ••• menu.
+  const closeSnapMenu = useBackClose(snapMenu, () => setSnapMenu(false));
   const [deleting, setDeleting] = useState(false);
   // Read the clock once per card; closing mid-view is handled by cast_vote.
   const [now] = useState(() => Date.now());
@@ -311,17 +314,17 @@ export function PollCard({
           pcts={pcts}
           mineId={mineId}
           onVote={vote}
-          onMore={poll.isMine ? () => setSnapMenu((v) => !v) : undefined}
+          onMore={poll.isMine ? () => (snapMenu ? closeSnapMenu() : setSnapMenu(true)) : undefined}
           menu={
             snapMenu && (
               <>
-                <div className="snap-menu-backdrop" aria-hidden="true" onClick={() => setSnapMenu(false)} />
+                <div className="snap-menu-backdrop" aria-hidden="true" onClick={closeSnapMenu} />
                 <div className="snap-menu" role="menu" aria-label="Snap options">
                   <button
                     type="button"
                     role="menuitem"
                     onClick={() => {
-                      setSnapMenu(false);
+                      closeSnapMenu();
                       onShare();
                     }}
                   >
@@ -332,7 +335,7 @@ export function PollCard({
                     role="menuitem"
                     className="snap-menu-danger"
                     onClick={() => {
-                      setSnapMenu(false);
+                      closeSnapMenu();
                       setDeleting(true);
                     }}
                   >

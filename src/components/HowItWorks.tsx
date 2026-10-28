@@ -5,6 +5,7 @@ import { onUserChange } from "@/lib/auth";
 import { MOVED_KEY } from "@/lib/move";
 import { HOW_IT_WORKS_KEY } from "@/lib/tips";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { useBackClose } from "@/lib/back";
 
 // Accounts older than this already know how Eithr works (say, signing in on a new phone).
 const NEW_ACCOUNT_MS = 864e5;
@@ -65,10 +66,13 @@ export function HowItWorks() {
     setOpen(false);
   }
 
+  // The back button counts as "Got it".
+  const dismiss = useBackClose(open, close);
+
   if (!open) return null;
   return (
     <div className="sheet-layer">
-      <div className="sheet-backdrop" aria-hidden="true" onClick={close} />
+      <div className="sheet-backdrop" aria-hidden="true" onClick={dismiss} />
       <section role="dialog" aria-modal="true" aria-labelledby="howto-title" className="sheet howto-sheet">
         <div className="sheet-handle" aria-hidden="true" />
         <h2 id="howto-title" className="sheet-title">
@@ -125,7 +129,7 @@ export function HowItWorks() {
           <i />
           <i />
         </div>
-        <button type="button" className="btn btn-coral press howto-go" onClick={close}>
+        <button type="button" className="btn btn-coral press howto-go" onClick={dismiss}>
           Got it, let me vote
         </button>
       </section>

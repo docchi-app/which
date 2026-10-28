@@ -5,6 +5,7 @@ import { clearNotifyInApp, notifyInAppPending, onInstallChange } from "@/lib/ins
 import { MOVED_EVENT, MOVED_KEY } from "@/lib/move";
 import { InstallSheet } from "./InstallSheet";
 import { NotificationPrompt } from "./Notifications";
+import { useBackClose } from "@/lib/back";
 
 /**
  * Right after moving from the old address: the two things a new address can't inherit, the
@@ -53,11 +54,14 @@ export function MovedWelcome() {
     setOpen(false);
   }
 
+  // The back button counts as Done.
+  const close = useBackClose(open, done);
+
   if (installing) return <InstallSheet reason="app" onClose={() => setInstalling(false)} />;
   if (!open) return null;
   return (
     <div className="sheet-layer">
-      <div className="sheet-backdrop" aria-hidden="true" onClick={done} />
+      <div className="sheet-backdrop" aria-hidden="true" onClick={close} />
       <section role="dialog" aria-modal="true" aria-labelledby="moved-title" className="sheet move-sheet">
         <div className="sheet-handle" aria-hidden="true" />
         <h2 id="moved-title" className="sheet-title">
@@ -79,7 +83,7 @@ export function MovedWelcome() {
             <NotificationPrompt inSheet pitch={<><strong>Turn notifications back on</strong> for votes, friends and the Poll of the Day.</>} />
           </>
         )}
-        <button type="button" className="sheet-later" onClick={done}>
+        <button type="button" className="sheet-later" onClick={close}>
           Done
         </button>
       </section>

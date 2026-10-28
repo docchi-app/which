@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { continueWithGoogle, saveReturnTo } from "@/lib/auth";
 import { REPORT_REASONS, sendReport, type ReportReason, type ReportTarget } from "@/lib/safety";
+import { useBackClose } from "@/lib/back";
 
 type Props = {
   target: ReportTarget;
@@ -17,6 +18,8 @@ type Props = {
 
 /** "Report this poll / @name": pick a reason, send. */
 export function ReportSheet({ target, canReport, onClose, onReported }: Props) {
+  // Back closes it too (and the phone's back button doesn't leave the screen).
+  const close = useBackClose(true, onClose);
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,10 +29,10 @@ export function ReportSheet({ target, canReport, onClose, onReported }: Props) {
 
   useEffect(() => {
     titleRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [close]);
 
   async function send() {
     if (!reason) return;
@@ -55,14 +58,14 @@ export function ReportSheet({ target, canReport, onClose, onReported }: Props) {
   }
 
   function done() {
-    onClose();
+    close();
     onReported?.();
   }
 
   // On document.body: a poll card's swipe transform would trap a fixed layer.
   return createPortal(
     <div className="sheet-layer">
-      <div className="sheet-backdrop" aria-hidden="true" onClick={sent ? done : onClose} />
+      <div className="sheet-backdrop" aria-hidden="true" onClick={sent ? done : close} />
       <section role="dialog" aria-modal="true" aria-labelledby="report-title" className="sheet report-sheet">
         <div className="sheet-handle" aria-hidden="true" />
         {sent ? (
@@ -111,7 +114,7 @@ export function ReportSheet({ target, canReport, onClose, onReported }: Props) {
                 {error}
               </p>
             )}
-            <button type="button" className="sheet-later" onClick={onClose}>
+            <button type="button" className="sheet-later" onClick={close}>
               Cancel
             </button>
           </>

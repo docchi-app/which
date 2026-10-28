@@ -95,6 +95,13 @@ The first slice of the build order:
   it's close) and **mystery polls** (people see a teaser like "Pick a colour" and the answers; the
   real question stays on the server until they vote, then it's revealed). Anyone can post one of
   these a day. Eithr's own polls show a **verified** tick, in the app and on link previews.
+- **The phone's back button:** closes whatever is on top (comments, share, report, sign-in,
+  install and delete sheets, the + menu, ••• menus, "How Eithr works") instead of leaving the
+  screen; on a snap it goes from the question back to the camera. Each open layer adds a history
+  step for the same page (`src/lib/back.ts`), and closing it with its own button removes that step,
+  so back never needs an extra press. ✕ and ← on Create, Snap and Settings go back to where you
+  came from, and posting replaces the create screen, so back from a new poll doesn't reopen the
+  empty form.
 - **The + button:** two big choices pop up right above it, **📸 Snap it** and **✍️ Type it**; one
   tap opens that screen. Tap + again (now ✕), outside, or Escape to close.
 - **Create poll (Type it, `/create`):** the keyboard opens on the question (up to 140 characters),

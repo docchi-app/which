@@ -21,6 +21,7 @@ import { ShareSheet } from "./ShareSheet";
 import { audienceLabel, getMyCircle } from "@/lib/circle";
 import { fetchStreak, type Streak } from "@/lib/streak";
 import { SignInNote } from "./SignInSheet";
+import { useBackClose } from "@/lib/back";
 
 type Tab = "mine" | "voted";
 
@@ -456,8 +457,7 @@ export function ProfilePoll({
 
   /** Applied at once; undone if the server refuses. */
   function optimistic(action: () => Promise<void>, patch: Partial<Poll>, undo: Partial<Poll>) {
-    setMenu(false);
-    setConfirming(false);
+    dismissMenu();
     setFailed(null);
     onChange(patch);
     action().catch((e) => {
@@ -468,8 +468,7 @@ export function ProfilePoll({
   }
 
   function remove() {
-    setMenu(false);
-    setConfirming(false);
+    dismissMenu();
     setFailed(null);
     setHidden(true);
     deletePoll(poll.id)
@@ -485,6 +484,8 @@ export function ProfilePoll({
     setMenu(false);
     setConfirming(false);
   }
+  // Back closes the ••• menu; so does everything in it that's done.
+  const dismissMenu = useBackClose(menu, closeMenu);
 
   return (
     <li
@@ -528,7 +529,7 @@ export function ProfilePoll({
             aria-label="Poll options"
             aria-haspopup="menu"
             aria-expanded={menu}
-            onClick={() => (menu ? closeMenu() : setMenu(true))}
+            onClick={() => (menu ? dismissMenu() : setMenu(true))}
           >
             •••
           </button>
@@ -537,7 +538,7 @@ export function ProfilePoll({
 
       {menu && (
         <>
-          <div className="snap-menu-backdrop poll-menu-backdrop" aria-hidden="true" onClick={closeMenu} />
+          <div className="snap-menu-backdrop poll-menu-backdrop" aria-hidden="true" onClick={dismissMenu} />
           <div className="poll-menu" role="menu" aria-label="Poll options">
             {confirming ? (
               <div className="poll-menu-confirm">
@@ -557,7 +558,7 @@ export function ProfilePoll({
                   type="button"
                   role="menuitem"
                   onClick={() => {
-                    closeMenu();
+                    dismissMenu();
                     onShare();
                   }}
                 >

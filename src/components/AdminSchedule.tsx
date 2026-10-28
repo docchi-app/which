@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { fetchSchedule, schedulePoll, unschedule, type PollKind, type ScheduleDay, type ScheduleInput } from "@/lib/admin";
+import { useBackClose } from "@/lib/back";
 
 const ERRORS: Record<string, string> = {
   day_taken: "That day already has a Poll of the Day.",
@@ -175,6 +176,8 @@ function RemoveButton({ pollId, onDone }: { pollId: string; onDone: () => void }
 }
 
 function ScheduleForm({ initial, onClose, onSaved }: { initial: ScheduleInput; onClose: () => void; onSaved: () => void }) {
+  // Back closes it too (and the phone's back button doesn't leave the screen).
+  const close = useBackClose(true, onClose);
   const [f, setF] = useState<ScheduleInput>(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -187,6 +190,7 @@ function ScheduleForm({ initial, onClose, onSaved }: { initial: ScheduleInput; o
     try {
       await schedulePoll({ ...f, answers: f.answers.map((a) => a.trim()).filter(Boolean) });
       onSaved();
+      close();
     } catch (e) {
       setError(ERRORS[(e as Error).message] ?? "Couldn't save that. Try again?");
       setBusy(false);
@@ -195,7 +199,7 @@ function ScheduleForm({ initial, onClose, onSaved }: { initial: ScheduleInput; o
 
   return (
     <div className="sheet-layer">
-      <div className="sheet-backdrop" aria-hidden="true" onClick={onClose} />
+      <div className="sheet-backdrop" aria-hidden="true" onClick={close} />
       <section role="dialog" aria-modal="true" aria-labelledby="sched-title" className="sheet schedule-sheet">
         <div className="sheet-handle" aria-hidden="true" />
         <h2 id="sched-title" className="sheet-title">
@@ -293,7 +297,7 @@ function ScheduleForm({ initial, onClose, onSaved }: { initial: ScheduleInput; o
         <button type="button" className="post-btn press" onClick={save} disabled={busy}>
           {busy ? "Saving…" : f.pollId ? "Save changes" : "Schedule it"}
         </button>
-        <button type="button" className="sheet-later" onClick={onClose}>
+        <button type="button" className="sheet-later" onClick={close}>
           Cancel
         </button>
       </section>

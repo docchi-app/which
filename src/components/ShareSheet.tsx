@@ -5,11 +5,14 @@ import { cardInput, pollUrl, recordShare, shareText, warmShareCard, type ShareCh
 import type { Poll } from "@/lib/types";
 import { ShareIcon } from "./icons";
 import { SharePreview } from "./SharePreview";
+import { useBackClose } from "@/lib/back";
 
 type Props = { poll: Poll; onClose: () => void };
 
 /** "Challenge a friend": WhatsApp, X, the phone's share menu, or copy the link. */
 export function ShareSheet({ poll, onClose }: Props) {
+  // Back closes it too (and the phone's back button doesn't leave the screen).
+  const close = useBackClose(true, onClose);
   const firstRef = useRef<HTMLButtonElement>(null);
   const [copied, setCopied] = useState(false);
   const [canNativeShare] = useState(() => typeof navigator !== "undefined" && "share" in navigator);
@@ -27,10 +30,10 @@ export function ShareSheet({ poll, onClose }: Props) {
 
   useEffect(() => {
     firstRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [close]);
 
   function open(channel: ShareChannel, href: string) {
     recordShare(poll.id, channel);
@@ -60,7 +63,7 @@ export function ShareSheet({ poll, onClose }: Props) {
 
   return (
     <div className="sheet-layer">
-      <div className="sheet-backdrop" aria-hidden="true" onClick={onClose} />
+      <div className="sheet-backdrop" aria-hidden="true" onClick={close} />
       <section role="dialog" aria-modal="true" aria-labelledby="share-title" className="sheet share-sheet">
         <div className="sheet-handle" aria-hidden="true" />
         <h2 id="share-title" className="sheet-title">
@@ -118,7 +121,7 @@ export function ShareSheet({ poll, onClose }: Props) {
           </button>
         </div>
 
-        <button type="button" className="sheet-later" onClick={onClose}>
+        <button type="button" className="sheet-later" onClick={close}>
           Done
         </button>
       </section>
