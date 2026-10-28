@@ -235,23 +235,37 @@ export function SnapScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, preview]);
 
-  // Android's back button (or a swipe) can hide the keyboard without leaving the text box:
-  // when the keyboard goes away, typing is done.
+  // Is the on-screen keyboard up? (The visible screen is much shorter than it was.) While it is,
+  // only the photo with its question shows. When it goes away, by Done, ‹, or the phone's own
+  // back/hide key, typing is done and everything below comes back.
+  const [keyboard, setKeyboard] = useState(false);
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!typing || !vv) return;
-    let low = vv.height;
+    if (phase !== "ask" || !vv) return;
+    let full = vv.height;
+    let width = vv.width;
+    let up = false;
     const onResize = () => {
+      // Turned the phone: start over.
+      if (Math.abs(vv.width - width) > 40) {
+        width = vv.width;
+        full = vv.height;
+      }
+      full = Math.max(full, vv.height);
+      const now = full - vv.height > 120;
+      if (now === up) return;
+      up = now;
+      setKeyboard(now);
       const box = document.activeElement as HTMLElement | null;
-      if (vv.height < low) {
-        // Keyboard coming up: keep the box being typed in clear of it and of Send.
-        low = vv.height;
-        box?.scrollIntoView({ block: "center" });
-      } else if (vv.height - low > 120) box?.blur();
+      if (now) requestAnimationFrame(() => box?.scrollIntoView({ block: "center" }));
+      else if (box?.closest(".ask-card")) box.blur();
     };
     vv.addEventListener("resize", onResize);
-    return () => vv.removeEventListener("resize", onResize);
-  }, [typing]);
+    return () => {
+      vv.removeEventListener("resize", onResize);
+      setKeyboard(false);
+    };
+  }, [phase]);
 
   async function signIn() {
     saveReturnTo("/snap");
@@ -343,7 +357,7 @@ export function SnapScreen() {
         </div>
 
         <div
-          className={`ask-card${typing ? " ask-card-typing" : ""}`}
+          className={`ask-card${keyboard ? " ask-card-typing" : ""}`}
           onFocus={() => setTyping(true)}
           onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && setTyping(false)}
         >
@@ -397,7 +411,7 @@ export function SnapScreen() {
           </SnapCardShell>
         </div>
 
-        {typing && idea ? (
+        {keyboard ? null : typing && idea ? (
           <>
             <p className="ask-label">Type your own, or pick an idea</p>
             <div className="ask-chips">
@@ -432,7 +446,7 @@ export function SnapScreen() {
           </>
         )}
 
-        <div className="ask-bar">
+        <div className="ask-bar" hidden={keyboard}>
           {error && (
             <p className="poll-error ask-error" role="alert">
               {error}
