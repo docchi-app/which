@@ -6,7 +6,7 @@ import { averageColor } from "./snap-photo";
 // the private "snaps" bucket, and the poll only goes live once
 // /api/snap/check has passed the photo.
 
-export type SnapAudience = "circle" | "public";
+export type SnapAudience = "circle" | "public" | "link";
 export type SnapStatus = "pending" | "live" | "review" | "rejected";
 
 /** Ready-made questions: tap one and its question and answers fill in (all still editable). */
@@ -177,7 +177,7 @@ export const SNAP_ERRORS: Record<string, string> = {
   banned: "This account can't post.",
   snap_limit: "That's 3 snaps today. Come back tomorrow!",
   snap_too_new: "New accounts can send snaps to friends for the first day. Everyone opens up tomorrow.",
-  empty_circle: "Add a friend first, or send it to Everyone.",
+  empty_circle: "No friends yet. Pick Link only and send it to someone.",
   question_length: "Questions need 3 to 80 characters.",
   answer_count: "Give it 2 to 4 answers.",
   answer_length: "Answers need 1 to 24 characters.",
@@ -200,7 +200,7 @@ export function snapPrefs(): { idea: SnapIdea; audience: SnapAudience } {
     const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}") as { idea?: SnapIdea; audience?: SnapAudience };
     return {
       idea: SNAP_IDEAS.some((t) => t.id === p.idea) ? p.idea! : "buy",
-      audience: p.audience === "public" ? "public" : "circle",
+      audience: p.audience === "public" || p.audience === "link" ? p.audience : "circle",
     };
   } catch {
     return { idea: "buy", audience: "circle" };

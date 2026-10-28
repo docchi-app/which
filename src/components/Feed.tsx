@@ -11,7 +11,7 @@ import { warmShareCard } from "@/lib/share";
 import { HOW_IT_WORKS_KEY, showTip, tipsAfterVote } from "@/lib/tips";
 import { FEED_PAGE_SIZE, fetchFeed, fetchPoll, recordOpen } from "@/lib/polls";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { FEED_SNAP, recall, remember } from "@/lib/screen-cache";
+import { FEED_CACHE, FEED_SNAP, recall, remember } from "@/lib/screen-cache";
 import { warmProfile, warmTabs } from "@/lib/warm";
 import { isPropsSlot, propsSlot, propsState } from "@/lib/props";
 import { useLiveCounts } from "@/lib/live";
@@ -94,7 +94,6 @@ function store(key: string) {
 /** One tab's list and where it was scrolled to. */
 type TabState = { polls: Poll[]; hasMore: boolean; votedBefore: string[]; scrollY: number; at: number };
 type FeedMemory = { tab: FeedTab; tabs: Partial<Record<FeedTab, TabState>> };
-const FEED_CACHE = "feed";
 const TAB_MAX_AGE = 10 * 60_000;
 
 /** Where the feed was, unless this visit opens a particular poll (a shared link, or one just posted). */

@@ -38,8 +38,9 @@ const SCREENS = ["/friends", "/leaders", "/profile", "/settings", "/activity", "
 (async () => {
   const now = Math.floor(Date.now() / 1000);
   const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
-  const browser = await chromium.launch();
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  // A fake camera, so the snap screens after the photo can be checked too.
+  const browser = await chromium.launch({ args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] });
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, permissions: ["camera"] });
   // Signed in as a pretend user.
   const jwt = `${b64({ alg: "HS256" })}.${b64({ sub: "u1", role: "authenticated", is_anonymous: false, exp: now + 3600 })}.sig`;
   const user = { id: "u1", aud: "authenticated", role: "authenticated", is_anonymous: false, app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() };
@@ -233,11 +234,21 @@ const SCREENS = ["/friends", "/leaders", "/profile", "/settings", "/activity", "
       await go(path);
       await check(`${path} ${w}px`, "body");
     }
+    // The + menu (Snap it / Type it).
+    await go("/");
+    await p.locator(".create-btn").click();
+    await p.waitForTimeout(400);
+    await check(`+ menu ${w}px`, ".create-menu");
+    // Snap: the finishing screen, set to Link only.
+    await go("/snap");
+    await p.waitForTimeout(1200);
+    await p.locator(".cam-shutter").click();
+    await p.waitForTimeout(1200);
+    await p.getByRole("radio", { name: /Link only/ }).click();
+    await check(`/snap ask ${w}px`, ".ask-screen");
     // Create, as a mystery poll with the longest teaser.
     await go("/create");
-    await p.locator(".more-toggle").click();
-    await p.waitForTimeout(400);
-    await p.locator("button", { hasText: "Mystery" }).last().click();
+    await p.getByRole("radio", { name: "Mystery" }).click();
     await p.locator("#teaser").fill("Guess the market mood before everyone else does it 📈📈");
     await p.evaluate(() => window.scrollTo(0, 0));
     await check(`/create mystery ${w}px`, "body");

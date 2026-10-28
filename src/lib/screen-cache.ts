@@ -9,6 +9,8 @@ type Entry = { value: unknown; at: number };
 
 const store = new Map<string, Entry>();
 export const FEED_SNAP = "eithr.feedSnap";
+/** The feed's lists and scroll position. */
+export const FEED_CACHE = "feed";
 
 function forgetFeedSnap() {
   try {
@@ -26,6 +28,15 @@ export function recall<T>(key: string, maxAgeMs = 30 * 60_000): T | undefined {
   const hit = store.get(key);
   if (!hit || Date.now() - hit.at > maxAgeMs) return undefined;
   return hit.value as T;
+}
+
+/**
+ * Opening the feed on a poll (`/?poll=…`) from another screen: the feed must load
+ * that poll rather than carry on where it was. (While the app moves between
+ * screens, the feed can't yet see the new address, so it's told this way.)
+ */
+export function openingFeedOnPoll() {
+  store.delete(FEED_CACHE);
 }
 
 export function clearScreenCache() {

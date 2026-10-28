@@ -102,7 +102,7 @@ function SnapReview({ item, onDecide }: { item: Pending; onDecide: (id: string, 
         <div className="review-info">
           <strong>&ldquo;{item.question}&rdquo;</strong>
           <span className="poll-foot-note">
-            @{item.creator} · {item.visibility === "public" ? "🌍 Everyone" : "👥 Friends"}
+            @{item.creator} · {item.visibility === "public" ? "🌍 Everyone" : item.visibility === "link" ? "🔗 Link only" : "👥 Friends"}
             {item.status === "pending" && " · check didn't run"}
           </span>
           {item.scores && (

@@ -16,6 +16,8 @@ export function ShareSheet({ poll, onClose }: Props) {
   const voted = poll.myOptionId !== null;
   // Your own poll that nobody has voted on yet: it was just posted.
   const fresh = poll.isMine && poll.voteCount === 0;
+  // Link only: the link is the only way in, so the sheet says so.
+  const linkOnly = poll.isMine && poll.visibility === "link";
   const text = shareText(poll);
 
   useEffect(() => {
@@ -62,12 +64,20 @@ export function ShareSheet({ poll, onClose }: Props) {
       <section role="dialog" aria-modal="true" aria-labelledby="share-title" className="sheet share-sheet">
         <div className="sheet-handle" aria-hidden="true" />
         <h2 id="share-title" className="sheet-title">
-          {fresh ? "Your poll is live 🎉" : voted || poll.kind === "hot_take" ? "Challenge a friend" : "Share this poll"}
+          {linkOnly && fresh
+            ? "Send it to someone"
+            : fresh
+              ? "Your poll is live 🎉"
+              : voted || poll.kind === "hot_take"
+                ? "Challenge a friend"
+                : "Share this poll"}
         </h2>
         <p className="sheet-text">
-          {fresh
-            ? "Drop it in the group chat. Friends vote to see the results."
-            : "Friends see the question, not the result. They vote to find out."}
+          {linkOnly
+            ? "Only people with this link can see it and vote."
+            : fresh
+              ? "Drop it in the group chat. Friends vote to see the results."
+              : "Friends see the question, not the result. They vote to find out."}
         </p>
 
         {/* The same card WhatsApp and X will show, drawn here so it's instant. */}

@@ -95,10 +95,13 @@ The first slice of the build order:
   it's close) and **mystery polls** (people see a teaser like "Pick a colour" and the answers; the
   real question stays on the server until they vote, then it's revealed). Anyone can post one of
   these a day. Eithr's own polls show a **verified** tick, in the app and on link previews.
-- **Create poll:** opens on just the question (up to 140 characters) and 2 to 4 answers (up to 40
-  each), with a live preview. Format (each shown as a tiny example card), closing time (1, 3 or 7
-  days) and who can see it sit behind **More options**, whose row shows the current choice
-  ("Classic · 3 days · Everyone"); a restored draft with other choices opens it. Anyone signed in
+- **The + button:** two big choices pop up right above it, **📸 Snap it** and **✍️ Type it**; one
+  tap opens that screen. Tap + again (now ✕), outside, or Escape to close.
+- **Create poll (Type it, `/create`):** the keyboard opens on the question (up to 140 characters),
+  then 2 to 4 answers (up to 40 each). Everything else is on the same screen, no "More options":
+  **Who sees it** (Everyone / Friends / Link only; Friends can pick lists), **Style** (Classic / Hot
+  take / Mystery) and how long it's open (1, 3 or 7 days). The live preview is off; admins can turn
+  it on for their phone in **Settings → Live preview**. Anyone signed in
   can post up to 5 polls in 24 hours. The first poll also picks a username: a free one is prefilled
   from the Google name, it's checked as you type, and a taken name comes with free suggestions to
   tap. Unfinished drafts survive a reload or a trip through sign-in. After posting you land on your
@@ -208,17 +211,25 @@ The first slice of the build order:
   opens without a connection: the feed says "You're offline" and loads by itself when the
   connection is back, a "📡 You're offline" bar shows on every screen, and pages you haven't
   opened show `/offline`. Pages always come from the network first, so nobody gets a stale app.
-- **Quick snap (the big tile at the top of +, "Snap one" on the caught-up card, or `/snap`):**
-  Shoot → Ask → Send. The camera opens straight away: just a shutter, gallery and flip, in a 3:4
-  frame that is exactly the feed card. Camera shots get the 📸 Live badge. A gallery photo
+- **Quick snap (+ → Snap it, "Snap one" on the caught-up card, or `/snap`):**
+  Shoot → Ask → Send. The camera opens straight away in a 3:4 frame that is exactly the feed card:
+  tap to focus there (a ring, with a ☀ beside it: drag up or down for brightness), pinch or tap
+  .5 / 1× / 2× to zoom, and up top flash, a 3 or 10 second timer (tap the shutter again to cancel)
+  and a grid. Phones differ in what they let a website control, so: real focus, zoom and exposure
+  where the camera offers them (most Android phones), otherwise zoom crops and brightness is applied
+  to the photo (iPhone: autofocus only, 1× / 2×); flash is the torch on the back camera where there
+  is one, and the screen lights up white for the front camera. Camera shots get the 📸 Live badge. A gallery photo
   that's upright goes straight through; any other photo gets a **Frame your photo** step (drag
-  and pinch to fill the card, or **Show whole photo** on a blurred fill). Then the card itself
-  is where you ask: tap an idea (Buy or skip? / Rate my fit / Should I go? / This or that? /
-  Rate my food / Too much?) and its question and answers fill in, or **Type my own** and type
-  right on the photo. Your own question gets 2–4 answers you can edit (+ to add, × to remove),
+  and pinch to fill the card, or **Show whole photo** on a blurred fill). Then one screen
+  finishes it: the last idea is already filled in on the photo (so Send works straight away); tap
+  the question to type your own (the idea's text is selected, so typing replaces it), or tap
+  another idea (Buy or skip? / Rate my fit / Should I go? / This or that? / Rate my food / Too
+  much?; they wrap, no sideways scrolling). Your own question gets 2–4 answers you can edit (+ to add, × to remove),
   with suggestions above: the two sides of an "X or Y?" question, Yes / No, or 🔥😍😐🙅.
-  **👥 Friends ▾** next to Send opens "Who sees this snap?": Friends (they see who picked what)
-  or Everyone (counts only). The last idea and audience are remembered. Every photo is made
+  **Who sees it** sits right above Send: 👥 Friends (they see who picked what), 🌍 Everyone
+  (counts only) or 🔗 Link only (in nobody's feed: after Send, "Send it to someone" opens with
+  WhatsApp first; whoever opens the link can see it and vote). The last idea and audience are
+  remembered. Every photo is made
   exactly 3:4 at 1080 × 1440 on the phone (WebP, about 150–400 KB, location data removed), so
   upright photos fill the card with nothing cut off. In the feed you vote right on the photo
   and the answers fill with the results. On your own snap, **•••** → Share or **Delete snap**
@@ -226,8 +237,8 @@ The first slice of the build order:
   Photos go to the private `snaps` bucket and the snap stays hidden until `/api/snap/check`
   passes the photo and its words through OpenAI's free moderation: clean → live (and the share
   sheet opens), unsure → **Admin → Snaps** for you to approve or reject (turned down after 12
-  hours), clearly bad → rejected. Everyone snaps get a stricter bar; accounts under a day old
-  can only send to Friends; 3 snaps a day (deleting one doesn't give it back). Snaps stay off
+  hours), clearly bad → rejected. Everyone snaps get a stricter bar (and a snap can't be
+  switched to Everyone afterwards); accounts under a day old can send to Friends or Link only; 3 snaps a day (deleting one doesn't give it back). Snaps stay off
   profiles, and their photos are deleted once they close (by the owner's app, or Admin → Snaps →
   Clean up).
 - **Props (💜 compliment polls about your friends):** a purple "About your friends" card shows up
@@ -361,7 +372,8 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261119000000_security_hardening.sql`, `20261120000000_friends_voted_early.sql`,
    `20261121000000_notification_fixes.sql`, `20261122000000_views.sql`,
    `20261123000000_docchi_poll_pushes.sql`, `20261124000000_rename_eithr.sql`,
-   `20261125000000_push_repair.sql`, `20261126000000_live_feed.sql`, …),
+   `20261125000000_push_repair.sql`, `20261126000000_live_feed.sql`,
+   `20261127000000_link_snaps.sql`, …),
    in date order,
    each one once.
    Then paste `supabase/checks/migration-check.sql` and run it: no rows means every migration is
@@ -532,6 +544,8 @@ means everyone has to turn notifications on again, so keep a copy.
    access rules), then `20261115000000_snap_photo_size.sql` (raises the bucket's limit to 600 KB
    a photo for the sharper 1080 × 1440 snaps) and `20261116000000_snap_answers.sql` (snaps with
    your own answers). Without these, sending a snap says "Snaps aren't set up yet".
+   `20261127000000_link_snaps.sql` adds Link only snaps (without it, sending one says "Couldn't
+   post your snap").
 2. Create an API key at https://platform.openai.com/api-keys (the moderation check it's used for is
    free) and add it in Vercel as `OPENAI_API_KEY`, marked **Sensitive**. Redeploy.
 3. Snaps record their check result with `PUSH_CRON_SECRET` (the same value as for notifications,

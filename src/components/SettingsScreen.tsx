@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { isSignedIn, continueWithGoogle, onUserChange, saveReturnTo, signOut } from "@/lib/auth";
+import { CREATE_PREVIEW_KEY } from "@/lib/create";
 import { installPlatform, type InstallPlatform } from "@/lib/install";
 import { getMyProfile, type Profile } from "@/lib/profile";
 import { propsState, setPropsOff } from "@/lib/props";
@@ -21,6 +22,8 @@ export function SettingsScreen() {
   const [platform, setPlatform] = useState<InstallPlatform | null>(null);
   const [installing, setInstalling] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Admins: the live preview while typing a poll (this phone only).
+  const [preview, setPreview] = useState(false);
   // "Include me in Props" (null until known).
   const [propsOn, setPropsOn] = useState<boolean | null>(null);
 
@@ -28,6 +31,11 @@ export function SettingsScreen() {
     // The platform is only known in the browser.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPlatform(installPlatform());
+    try {
+      setPreview(localStorage.getItem(CREATE_PREVIEW_KEY) === "1");
+    } catch {
+      // Storage blocked: off.
+    }
     if (!isSupabaseConfigured) return;
     return onUserChange((user) => setSignedIn(isSignedIn(user)));
   }, []);
@@ -91,6 +99,29 @@ export function SettingsScreen() {
                 </span>
                 <Chevron />
               </Link>
+            )}
+            {profile?.isAdmin && (
+              <label className="settings-row">
+                <span>
+                  <strong>Live preview</strong>
+                  <span className="notif-hint">Admins: show the preview while typing a poll (this phone)</span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="switch"
+                  checked={preview}
+                  onChange={(e) => {
+                    setPreview(e.target.checked);
+                    try {
+                      if (e.target.checked) localStorage.setItem(CREATE_PREVIEW_KEY, "1");
+                      else localStorage.removeItem(CREATE_PREVIEW_KEY);
+                    } catch {
+                      // Storage blocked: not saved.
+                    }
+                  }}
+                />
+              </label>
             )}
             <label className="settings-row">
               <span>
