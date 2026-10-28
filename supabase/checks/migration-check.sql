@@ -20,7 +20,7 @@ with want_fn(fn, hash, migration) as (values
   ('auto_hide_threshold()', '89e85f988c34e9cab13f49e0cb22afd3', '20261104000000_safety_metrics.sql'),
   ('best_rank(name text)', '2c90f90ea09dae38ccd7a40228289cc4', '20261117000000_delete_account_best_rank.sql'),
   ('block_user(name text)', 'ad2bebec4d3ccfe8e4037c0203fc11c2', '20261030000000_circles.sql'),
-  ('blocked_matches(input text)', 'c780ed3350215d63b5cac8900ce4a1f4', '20261128000000_moderation.sql'),
+  ('blocked_matches(input text)', '4230b92bffbffe5879568fbef3f2ca95', '20261128000000_moderation.sql'),
   ('blocked_terms_clean()', '31cb9747d3bfacd418cdf16059743048', '20261128000000_moderation.sql'),
   ('can_read_comments(poll uuid, viewer uuid)', 'fe505b8419877897ac4f6ff0ff277603', '20261108000000_comments.sql'),
   ('can_view_poll(poll uuid, viewer uuid)', '8d61c1d5c41ea2b33bb5eb730a3c8f5c', '20261101000000_circle_polls.sql'),

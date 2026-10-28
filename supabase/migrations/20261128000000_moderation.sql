@@ -94,7 +94,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  c text;
+  cleaned text;
   tok text;
   run text := '';
   joined text := '';
@@ -104,14 +104,15 @@ declare
   squashed_folded text;
 begin
   -- Cleaned, without the words marked 'allow'.
-  select coalesce(string_agg(w, ' ' order by n), '') into c
-  from unnest(string_to_array(public.mod_clean(input), ' ')) with ordinality as t(w, n)
-  where w <> '' and not exists (select 1 from public.blocked_terms a where a.kind = 'allow' and a.term = w);
-  if c = '' then
+  cleaned := (
+    select coalesce(string_agg(t.w, ' ' order by t.n), '')
+    from unnest(string_to_array(public.mod_clean(input), ' ')) with ordinality as t(w, n)
+    where t.w <> '' and not exists (select 1 from public.blocked_terms a where a.kind = 'allow' and a.term = t.w));
+  if cleaned = '' then
     return '{}';
   end if;
   -- "f u c k": runs of single letters, joined.
-  foreach tok in array string_to_array(c, ' ') loop
+  foreach tok in array string_to_array(cleaned, ' ') loop
     if char_length(tok) = 1 then
       run := run || tok;
     else
@@ -121,9 +122,9 @@ begin
   end loop;
   if char_length(run) > 1 then joined := joined || ' ' || run; end if;
 
-  raw := ' ' || c || ' ' || joined || ' ';
+  raw := ' ' || cleaned || ' ' || joined || ' ';
   folded := public.mod_fold(raw);
-  squashed := replace(c, ' ', '') || ' ' || replace(joined, ' ', '');
+  squashed := replace(cleaned, ' ', '') || ' ' || replace(joined, ' ', '');
   squashed_folded := public.mod_fold(squashed);
   -- Folded text is only compared with terms that have no double letters of their own
   -- (so "ass" never becomes "as").
@@ -154,10 +155,19 @@ $$;
 revoke execute on function public.has_blocked_term(text) from public, anon, authenticated;
 
 -- The starter list, cleaned like the new ones (some fold together).
-create temporary table old_terms on commit drop as select term from public.blocked_terms;
-delete from public.blocked_terms;
-insert into public.blocked_terms (term) select term from old_terms where term not in ('chod', 'fuck', 'fucking', 'fucker', 'motherfucker')
-on conflict do nothing;
+-- No temporary table and no SELECT … INTO anywhere in this file: the Supabase SQL
+-- editor took those for new tables and failed (relation "c" does not exist).
+do $$
+declare
+  old_terms text[] := array(select b.term from public.blocked_terms b);
+begin
+  delete from public.blocked_terms;
+  insert into public.blocked_terms (term)
+  select o.term from unnest(old_terms) as o(term)
+  where o.term not in ('chod', 'fuck', 'fucking', 'fucker', 'motherfucker')
+  on conflict do nothing;
+end;
+$$;
 
 insert into public.blocked_terms (term, kind, lang) values
   -- English: roots catch the endings (fucked, fucking, shitty, bitches…).
