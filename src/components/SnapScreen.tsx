@@ -439,7 +439,7 @@ export function SnapScreen() {
               Answers
             </span>
             {/* Long answers get a row each, so they show whole. */}
-            <div className={`ask-answers${answers.some((a) => a.length > 12) ? " ask-answers-wide" : ""}`} ref={answersRef} role="group" aria-labelledby="snap-answers">
+            <div className={`ask-answers${answers.some((a) => [...a].length > 12) ? " ask-answers-wide" : ""}`} ref={answersRef} role="group" aria-labelledby="snap-answers">
               {answers.map((a, i) => (
                 <span key={i} className="ask-answer">
                   <input aria-label={`Answer ${i + 1}`} placeholder={`Answer ${i + 1}`} maxLength={ANSWER_MAX} value={a} onChange={(e) => editAnswer(i, e.target.value)} onKeyDown={nextBox} />
