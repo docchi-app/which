@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { continueWithGoogle, currentUser, saveReturnTo } from "@/lib/auth";
 import {
   checkUsername,
+  CREATE_PREVIEW_KEY,
   createPoll,
   CreatePollError,
   DAILY_POLL_LIMIT,
@@ -13,9 +14,11 @@ import {
   type CreateStatus,
   type UsernameProblem,
 } from "@/lib/create";
+import { openingFeedOnPoll } from "@/lib/screen-cache";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import type { PollKind, Visibility } from "@/lib/types";
 import { getMyCircle, type MyCircle } from "@/lib/circle";
+import { getMyProfile } from "@/lib/profile";
 import { ANSWER_COLORS } from "./PollCard";
 import { ArrowIcon, PlusIcon } from "./icons";
 import { SignInNote } from "./SignInSheet";
@@ -54,6 +57,12 @@ const FORMATS: { kind: PollKind; label: string; blurb: string }[] = [
   { kind: "mystery", label: "Mystery", blurb: "People pick on gut. Your question shows after they tap." },
 ];
 const DRAFT_KEY = "docchi.draft";
+
+const AUDIENCES = [
+  { id: "public", label: "🌍 Everyone" },
+  { id: "circle", label: "👥 Friends" },
+  { id: "link", label: "🔗 Link only" },
+] as const;
 
 // Result of checking one username with the server.
 type NameCheck = { name: string; problem: UsernameProblem; suggestions: string[] };
@@ -102,8 +111,8 @@ export function CreatePoll() {
   const restored = useRef(false);
   // Typing before the screen finishes loading must not be overwritten.
   const edited = useRef(false);
-  // Format, closing time and audience live behind "More options" (open if a restored draft changed them).
-  const [moreOpen, setMoreOpen] = useState(false);
+  // The live preview: admins only, when they've turned it on in Settings.
+  const [showPreview, setShowPreview] = useState(false);
   // Your friends and their lists, for "Friends".
   const [circle, setCircle] = useState<MyCircle | null>(null);
 
@@ -118,7 +127,6 @@ export function CreatePoll() {
         const s = await getCreateStatus(seed);
         setStatus(s);
         // Prefill a free username so posting stays one tap.
-        if (!edited.current && (saved.kind !== "classic" || saved.days !== 3 || saved.visibility !== "public")) setMoreOpen(true);
         setDraft((d) => {
           const base = edited.current ? d : saved;
           return { ...base, username: base.username || s.suggestions[0] || "" };
@@ -141,6 +149,19 @@ export function CreatePoll() {
   }, [draft]);
 
   const needsName = !!status?.signedIn && status.username === null;
+
+  useEffect(() => {
+    let on = false;
+    try {
+      on = localStorage.getItem(CREATE_PREVIEW_KEY) === "1";
+    } catch {
+      // Storage blocked: no preview.
+    }
+    if (!on || !status?.signedIn || !isSupabaseConfigured) return;
+    getMyProfile()
+      .then((p) => setShowPreview(!!p?.isAdmin))
+      .catch(() => {});
+  }, [status?.signedIn]);
 
   useEffect(() => {
     if (!status?.signedIn || !isSupabaseConfigured) return;
@@ -235,6 +256,7 @@ export function CreatePoll() {
         groups: draft.groups,
       });
       sessionStorage.removeItem(DRAFT_KEY);
+      openingFeedOnPoll();
       router.push(`/?poll=${id}&created=1`);
     } catch (e) {
       setPosting(false);
@@ -262,12 +284,6 @@ export function CreatePoll() {
     }
   }
 
-  const summary = [
-    FORMATS.find((f) => f.kind === kind)?.label,
-    `${draft.days} day${draft.days === 1 ? "" : "s"}`,
-    draft.visibility === "public" ? "Everyone" : draft.visibility === "circle" ? "Friends" : "Only with link",
-  ].join(" · ");
-
   const author = needsName ? draft.username || "you" : (status?.username ?? "you");
   const daysLabel = `${draft.days} day${draft.days === 1 ? "" : "s"}`;
 
@@ -279,7 +295,7 @@ export function CreatePoll() {
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </Link>
-        <h1 className="create-title">New poll</h1>
+        <h1 className="create-title">Type a poll</h1>
         <span className="create-spacer" />
       </header>
 
@@ -290,24 +306,14 @@ export function CreatePoll() {
           post();
         }}
       >
-        <Link href="/snap" className="snap-tile press">
-          <span className="snap-tile-cam" aria-hidden="true">
-            📸
-          </span>
-          <span className="snap-tile-text">
-            <strong>Snap a photo poll</strong>
-            <span>Opens the camera · gone in 24 hours</span>
-          </span>
-          <ArrowIcon size={22} strokeWidth={2.6} />
-        </Link>
-        <p className="create-or">or type a poll</p>
-
         <div className="field">
           <label htmlFor="question" className="field-label">
             {isTake ? "Your hot take" : isMystery ? "The hidden question" : "Ask anything"}
           </label>
           <textarea
             id="question"
+            // The keyboard comes up on the question: it's the first thing to do.
+            autoFocus
             className="question-input"
             rows={2}
             maxLength={QUESTION_MAX}
@@ -386,124 +392,95 @@ export function CreatePoll() {
           </fieldset>
         )}
 
-        <div className="field more-options">
-          <button
-            type="button"
-            className="more-toggle press"
-            aria-expanded={moreOpen}
-            aria-controls="more-options"
-            onClick={() => setMoreOpen((o) => !o)}
-          >
-            <span>
-              <strong>More options</strong>
-              <span className="more-summary">{summary}</span>
-            </span>
-            <span className="more-chevron" aria-hidden="true">
-              {moreOpen ? "−" : "+"}
-            </span>
-          </button>
-          {moreOpen && (
-            <div id="more-options" className="more-panel">
-          <fieldset className="field">
-            <legend className="field-label">Format</legend>
-            <div className="formats" role="radiogroup" aria-label="Poll format">
+        <fieldset className="field">
+          <legend className="field-label">Who sees it</legend>
+          <div className="seg3" role="radiogroup" aria-label="Who sees it">
+            {AUDIENCES.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                role="radio"
+                aria-checked={draft.visibility === o.id}
+                className="press"
+                onClick={() => set({ visibility: o.id })}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          {draft.visibility === "circle" && circle && circleSize > 0 && circle.groups.length > 0 && (
+            <div className="audience-chips" role="group" aria-label="Which friends">
+              <button
+                type="button"
+                className="member-group"
+                aria-pressed={draft.groups.length === 0}
+                onClick={() => set({ groups: [] })}
+              >
+                All friends ({circleSize})
+              </button>
+              {circle.groups.map((g) => {
+                const on = draft.groups.includes(g.id);
+                return (
+                  <button
+                    key={g.id}
+                    type="button"
+                    className="member-group"
+                    aria-pressed={on}
+                    onClick={() =>
+                      set({ groups: on ? draft.groups.filter((x) => x !== g.id) : [...draft.groups, g.id] })
+                    }
+                  >
+                    {g.name} ({g.count})
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <span className="format-blurb">
+            {draft.visibility === "public"
+              ? "Shows up in everyone's feed."
+              : draft.visibility === "circle"
+                ? circle && circleSize === 0
+                  ? "No friends yet. Share your invite link from the Friends tab."
+                  : `Only ${audienceSize} ${audienceSize === 1 ? "friend" : "friends"} can see and vote. They'll see who picked what.`
+                : "In nobody's feed. You'll get a link to send; whoever opens it can vote."}
+          </span>
+        </fieldset>
+
+        <fieldset className="field">
+          <legend className="field-label">Style · open for</legend>
+          <div className="style-row">
+            <div className="style-chips" role="radiogroup" aria-label="Poll style">
               {FORMATS.map((f) => (
                 <button
                   key={f.kind}
                   type="button"
                   role="radio"
                   aria-checked={kind === f.kind}
-                  className={`format format-card press format-${f.kind}`}
+                  className="style-chip press"
                   onClick={() => set({ kind: f.kind })}
                 >
-                  <FormatExample kind={f.kind} />
-                  <span className="format-name">{f.label}</span>
+                  {f.label}
                 </button>
               ))}
             </div>
+            <label className="days-pick">
+              <span className="sr-only">Open for</span>
+              <select value={draft.days} onChange={(e) => set({ days: Number(e.target.value) as Days })}>
+                {DURATIONS.map((d) => (
+                  <option key={d} value={d}>
+                    {d} day{d === 1 ? "" : "s"}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {kind !== "classic" && (
             <span className="format-blurb">
-              {FORMATS.find((f) => f.kind === kind)?.blurb}
-              {kind !== "classic" && " One a day."}
+              {FORMATS.find((f) => f.kind === kind)?.blurb} One a day.
             </span>
-          </fieldset>
-          <fieldset className="field">
-            <legend className="field-label">Closes after</legend>
-            <div className="durations">
-              {DURATIONS.map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  className="duration press"
-                  aria-pressed={draft.days === d}
-                  onClick={() => set({ days: d })}
-                >
-                  {d} day{d === 1 ? "" : "s"}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-          <fieldset className="field">
-            <legend className="field-label">Who can see it</legend>
-            <div className="durations">
-              {(
-                [
-                  ["public", "Everyone"],
-                  ["circle", "Friends"],
-                  ["link", "Only with link"],
-                ] as const
-              ).map(([v, label]) => (
-                <button
-                  key={v}
-                  type="button"
-                  className="duration press"
-                  aria-pressed={draft.visibility === v}
-                  onClick={() => set({ visibility: v })}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {draft.visibility === "circle" && circle && circleSize > 0 && (
-              <div className="audience-chips" role="group" aria-label="Which friends">
-                <button
-                  type="button"
-                  className="member-group"
-                  aria-pressed={draft.groups.length === 0}
-                  onClick={() => set({ groups: [] })}
-                >
-                  All friends ({circleSize})
-                </button>
-                {circle.groups.map((g) => {
-                  const on = draft.groups.includes(g.id);
-                  return (
-                    <button
-                      key={g.id}
-                      type="button"
-                      className="member-group"
-                      aria-pressed={on}
-                      onClick={() =>
-                        set({ groups: on ? draft.groups.filter((x) => x !== g.id) : [...draft.groups, g.id] })
-                      }
-                    >
-                      {g.name} ({g.count})
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-            <span className="format-blurb">
-              {draft.visibility === "public"
-                ? "Shows up in everyone's feed."
-                : draft.visibility === "circle"
-                  ? circle && circleSize === 0
-                    ? "No friends yet. Share your invite link from the Friends tab."
-                    : `Only ${audienceSize} ${audienceSize === 1 ? "friend" : "friends"} can see and vote. They'll see who picked what.`
-                  : "Not public. Whoever you send the link to can vote, and it shows in their feed after they open it."}
-            </span>
-          </fieldset>
-            </div>
           )}
-        </div>
+        </fieldset>
 
         {needsName && (
           <div className="field">
@@ -546,33 +523,35 @@ export function CreatePoll() {
           </div>
         )}
 
-        <div className="field">
-          <span className="field-label muted">Live preview</span>
-          <div className={`preview-card preview-${kind}`}>
-            {isMystery && <span className="preview-blur" aria-hidden="true" />}
-            <span className="preview-q">
-              {isMystery
-                ? teaser || "Your teaser shows up here"
-                : question || (isTake ? "Your hot take shows up here" : "Your question shows up here")}
-            </span>
-            <div className="preview-answers">
-              {(isTake ? ["Agree", "Disagree"] : draft.answers).map((a, i) => (
-                <span
-                  key={i}
-                  className="preview-chip"
-                  style={{ background: isTake ? (i ? "var(--ink)" : "var(--white)") : ANSWER_COLORS[i], color: isTake && i ? "var(--cream)" : undefined }}
-                >
-                  {a.trim() || `Answer ${"ABCD"[i]}`}
-                </span>
-              ))}
+        {showPreview && (
+          <div className="field">
+            <span className="field-label muted">Live preview</span>
+            <div className={`preview-card preview-${kind}`}>
+              {isMystery && <span className="preview-blur" aria-hidden="true" />}
+              <span className="preview-q">
+                {isMystery
+                  ? teaser || "Your teaser shows up here"
+                  : question || (isTake ? "Your hot take shows up here" : "Your question shows up here")}
+              </span>
+              <div className="preview-answers">
+                {(isTake ? ["Agree", "Disagree"] : draft.answers).map((a, i) => (
+                  <span
+                    key={i}
+                    className="preview-chip"
+                    style={{ background: isTake ? (i ? "var(--ink)" : "var(--white)") : ANSWER_COLORS[i], color: isTake && i ? "var(--cream)" : undefined }}
+                  >
+                    {a.trim() || `Answer ${"ABCD"[i]}`}
+                  </span>
+                ))}
+              </div>
+              <span className="preview-by">
+                by @{author} · closes in {daysLabel}
+                {draft.visibility === "link" && " · link only"}
+                {draft.visibility === "circle" && " · friends only"}
+              </span>
             </div>
-            <span className="preview-by">
-              by @{author} · closes in {daysLabel}
-              {draft.visibility === "link" && " · link only"}
-              {draft.visibility === "circle" && " · friends only"}
-            </span>
           </div>
-        </div>
+        )}
       </form>
 
       <div className="create-footer">
@@ -610,39 +589,5 @@ export function CreatePoll() {
         </p>
       </div>
     </div>
-  );
-}
-
-/** A tiny picture of each format, so the choice needs no reading. */
-function FormatExample({ kind }: { kind: PollKind }) {
-  if (kind === "hot_take")
-    return (
-      <span className="format-example" aria-hidden="true">
-        <span className="fx-q">Pineapple on pizza is fine.</span>
-        <span className="fx-row">
-          <span className="fx-chip">Agree</span>
-          <span className="fx-chip fx-chip-dark">Nope</span>
-        </span>
-      </span>
-    );
-  if (kind === "mystery")
-    return (
-      <span className="format-example" aria-hidden="true">
-        <span className="fx-q">Pick a colour</span>
-        <span className="fx-blur" />
-        <span className="fx-row">
-          <span className="fx-chip" style={{ background: "var(--coral)" }}>?</span>
-          <span className="fx-chip" style={{ background: "var(--sky)" }}>?</span>
-        </span>
-      </span>
-    );
-  return (
-    <span className="format-example" aria-hidden="true">
-      <span className="fx-q">Tea or coffee?</span>
-      <span className="fx-row">
-        <span className="fx-chip" style={{ background: "var(--coral)" }}>A</span>
-        <span className="fx-chip" style={{ background: "var(--sky)" }}>B</span>
-      </span>
-    </span>
   );
 }

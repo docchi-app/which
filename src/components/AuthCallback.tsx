@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { forgetGuestPicks, guestPicks, signInWithGoogle, takePendingVote, takeReturnTo } from "@/lib/auth";
 import { castVote } from "@/lib/polls";
+import { openingFeedOnPoll } from "@/lib/screen-cache";
 import { getSupabase } from "@/lib/supabase";
 import { LogoMark } from "./Logo";
 
@@ -70,6 +71,7 @@ export function AuthCallback() {
 
       const pending = takePendingVote();
       if (!pending) return router.replace(takeReturnTo() ?? "/");
+      openingFeedOnPoll();
       try {
         await castVote(pending.pollId, pending.optionId);
         router.replace(`/?poll=${pending.pollId}&voted=1`);

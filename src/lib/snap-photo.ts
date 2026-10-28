@@ -73,8 +73,12 @@ export function drawWhole(src: Source): HTMLCanvasElement {
   return c;
 }
 
-/** The centre 3:4 of a live camera frame, mirrored for the front camera (as it looked on screen). */
-export function drawFromVideo(video: HTMLVideoElement, mirror: boolean): HTMLCanvasElement {
+/**
+ * The centre 3:4 of a live camera frame, as it looked on screen: mirrored for the
+ * front camera, cropped in by `zoom` (≥ 1, when the phone can't zoom the camera
+ * itself) and made brighter or darker by `brightness` (1 = as is).
+ */
+export function drawFromVideo(video: HTMLVideoElement, mirror: boolean, zoom = 1, brightness = 1): HTMLCanvasElement {
   const vw = video.videoWidth;
   const vh = video.videoHeight;
   const { c, ctx } = canvas();
@@ -84,12 +88,27 @@ export function drawFromVideo(video: HTMLVideoElement, mirror: boolean): HTMLCan
     sh = vh;
     sw = (vh * 3) / 4;
   }
+  sw /= zoom;
+  sh /= zoom;
   if (mirror) {
     ctx.translate(SNAP_W, 0);
     ctx.scale(-1, 1);
   }
   ctx.drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, SNAP_W, SNAP_H);
+  if (brightness !== 1) brighten(ctx, brightness);
   return c;
+}
+
+/** Multiplies every pixel (the same as CSS `brightness()`, which not every browser has on a canvas). */
+function brighten(ctx: CanvasRenderingContext2D, k: number) {
+  const img = ctx.getImageData(0, 0, SNAP_W, SNAP_H);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    d[i] = d[i] * k;
+    d[i + 1] = d[i + 1] * k;
+    d[i + 2] = d[i + 2] * k;
+  }
+  ctx.putImageData(img, 0, 0);
 }
 
 /** The photo's average colour as 6 hex digits ("3a6ea5"), for a placeholder while it loads. */

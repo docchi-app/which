@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { continueWithGoogle, isSignedIn, onUserChange, saveReturnTo } from "@/lib/auth";
 import {
   ANSWER_MAX,
@@ -23,6 +23,7 @@ import {
   type SnapStatus,
 } from "@/lib/snap";
 import { drawFill, encode, isUpright, loadPhoto } from "@/lib/snap-photo";
+import { openingFeedOnPoll } from "@/lib/screen-cache";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { SignInNote } from "./SignInSheet";
 import { SnapCamera } from "./SnapCamera";
@@ -34,10 +35,17 @@ type Phase = "camera" | "frame" | "ask" | "checking" | "review" | "rejected";
 const EMOJI_SET = ["🔥", "😍", "😐", "🙅"];
 const same = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x.trim() === b[i].trim());
 
+const AUDIENCES: { id: SnapAudience; name: string; text: string }[] = [
+  { id: "circle", name: "👥 Friends", text: "see who picked" },
+  { id: "public", name: "🌍 Everyone", text: "counts only" },
+  { id: "link", name: "🔗 Link only", text: "you send it" },
+];
+
 /**
- * /snap: Shoot → Ask → Send. The camera is just a camera (3:4, exactly the
- * card). Then the card itself is where you ask: tap an idea, or type your own
- * question and answers right on the photo. Who sees it and Send sit on one line.
+ * /snap: Shoot → Ask → Send. The camera opens at once (3:4, exactly the card).
+ * Then one screen finishes it: the question sits on the photo (last idea filled
+ * in, tap it to type your own), ideas wrap below, who sees it is three plain
+ * choices, and Send. Link only opens the share sheet right after.
  */
 export function SnapScreen() {
   const router = useRouter();
@@ -50,13 +58,11 @@ export function SnapScreen() {
   const [answersSet, setAnswersSet] = useState(true);
   const [typing, setTyping] = useState(false);
   const [audience, setAudience] = useState<SnapAudience>("circle");
-  const [audSheet, setAudSheet] = useState(false);
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [live, setLive] = useState(false);
   const [framing, setFraming] = useState<{ bitmap: ImageBitmap; url: string; live: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const questionRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -86,20 +92,13 @@ export function SnapScreen() {
     setError(null);
   }
 
-  function typeOwn() {
-    setIdea(null);
-    setQuestion("");
-    setAnswers([...YES_NO]);
-    setAnswersSet(false);
-    setError(null);
-    questionRef.current?.focus();
-  }
-
   function editQuestion(text: string) {
     const q = text.replace(/\n/g, " ").slice(0, QUESTION_MAX);
     setQuestion(q);
     setIdea(null);
-    if (!answersSet) setAnswers(eitherOr(q) ?? [...YES_NO]);
+    // Typing over an idea: its answers go too, and new ones follow the question ("X or Y?").
+    if (idea) setAnswersSet(false);
+    if (idea || !answersSet) setAnswers(eitherOr(q) ?? [...YES_NO]);
   }
 
   function editAnswer(i: number, text: string) {
@@ -165,7 +164,6 @@ export function SnapScreen() {
 
   async function send() {
     if (!photo || problem) return;
-    setAudSheet(false);
     setError(null);
     setPhase("checking");
     try {
@@ -177,8 +175,10 @@ export function SnapScreen() {
         await new Promise((r) => setTimeout(r, 2000));
         status = (await snapInfo(id))?.status ?? "pending";
       }
-      if (status === "live") router.push(`/?poll=${id}&created=1`);
-      else setPhase(status === "rejected" ? "rejected" : "review");
+      if (status === "live") {
+        openingFeedOnPoll();
+        router.push(`/?poll=${id}&created=1`);
+      } else setPhase(status === "rejected" ? "rejected" : "review");
     } catch (e) {
       setError(snapErrorText(e));
       setPhase("ask");
@@ -263,7 +263,7 @@ export function SnapScreen() {
               <path d="M15 5l-7 7 7 7" />
             </svg>
           </button>
-          <h1 className="cam-title">{typing ? "Your own question" : "Ask your friends"}</h1>
+          <h1 className="cam-title">{typing ? "Your own question" : "Ask about it"}</h1>
           {typing ? (
             <button type="button" className="ask-done" onPointerDown={keep} onClick={() => (document.activeElement as HTMLElement | null)?.blur()}>
               Done
@@ -280,7 +280,6 @@ export function SnapScreen() {
         >
           <SnapCardShell src={preview} live={live} who="You" sub="Gone in 24 hours">
             <textarea
-              ref={questionRef}
               className="snapc-q snapc-q-input"
               aria-label="Your question"
               placeholder="Type your question…"
@@ -288,6 +287,8 @@ export function SnapScreen() {
               maxLength={QUESTION_MAX}
               value={question}
               onChange={(e) => editQuestion(e.target.value)}
+              // An idea's question is all selected, so typing replaces it.
+              onFocus={(e) => idea && e.currentTarget.select()}
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), (e.target as HTMLElement).blur())}
             />
             <div className={`snapc-answers${emoji ? "" : answers.length > 2 ? " snapc-grid" : ""}`} style={{ "--n": answers.length } as CSSProperties}>
@@ -335,11 +336,8 @@ export function SnapScreen() {
           </>
         ) : (
           <>
-            <p className="ask-label">Tap an idea, or type your own</p>
-            <div className="ask-chips ask-ideas">
-              <button type="button" className="ask-chip ask-chip-own" onClick={typeOwn}>
-                ✏️ Type my own
-              </button>
+            <p className="ask-label">Tap the question to type your own, or pick an idea</p>
+            <div className="ask-chips">
               {SNAP_IDEAS.map((t) => (
                 <button key={t.id} type="button" className="ask-chip" aria-pressed={idea === t.id} onClick={() => pickIdea(t.id)}>
                   {t.label}
@@ -355,17 +353,20 @@ export function SnapScreen() {
               {error}
             </p>
           )}
-          <div className="ask-bar-row">
-            <button type="button" className="ask-aud" onClick={() => setAudSheet(true)} aria-haspopup="dialog">
-              {audience === "circle" ? "👥 Friends" : "🌍 Everyone"} <small aria-hidden="true">▾</small>
-            </button>
-            <button type="button" className="ask-send press" onPointerDown={keep} onClick={send} disabled={!!problem}>
-              {problem ?? "Send →"}
-            </button>
-          </div>
+          {!typing && (
+            <div className="ask-seg" role="radiogroup" aria-label="Who sees it">
+              {AUDIENCES.map((o) => (
+                <button key={o.id} type="button" role="radio" aria-checked={audience === o.id} onClick={() => pickAudience(o.id)}>
+                  {o.name}
+                  <small>{o.text}</small>
+                </button>
+              ))}
+            </div>
+          )}
+          <button type="button" className="ask-send press" onPointerDown={keep} onClick={send} disabled={!!problem}>
+            {problem ?? (audience === "link" ? "Send and get the link →" : "Send →")}
+          </button>
         </div>
-
-        {audSheet && <AudienceSheet audience={audience} onPick={pickAudience} onSend={send} canSend={!problem} onClose={() => setAudSheet(false)} />}
       </div>
     );
   }
@@ -386,7 +387,10 @@ export function SnapScreen() {
         <section className="check-card check-review" role="status">
           <span className="chip chip-sun">⏳ Quick review</span>
           <h2 className="poll-question">Your snap is waiting for a quick review.</h2>
-          <p className="poll-foot-note">A person will check it soon. If it&apos;s fine, it goes live; you&apos;ll find it in your feed.</p>
+          <p className="poll-foot-note">
+            A person will check it soon. If it&apos;s fine, it goes live; you&apos;ll find it in your feed
+            {audience === "link" ? ", with its link to share." : "."}
+          </p>
           <Link href="/" className="btn btn-coral press">
             Back to the feed
           </Link>
@@ -418,62 +422,5 @@ function SnapHeader({ title, right }: { title: string; right?: React.ReactNode }
       <h1 className="create-title">{title}</h1>
       {right ?? <span className="create-spacer" />}
     </header>
-  );
-}
-
-/** "Who sees this snap?": Friends or Everyone, remembered for next time. */
-function AudienceSheet({
-  audience,
-  onPick,
-  onSend,
-  canSend,
-  onClose,
-}: {
-  audience: SnapAudience;
-  onPick: (a: SnapAudience) => void;
-  onSend: () => void;
-  canSend: boolean;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  const options = [
-    { id: "circle" as const, emoji: "👥", name: "Friends", text: "Only your friends. They see who picked what." },
-    { id: "public" as const, emoji: "🌍", name: "Everyone", text: "Anyone on Eithr. Only the counts show." },
-  ];
-  return (
-    <div className="sheet-layer">
-      <div className="sheet-backdrop" aria-hidden="true" onClick={onClose} />
-      <section role="dialog" aria-modal="true" aria-labelledby="aud-title" className="sheet">
-        <div className="sheet-handle" aria-hidden="true" />
-        <h2 id="aud-title" className="sheet-title">
-          Who sees this snap?
-        </h2>
-        <p className="sheet-text">We&apos;ll remember this for next time.</p>
-        <div className="aud-options" role="radiogroup" aria-labelledby="aud-title">
-          {options.map((o) => (
-            <button key={o.id} type="button" role="radio" aria-checked={audience === o.id} className="aud-option" onClick={() => onPick(o.id)}>
-              <span className="aud-emoji" aria-hidden="true">
-                {o.emoji}
-              </span>
-              <span className="aud-text">
-                <strong>{o.name}</strong>
-                <span>{o.text}</span>
-              </span>
-              <span className="aud-check" aria-hidden="true">
-                {audience === o.id ? "✓" : ""}
-              </span>
-            </button>
-          ))}
-        </div>
-        <button type="button" className="post-btn press" onClick={onSend} disabled={!canSend}>
-          Send to {audience === "circle" ? "Friends" : "Everyone"} →
-        </button>
-      </section>
-    </div>
   );
 }

@@ -65,7 +65,7 @@ http.createServer((req, res) => {
       case 'live_counts': return json(200, a.ids.slice(0, 12).map((id) => polls.find((p) => p.id === id)).filter(Boolean).map((p) => { const v = view(p); return { id: p.id, vote_count: p.vote_count, view_count: Math.max(p.view_count || 0, p.vote_count), comment_count: p.comment_count || 0, recent_votes: p.recent_votes || 0, options: v.options.map((o) => ({ id: o.id, votes: o.votes })) }; }));
       case 'create_snap': {
         if (!files[a.photo_path]) return json(400, { message: 'docchi:no_photo' });
-        const id = 'bbbbbbbb-0000-4000-8000-00000000000' + polls.length;
+        const id = 'bbbbbbbb-0000-4000-8000-' + String(polls.length).padStart(12, '0');
         log.push('CREATE ' + JSON.stringify({ q: a.question, answers: a.answers, vis: a.visibility, template: a.template }));
         if (!a.answers || a.answers.length < 2) return json(400, { message: 'docchi:answer_count' });
         const t = [a.question, a.answers];
@@ -128,7 +128,7 @@ http.createServer((req, res) => {
       case 'get_profile': { const s = status[a.name] ?? ['none', 'none']; return json(200, { username: a.name, avatar_url: null, joined: iso(-200), is_me: a.name === 'mayank', public_polls: 2, votes_received: 30, circle_size: 4, their_circle: s[0], my_circle: s[1], blocked_by_me: false }); }
       case 'profile_polls': return json(200, []);
       case 'create_poll_status': return json(200, { signed_in: true, username: 'mayank', suggestions: [], polls_left: 4, special_left: 1 });
-      case 'create_poll': { const id = 'aaaaaaaa-0000-4000-8000-00000000000' + polls.length; polls.unshift(mk(id, a.question, a.answers, a.answers.map(() => 0), { creator: 'mayank', is_system: false, is_mine: true, created_at: iso(0) })); return json(200, id); }
+      case 'create_poll': { const id = 'aaaaaaaa-0000-4000-8000-' + String(polls.length).padStart(12, '0'); log.push('CREATE_POLL ' + JSON.stringify({ q: a.question, vis: a.visibility, kind: a.kind, days: a.days })); polls.unshift(mk(id, a.question, a.answers, a.answers.map(() => 0), { creator: 'mayank', is_system: false, is_mine: true, created_at: iso(0), visibility: a.visibility ?? 'public', kind: a.kind ?? 'classic' })); return json(200, id); }
       case 'my_streak': return json(200, Object.keys(votes).length ? { current: 3, best: 5, today: true } : { current: 2, best: 5, today: false });
       case 'recent_results': return json(200, [{ poll_id: polls[0].id, question: 'Mountains or beaches?', kind: 'classic', vote_count: 40, winner: 'Beaches', winner_pct: 62, my_pick: 'Beaches', mine: false, closed_at: iso(-2) }, { poll_id: polls[1].id, question: 'Is cereal soup?', kind: 'hot_take', vote_count: 12, winner: 'Disagree', winner_pct: 75, my_pick: 'Agree', mine: false, closed_at: iso(-5) }]);
       case 'get_comments': return json(200, { can_read: true, can_post: true, closed: false, comments: (cmts[a.poll] || []) });

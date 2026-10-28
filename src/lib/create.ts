@@ -1,6 +1,9 @@
 import { getSupabase } from "./supabase";
 import type { PollKind, Visibility } from "./types";
 
+/** Admins can turn the live preview back on while typing a poll (Settings → Live preview). */
+export const CREATE_PREVIEW_KEY = "eithr.createPreview";
+
 export type CreateStatus = {
   signedIn: boolean;
   /** null until the first poll sets one. */
