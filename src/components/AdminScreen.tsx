@@ -20,13 +20,16 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { Avatar } from "./Avatar";
 import { Schedule } from "./AdminSchedule";
 import { AdminSnaps } from "./AdminSnaps";
+import { AdminWords } from "./AdminWords";
 import { LogoMark, Wordmark } from "./Logo";
 
-type Tab = "reports" | "snaps" | "schedule" | "done" | "metrics";
+type Tab = "reports" | "snaps" | "words" | "schedule" | "done" | "metrics";
 
 const REASON_LABEL: Record<string, string> = Object.fromEntries(
   REPORT_REASONS.map((r) => [r.id, r.label.split(/[,(]/)[0].replace(/ or .*$/, "")]),
 );
+// Reasons filed by the AI check ("auto:harassment").
+const reasonLabel = (r: string) => REASON_LABEL[r] ?? (r.startsWith("auto:") ? `🤖 Auto check: ${r.slice(5).replace(/[/_-]/g, " ")}` : r);
 
 function ago(iso: string) {
   const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
@@ -77,6 +80,7 @@ export function AdminScreen() {
               [
                 ["reports", "Reports"],
                 ["snaps", "Snaps"],
+                ["words", "Words"],
                 ["schedule", "Schedule"],
                 ["done", "Done"],
                 ["metrics", "Metrics"],
@@ -89,6 +93,7 @@ export function AdminScreen() {
           </div>
           {tab === "reports" && <Queue />}
           {tab === "snaps" && <AdminSnaps />}
+          {tab === "words" && <AdminWords />}
           {tab === "schedule" && <Schedule />}
           {tab === "done" && <Done />}
           {tab === "metrics" && <Metrics />}
@@ -155,7 +160,7 @@ function QueueCard({ item, onDone }: { item: QueueItem; onDone: () => void }) {
       <div className="admin-reasons">
         {Object.entries(item.reasons).map(([r, n]) => (
           <span key={r} className="admin-reason">
-            {REASON_LABEL[r] ?? r}
+            {reasonLabel(r)}
             {n > 1 ? ` ×${n}` : ""}
           </span>
         ))}

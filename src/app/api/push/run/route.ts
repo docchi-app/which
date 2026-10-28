@@ -1,4 +1,5 @@
 import { cronSecret, pushConfigured, rpc, sendAll, type PushPayload } from "@/lib/push-server";
+import { sweepTexts } from "@/lib/text-moderation";
 
 // Called by pg_cron (via pg_net) every 2 minutes; see supabase/migrations/20261105000000_push.sql.
 export const maxDuration = 60;
@@ -12,7 +13,13 @@ export async function POST(request: Request) {
   }
 
   const started = Date.now();
-  const total = { sent: 0, gone: 0, failed: 0 };
+  const total: Record<string, unknown> & { sent: number; gone: number; failed: number } = { sent: 0, gone: 0, failed: 0 };
+  // Typed polls and comments the app didn't send for the AI check (see /api/moderate/check).
+  try {
+    total.checked = await sweepTexts();
+  } catch (e) {
+    console.error("text sweep:", e instanceof Error ? e.message : e);
+  }
   // A few batches per run, leaving time to finish before the limit.
   for (let batch = 0; batch < 10 && Date.now() - started < 40_000; batch++) {
     let rows: Row[];

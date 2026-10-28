@@ -26,6 +26,9 @@ const propsS = () => ({ state: pLocked ? 'locked' : pUsed >= 10 ? 'done' : 'read
 const QS = [['😂', 'Best laugh', 'Who has the best laugh?'], ['🧠', 'Best advice', 'Who gives the best advice?'], ['🍕', 'Best food recommendations', 'Who always knows the best place to eat?']];
 const mkOffer = () => { const q = QS[pUsed % QS.length]; return { state: 'ready', offer: 'off-' + pUsed, emoji: q[0], label: q[1], question: q[2], shuffles_left: 2, left: 10 - pUsed, options: ['priya', 'aman', 'zoya', 'ravi'].map((u) => ({ username: u, avatar_url: null })) }; };
 const cmts = {};
+// Admin → Words, and the AI text check (my_unchecked_texts → set_text_verdict).
+const words = [{ term: 'bsdk', kind: 'root', lang: 'hi', added_at: iso(-50) }, { term: 'fuck', kind: 'part', lang: 'en', added_at: iso(-50) }, { term: 'shiitake', kind: 'allow', lang: 'en', added_at: iso(-50) }];
+const checked = new Set();
 const deletedMine = new Set(); const visMine = {}; let activitySeen = false;
 const files = {}; // path -> {type, buf}
 { const buf = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800"><rect width="600" height="800" fill="#6cb4ff"/><circle cx="300" cy="330" r="170" fill="#ffd23f" stroke="#1b1530" stroke-width="12"/></svg>'); for (const k of ['a5', 'a6', 'a7', 'a8']) files['u9/' + k + '.jpg'] = { type: 'image/svg+xml', buf }; }
@@ -132,6 +135,14 @@ http.createServer((req, res) => {
       case 'my_streak': return json(200, Object.keys(votes).length ? { current: 3, best: 5, today: true } : { current: 2, best: 5, today: false });
       case 'recent_results': return json(200, [{ poll_id: polls[0].id, question: 'Mountains or beaches?', kind: 'classic', vote_count: 40, winner: 'Beaches', winner_pct: 62, my_pick: 'Beaches', mine: false, closed_at: iso(-2) }, { poll_id: polls[1].id, question: 'Is cereal soup?', kind: 'hot_take', vote_count: 12, winner: 'Disagree', winner_pct: 75, my_pick: 'Agree', mine: false, closed_at: iso(-5) }]);
       case 'get_comments': return json(200, { can_read: true, can_post: true, closed: false, comments: (cmts[a.poll] || []) });
+      case 'admin_words': return json(200, words);
+      case 'admin_reports': return json(200, a.status === 'open' ? [{ target_type: 'poll', target_id: 'dddddddd-0000-4000-8000-000000000001', reports: 1, reasons: { 'auto:harassment': 1 }, last_at: iso(0), question: 'Who is the dumbest guy in class?', teaser: null, kind: 'classic', visibility: 'public', options: ['Ravi', 'Amit'], created_at: iso(0), is_hidden: true, hidden_reason: 'reports', username: 'mayank', avatar_url: null, is_banned: false, user_polls: 3, user_reports: 1, comment_text: null }] : []);
+      case 'admin_add_word': { const t = String(a.term).toLowerCase().replace(/[^a-z0-9 ]+/g, '').trim(); if (t.length < 2) return json(400, { message: 'docchi:word_length' }); const w = words.find((x) => x.term === t); if (w) w.kind = a.kind; else words.unshift({ term: t, kind: a.kind, lang: a.lang, added_at: iso(0) }); log.push('WORD+ ' + t + ' ' + a.kind); return json(200, t); }
+      case 'admin_remove_word': { const i = words.findIndex((x) => x.term === a.term); if (i >= 0) words.splice(i, 1); log.push('WORD- ' + a.term); return json(200, null); }
+      case 'admin_test_words': { const txt = String(a.input).toLowerCase().replace(/[^a-z0-9 ]+/g, ''); return json(200, words.filter((w) => w.kind !== 'allow' && txt.includes(w.term)).map((w) => w.term)); }
+      case 'my_unchecked_texts': { const p = polls.find((x) => x.id === a.poll); const out = []; if (p && p.is_mine && p.kind !== 'snap' && !checked.has(p.id)) out.push({ target_type: 'poll', target_id: p.id, body: p.question }); for (const c of cmts[a.poll] || []) if (c.is_mine && !checked.has(c.id)) out.push({ target_type: 'comment', target_id: c.id, body: c.text }); return json(200, out); }
+      case 'texts_to_check': return json(200, []);
+      case 'set_text_verdict': checked.add(a.target_id); log.push(`VERDICT ${a.target_type} ${a.verdict} ${a.reason ?? ''}`.trim()); return json(200, null);
       case 'post_comment': (cmts[a.poll] ||= []).push({ id: 'c' + Date.now(), text: a.body, created_at: new Date().toISOString(), username: 'mayank', avatar_url: null, pick: null, pick_index: null, is_mine: true, is_creator: false, can_delete: true }); return json(200, null);
     }
     json(404, { message: 'not mocked' });

@@ -201,3 +201,28 @@ export async function schedulePoll(input: ScheduleInput): Promise<string> {
 export async function unschedule(pollId: string): Promise<void> {
   await call("admin_unschedule", { poll: pollId });
 }
+
+// ─── Words (the word filter's list) ─────────────────────────────────────────
+
+/** word: the whole word or phrase · root: the start of a word · part: anywhere · allow: never blocked */
+export type WordKind = "word" | "root" | "part" | "allow";
+export type BlockedWord = { term: string; kind: WordKind; lang: string | null; addedAt: string };
+
+export async function fetchWords(): Promise<BlockedWord[]> {
+  const rows = await call<Record<string, unknown>[]>("admin_words");
+  return rows.map((r) => ({ term: r.term as string, kind: r.kind as WordKind, lang: (r.lang as string | null) ?? null, addedAt: r.added_at as string }));
+}
+
+/** Adds (or changes) a word; returns it as stored (cleaned: lower case, symbols out). */
+export async function addWord(term: string, kind: WordKind, lang: string | null): Promise<string> {
+  return call<string>("admin_add_word", { term, kind, lang });
+}
+
+export async function removeWord(term: string): Promise<void> {
+  await call("admin_remove_word", { term });
+}
+
+/** The words that would block this text (empty: it would go through). */
+export async function testWords(text: string): Promise<string[]> {
+  return (await call<string[] | null>("admin_test_words", { input: text })) ?? [];
+}
