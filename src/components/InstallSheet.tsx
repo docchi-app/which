@@ -211,7 +211,7 @@ export function InstallSheet({ reason, onClose }: Props) {
         )}
 
         <button type="button" className="sheet-later" onClick={dismiss}>
-          {reason === "nudge" ? "Not now" : "Close"}
+          {reason === "notifications" || reason === "app" ? "Close" : "Not now"}
         </button>
         {arrow === "bottom" && (
           <div className="install-arrow-bottom" aria-hidden="true">

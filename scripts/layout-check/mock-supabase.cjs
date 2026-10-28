@@ -41,6 +41,8 @@ let members = [{ username: 'priya', avatar_url: null, since: iso(-48), groups: [
 const status = { zoya: ['none', 'pending'], priya: ['member', 'member'], aman: ['none', 'none'], ravi: ['none', 'none'] };
 const LAT = Number(process.env.LAT || 0);
 let testAccounts = [];
+let emailDue = [];
+let emailOn = true;
 // Admin → Metrics: the shape of the real first two weeks (visitors, new, voters, votes), newest first.
 const METRIC_DAYS = [[69, 64, 15, 97], [98, 95, 6, 18], [20, 16, 7, 27], [21, 17, 3, 19], [62, 59, 10, 74], [25, 25, 13, 204]];
 const metricDays = (n = 14) => Array.from({ length: n }, (_, i) => {
@@ -164,6 +166,13 @@ http.createServer((req, res) => {
       case 'admin_test_words': { const txt = String(a.input).toLowerCase().replace(/[^a-z0-9 ]+/g, ''); return json(200, words.filter((w) => w.kind !== 'allow' && txt.includes(w.term)).map((w) => w.term)); }
       case 'my_unchecked_texts': { const p = polls.find((x) => x.id === a.poll); const out = []; if (p && p.is_mine && p.kind !== 'snap' && !checked.has(p.id)) out.push({ target_type: 'poll', target_id: p.id, body: p.question }); for (const c of cmts[a.poll] || []) if (c.is_mine && !checked.has(c.id)) out.push({ target_type: 'comment', target_id: c.id, body: c.text }); return json(200, out); }
       case 'texts_to_check': return json(200, []);
+      case 'push_collect': return a.secret === 'test-secret-test-secret-123' ? json(200, []) : json(400, { message: 'docchi:forbidden' });
+      // The evening email: one person due, once (the database claims each send).
+      case 'email_summary_collect': { if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:forbidden' }); const due = emailDue; emailDue = []; log.push('EMAIL_COLLECT ' + due.length); return json(200, due); }
+      case 'email_unsubscribe': { if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:forbidden' }); emailOn = false; log.push('EMAIL_OFF ' + a.person); return json(200, null); }
+      case 'my_email_summary': { if (!whoIs(req)) return json(400, { message: 'docchi:sign_in' }); if (a.off !== null && a.off !== undefined) { emailOn = !a.off; log.push('EMAIL_ON ' + emailOn); } return json(200, { on: emailOn, has_email: true }); }
+      case '/__props_reset': pSeen = false; return json(200, null);
+      case '/__email_due': emailDue = [{ user_id: '00000000-0000-4000-8000-0000000000e1', email: 'riya@example.com', username: 'riya.k', votes: 12, comments: 2, props: 1, requests: 1, top_poll: 'a1000000-0000-4000-8000-000000000001', top_question: 'Chai or coffee <b>today</b>?' }]; return json(200, null);
       case 'set_text_verdict': checked.add(a.target_id); log.push(`VERDICT ${a.target_type} ${a.verdict} ${a.reason ?? ''}`.trim()); return json(200, null);
       case 'post_comment': (cmts[a.poll] ||= []).push({ id: 'c' + Date.now(), text: a.body, created_at: new Date().toISOString(), username: 'mayank', avatar_url: null, pick: null, pick_index: null, is_mine: true, is_creator: false, can_delete: true }); return json(200, null);
     }
