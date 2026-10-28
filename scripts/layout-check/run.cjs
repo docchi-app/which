@@ -244,12 +244,16 @@ const SCREENS = ["/friends", "/leaders", "/profile", "/settings", "/activity", "
     await p.waitForTimeout(1200);
     await p.locator(".cam-shutter").click();
     await p.waitForTimeout(1200);
-    // The keyboard is on the question first; then put away.
-    await check(`/snap ask typing ${w}px`, ".ask-screen");
-    await p.evaluate(() => document.activeElement?.blur());
-    await p.waitForTimeout(300);
-    await p.getByRole("radio", { name: /Link only/ }).click();
+    // The page as it opens; then typing a question of your own (answers cleared, pairs offered).
     await check(`/snap ask ${w}px`, ".ask-screen");
+    await p.locator(".ask-q").fill("Wedding or office party this weekend?");
+    await p.waitForTimeout(300);
+    await check(`/snap ask own question ${w}px`, ".ask-screen");
+    await p.evaluate(() => document.activeElement?.blur());
+    await p.getByRole("radio", { name: /Link only/ }).click();
+    await p.evaluate(() => document.querySelector(".ask-screen").scrollTo(0, 1e5));
+    await p.waitForTimeout(300);
+    await check(`/snap ask who sees it ${w}px`, ".ask-screen");
     // Create, as a mystery poll with the longest teaser.
     await go("/create");
     await p.getByRole("radio", { name: "Mystery" }).click();
