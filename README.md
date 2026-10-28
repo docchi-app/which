@@ -192,7 +192,9 @@ The first slice of the build order:
 - **Admin (`/admin`):** for accounts with `profiles.is_admin`. **Reports** lists what's waiting
   (auto-hidden polls first) with the full poll, who posted it and their report history:
   Remove poll, Keep / Dismiss, or Ban (they can't vote, post or report, and all their polls are
-  hidden). **Schedule** shows Poll of the Day for the next three weeks, flags empty days, and adds, edits
+  hidden). Reports filed by the AI check show as "🤖 Auto check: harassment" (and the like).
+  **Words** is the word filter's list: test any text ("Blocked by: bsdk"), add a word (whole word,
+  start of a word, anywhere, or always allow) or remove one. **Schedule** shows Poll of the Day for the next three weeks, flags empty days, and adds, edits
   or removes one (classic, hot take or mystery; open 1–7 days; goes live at midnight India time).
   **Done** lists recent actions with Undo. **Metrics** shows visitors, votes, % of
   visitors who vote, votes per session, votes per 100 views, share rate and D1/D7 retention
@@ -387,7 +389,7 @@ The simplest way is the **SQL Editor** in the Supabase dashboard:
    `20261121000000_notification_fixes.sql`, `20261122000000_views.sql`,
    `20261123000000_docchi_poll_pushes.sql`, `20261124000000_rename_eithr.sql`,
    `20261125000000_push_repair.sql`, `20261126000000_live_feed.sql`,
-   `20261127000000_link_snaps.sql`, …),
+   `20261127000000_link_snaps.sql`, `20261128000000_moderation.sql`, …),
    in date order,
    each one once.
    Then paste `supabase/checks/migration-check.sql` and run it: no rows means every migration is
@@ -559,7 +561,8 @@ means everyone has to turn notifications on again, so keep a copy.
    a photo for the sharper 1080 × 1440 snaps) and `20261116000000_snap_answers.sql` (snaps with
    your own answers). Without these, sending a snap says "Snaps aren't set up yet".
    `20261127000000_link_snaps.sql` adds Link only snaps (without it, sending one says "Couldn't
-   post your snap").
+   post your snap"). `20261128000000_moderation.sql` brings the stronger word filter, Admin → Words
+   and the AI check on typed polls and comments.
 2. Create an API key at https://platform.openai.com/api-keys (the moderation check it's used for is
    free) and add it in Vercel as `OPENAI_API_KEY`, marked **Sensitive**. Redeploy.
 3. Snaps record their check result with `PUSH_CRON_SECRET` (the same value as for notifications,
@@ -568,6 +571,10 @@ means everyone has to turn notifications on again, so keep a copy.
 Without `OPENAI_API_KEY` every snap waits for you in **Admin → Snaps**; without `PUSH_CRON_SECRET`
 the check can't record its result, and snaps show there as "check didn't run". Either way nothing
 goes live unchecked.
+
+The same key and secret run the AI check on typed polls and comments. Those go live at once and
+are checked a second later; without the key (or before the moderation migration) only the word
+filter applies. Posts the app didn't send are picked up by the notifications job every 2 minutes.
 
 ### Free tier limits to know about
 
@@ -598,7 +605,8 @@ per Supabase auth user, created automatically by a database trigger.
 | Friends-only polls: only friends (or the chosen lists) see, vote on and see picks; on other polls friends see only that you voted | `can_view_poll()`, used by `get_feed()`, `poll_cards()`, `cast_vote()`, `circle_picks()`; `friends_voted()` returns names, never picks |
 | No reading polls around the rules | direct `select` on `polls` / `poll_options` is revoked; everything goes through the functions |
 | Shares count once per person per poll | `shares` primary key + `record_share()`; signed-out shares aren't counted |
-| Word filter | `blocked_terms` table (whole words, English + Hindi); add rows to extend it |
+| Word filter | `blocked_matches()` / `has_blocked_term()`, used by polls, snaps, comments, usernames and friend lists. The text is cleaned first (`mod_clean()`: lower case, accents and Devanagari nukta out, leetspeak like sh1t / a$$, symbols inside words, spaced-out and stretched letters), then matched against `blocked_terms` (~250: English, Hinglish, Hindi and Marathi in both scripts, mc/bc/bsdk…) as a whole word, the start of a word, or anywhere; 'allow' words are never blocked. Managed in Admin → Words |
+| AI check on typed polls and comments | Live at once, then `/api/moderate/check` runs OpenAI's free moderation on the author's own unchecked posts (`my_unchecked_texts()`); the push job sweeps anything missed (`texts_to_check()`). `set_text_verdict()` (needs `PUSH_CRON_SECRET`): clearly bad → hidden like 3 reports and in the Admin queue; unsure → in the queue |
 | Counters stay correct | `cast_vote()` saves the vote and bumps both counters in one transaction |
 | Results hidden until you vote | Clients can't read `poll_options.vote_count` directly. `get_feed()` only returns counts once you've voted or the poll has closed |
 | No direct writes from the browser | Inserts and updates are revoked for `anon` and `authenticated`. Writes go through database functions |
