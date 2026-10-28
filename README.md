@@ -189,14 +189,21 @@ The first slice of the build order:
   (hate, private info, sexual, violence, spam, illegal, other). Signed-in accounts only, up to 20
   a day, anonymous to everyone else. A poll that **3 different people** report hides itself until
   an admin looks at it.
-- **Admin (`/admin`):** for accounts with `profiles.is_admin`. **Reports** lists what's waiting
+- **Admin (`/admin`):** only for the one admin account (`profiles.is_admin`; the database allows
+  exactly one). Everyone else, signed in or not, gets the normal "page not found", decided on the
+  server before anything is sent. On a laptop the sections sit in a sidebar (Safety: Reports,
+  Snaps, Words · Numbers: Metrics · Run: Schedule, Test accounts, Admin log) with **← Back to
+  Eithr** at the top; on a phone they're tabs, with ‹ back. The section is in the address
+  (`/admin#metrics`). **Reports** lists what's waiting
   (auto-hidden polls first) with the full poll, who posted it and their report history:
   Remove poll, Keep / Dismiss, or Ban (they can't vote, post or report, and all their polls are
   hidden). Reports filed by the AI check show as "🤖 Auto check: harassment" (and the like).
   **Words** is the word filter's list: test any text ("Blocked by: bsdk"), add a word (whole word,
   start of a word, anywhere, or always allow) or remove one. **Schedule** shows Poll of the Day for the next three weeks, flags empty days, and adds, edits
   or removes one (classic, hot take or mystery; open 1–7 days; goes live at midnight India time).
-  **Done** lists recent actions with Undo. **Metrics** shows visitors, votes, % of
+  **Test accounts** are left out of Metrics, together with your own account: their votes, polls,
+  shares, sign-ups, and visits from any phone they've signed in on. **Admin log** lists
+  moderation actions with Undo, and other changes (words, test accounts, settings). **Metrics** shows visitors, votes, % of
   visitors who vote, votes per session, votes per 100 views, share rate and D1/D7 retention
   against the launch targets, plus a table by day.
 - **Tips, one at a time:** a small dark bubble beside the thing it explains, shown once, at the
@@ -500,11 +507,14 @@ widget whose token is sent with sign-in), so do both together, or sign-ins will 
 
 Never put the **service_role** (secret) key in this app or in any `NEXT_PUBLIC_` variable.
 
-**Make yourself an admin** (once, in the SQL Editor), then open `/admin` (also in
-Settings → Account):
+**Make yourself the admin** (once, in the SQL Editor), then open `/admin` (also in
+Settings → Account). There can only be one; to hand it over, take it off first:
 
 ```sql
 update public.profiles set is_admin = true where username = 'your_username';
+-- later, to change who it is:
+-- update public.profiles set is_admin = false where is_admin;
+-- update public.profiles set is_admin = true where username = 'new_username';
 ```
 
 ### 5. Deploy (Vercel)
@@ -620,7 +630,7 @@ per Supabase auth user, created automatically by a database trigger.
 | Rate limits (app requests only; the SQL Editor isn't limited) | Triggers: votes 120 per 10 min and 1,500 a day; circle requests 20 per 10 min (and 50 a day); shares 60 an hour; blocks 30 an hour; groups 20 an hour; group members 300 an hour. Polls, comments, reports and usernames have their own limits. Over a limit → `docchi:slow_down` |
 | Comments only for people who voted (or a closed poll, or its creator), and circle polls stay in the circle | `can_read_comments()` in `get_comments()` / `post_comment()`; the comments table isn't readable by clients |
 | Reports: signed-in only, 20 a day, one per person per poll; 3 reporters hide a poll | `report()` |
-| Only admins see reports and metrics, or remove / ban | `require_admin()` in every `admin_…()` function; `reports`, `visits`, `mod_actions` aren't readable by clients |
+| Only the admin sees reports and metrics, or removes / bans | One admin at most (`profiles_one_admin` unique index); `require_admin()` in every `admin_…()` function; `/admin` answers 404 on the server to anyone else; `reports`, `visits`, `mod_actions`, `admin_events` aren't readable by clients |
 | Banned accounts can't vote, post or report, and their polls are hidden | `admin_act('ban')`, checked by `cast_vote()`, `create_poll()`, `report()` |
 | Push goes only to your own devices, only for things you can see | `save_push_subscription()` ties a phone to the signed-in account; `push_scan()` uses `can_view_poll()` for circle polls; subscriptions and the outbox aren't readable by clients |
 | Only the app's sender can collect and send pushes | `push_collect()`, `push_gone()`, `push_test_targets()` need the `PUSH_CRON_SECRET` (stored hashed in `push_config`) |

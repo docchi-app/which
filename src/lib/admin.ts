@@ -229,3 +229,26 @@ export async function removeWord(term: string): Promise<void> {
 export async function testWords(text: string): Promise<string[]> {
   return (await call<string[] | null>("admin_test_words", { input: text })) ?? [];
 }
+
+// ─── Test accounts (left out of Metrics, with the admin's own account) ──────
+
+export type TestAccount = { username: string; avatarUrl: string | null; joined: string; votes: number };
+
+export async function fetchTestAccounts(): Promise<TestAccount[]> {
+  const rows = await call<Record<string, unknown>[]>("admin_test_accounts");
+  return rows.map((r) => ({ username: r.username as string, avatarUrl: (r.avatar_url as string | null) ?? null, joined: r.joined as string, votes: Number(r.votes ?? 0) }));
+}
+
+/** Throws "not_found" (no such username) or "own_account" (yours is always left out). */
+export async function setTestAccount(username: string, on: boolean): Promise<void> {
+  await call("admin_set_test", { username: username.trim().replace(/^@/, ""), on_now: on });
+}
+
+// ─── Admin log: changes other than moderation ───────────────────────────────
+
+export type AdminEvent = { at: string; action: string; detail: string | null; admin: string | null };
+
+export async function fetchAdminEvents(max = 50): Promise<AdminEvent[]> {
+  const rows = await call<Record<string, unknown>[]>("admin_events_list", { max_rows: max });
+  return rows.map((r) => ({ at: r.at as string, action: r.action as string, detail: (r.detail as string | null) ?? null, admin: (r.admin as string | null) ?? null }));
+}

@@ -3,15 +3,20 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
+  fetchAdminEvents,
   fetchLog,
   fetchMetrics,
+  fetchTestAccounts,
+  setTestAccount,
   fetchViewStats,
   fetchQueue,
   moderate,
   type AdminAction,
+  type AdminEvent,
   type DayMetrics,
   type LogItem,
   type QueueItem,
+  type TestAccount,
 } from "@/lib/admin";
 import { onUserChange } from "@/lib/auth";
 import { getMyProfile } from "@/lib/profile";
@@ -23,7 +28,16 @@ import { AdminSnaps } from "./AdminSnaps";
 import { AdminWords } from "./AdminWords";
 import { LogoMark, Wordmark } from "./Logo";
 
-type Tab = "reports" | "snaps" | "words" | "schedule" | "done" | "metrics";
+type Tab = "reports" | "snaps" | "words" | "metrics" | "schedule" | "tests" | "log";
+
+// The sections, grouped as the laptop sidebar shows them (one row of tabs on a phone).
+const SECTIONS: { group: string; items: { id: Tab; label: string }[] }[] = [
+  { group: "Safety", items: [{ id: "reports", label: "Reports" }, { id: "snaps", label: "Snaps" }, { id: "words", label: "Words" }] },
+  { group: "Numbers", items: [{ id: "metrics", label: "Metrics" }] },
+  { group: "Run", items: [{ id: "schedule", label: "Schedule" }, { id: "tests", label: "Test accounts" }, { id: "log", label: "Admin log" }] },
+];
+const ALL = SECTIONS.flatMap((g) => g.items);
+const isTab = (x: string): x is Tab => ALL.some((i) => i.id === x);
 
 const REASON_LABEL: Record<string, string> = Object.fromEntries(
   REPORT_REASONS.map((r) => [r.id, r.label.split(/[,(]/)[0].replace(/ or .*$/, "")]),
@@ -41,9 +55,10 @@ function ago(iso: string) {
 
 /** Reports queue, recent actions with undo, and the launch metrics. */
 export function AdminScreen() {
-  // undefined: checking · false: not an admin
+  // undefined: checking · false: not the admin. The server has already turned away
+  // anyone it could tell isn't; this covers a sign-in that had expired.
   const [allowed, setAllowed] = useState<boolean | undefined>(isSupabaseConfigured ? undefined : false);
-  const [tab, setTab] = useState<Tab>("reports");
+  const [tab, setTabState] = useState<Tab>("reports");
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -54,51 +69,88 @@ export function AdminScreen() {
     });
   }, []);
 
+  // The section is in the address (#metrics), so a reload or a bookmark opens it again.
+  useEffect(() => {
+    const read = () => {
+      const h = window.location.hash.slice(1);
+      if (isTab(h)) setTabState(h);
+    };
+    read();
+    window.addEventListener("hashchange", read);
+    return () => window.removeEventListener("hashchange", read);
+  }, []);
+  const setTab = (t: Tab) => {
+    setTabState(t);
+    window.history.replaceState(window.history.state, "", `#${t}`);
+  };
+
+  // Nothing of the admin (not even its sections) until the sign-in is confirmed as yours.
+  if (allowed !== true) {
+    return (
+      <div className="screen admin admin-gone">
+        {allowed === undefined ? (
+          <p className="admin-empty" aria-busy="true">Checking…</p>
+        ) : (
+          <section className="poll-card soon">
+            <h1 className="poll-question">This page could not be found.</h1>
+            <Link href="/" className="btn btn-coral press">
+              Back to Eithr
+            </Link>
+          </section>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="screen admin">
-      <header className="app-header">
-        <Link href="/" className="brand" aria-label="Eithr home">
-          <LogoMark />
-          <Wordmark />
+      <nav className="admin-side" aria-label="Admin sections">
+        <Link href="/" className="admin-back">
+          ← Back to Eithr
         </Link>
-        <span className="chip chip-small chip-sun">Admin</span>
-      </header>
-
-      {allowed === undefined ? (
-        <p className="admin-empty" aria-busy="true">Checking…</p>
-      ) : !allowed ? (
-        <section className="poll-card soon">
-          <h1 className="poll-question">This page is for the Eithr team.</h1>
-          <Link href="/" className="btn btn-coral press">
-            Back to the feed
-          </Link>
-        </section>
-      ) : (
-        <>
-          <div role="tablist" aria-label="Admin" className="tabs admin-tabs">
-            {(
-              [
-                ["reports", "Reports"],
-                ["snaps", "Snaps"],
-                ["words", "Words"],
-                ["schedule", "Schedule"],
-                ["done", "Done"],
-                ["metrics", "Metrics"],
-              ] as const
-            ).map(([id, label]) => (
-              <button key={id} role="tab" type="button" aria-selected={tab === id} className="tab press" onClick={() => setTab(id)}>
-                {label}
+        <div className="admin-side-brand">
+          <LogoMark />
+          <span className="chip chip-small chip-sun">Admin</span>
+        </div>
+        {SECTIONS.map((g) => (
+          <div key={g.group} className="admin-side-group">
+            <span className="admin-side-label">{g.group}</span>
+            {g.items.map((i) => (
+              <button key={i.id} type="button" className="admin-side-item" aria-current={tab === i.id ? "page" : undefined} onClick={() => setTab(i.id)}>
+                {i.label}
               </button>
             ))}
           </div>
-          {tab === "reports" && <Queue />}
-          {tab === "snaps" && <AdminSnaps />}
-          {tab === "words" && <AdminWords />}
-          {tab === "schedule" && <Schedule />}
-          {tab === "done" && <Done />}
-          {tab === "metrics" && <Metrics />}
-        </>
-      )}
+        ))}
+      </nav>
+
+      <div className="admin-main">
+        <header className="app-header admin-top">
+          <Link href="/" className="admin-back-small" aria-label="Back to Eithr">
+            ‹
+          </Link>
+          <Link href="/" className="brand" aria-label="Eithr home">
+            <LogoMark />
+            <Wordmark />
+          </Link>
+          <span className="chip chip-small chip-sun">Admin</span>
+        </header>
+        <div role="tablist" aria-label="Admin" className="tabs admin-tabs">
+          {ALL.map((i) => (
+            <button key={i.id} role="tab" type="button" aria-selected={tab === i.id} className="tab press" onClick={() => setTab(i.id)}>
+              {i.label}
+            </button>
+          ))}
+        </div>
+        <h1 className="admin-title">{ALL.find((i) => i.id === tab)!.label}</h1>
+        {tab === "reports" && <Queue />}
+        {tab === "snaps" && <AdminSnaps />}
+        {tab === "words" && <AdminWords />}
+        {tab === "metrics" && <Metrics />}
+        {tab === "schedule" && <Schedule />}
+        {tab === "tests" && <TestAccounts />}
+        {tab === "log" && <Done />}
+      </div>
     </div>
   );
 }
@@ -278,7 +330,17 @@ function Done() {
   }
 
   if (!items) return <p className="admin-empty" aria-busy="true">Loading…</p>;
-  if (!items.length) return <p className="admin-empty">No actions yet.</p>;
+  return (
+    <>
+      <h2 className="admin-sub">Moderation</h2>
+      {!items.length ? <p className="admin-empty">No actions yet.</p> : <ModerationLog items={items} busy={busy} undo={undo} />}
+      <h2 className="admin-sub">Other changes</h2>
+      <OtherChanges />
+    </>
+  );
+}
+
+function ModerationLog({ items, busy, undo }: { items: LogItem[]; busy: string | null; undo: (it: LogItem) => void }) {
   return (
     <ul className="admin-list">
       {items.map((it) => (
@@ -300,6 +362,133 @@ function Done() {
   );
 }
 
+/** Words, test accounts, settings: everything done in admin that isn't moderation. */
+function OtherChanges() {
+  const [items, setItems] = useState<AdminEvent[] | null>(null);
+  useEffect(() => {
+    fetchAdminEvents()
+      .then(setItems)
+      .catch(() => setItems([]));
+  }, []);
+  if (!items) return <p className="admin-empty" aria-busy="true">Loading…</p>;
+  if (!items.length) return <p className="admin-empty">Nothing yet.</p>;
+  return (
+    <ul className="admin-list">
+      {items.map((e, i) => (
+        <li key={`${e.at}-${i}`} className="admin-card admin-log">
+          <span>
+            <strong>@{e.admin ?? "admin"}</strong> {eventText(e)}
+            <span className="admin-meta"> · {ago(e.at)}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function eventText(e: AdminEvent) {
+  switch (e.action) {
+    case "word_added":
+      return `added the word ${e.detail}`;
+    case "word_changed":
+      return `changed the word ${e.detail}`;
+    case "word_removed":
+      return `removed the word ${e.detail}`;
+    case "test_added":
+      return `marked ${e.detail} as a test account`;
+    case "test_removed":
+      return `counted ${e.detail} again (not a test account)`;
+    case "props_no_wait":
+      return `turned props without the wait ${e.detail}`;
+    default:
+      return `${e.action.replace(/_/g, " ")}${e.detail ? ` ${e.detail}` : ""}`;
+  }
+}
+
+/** Accounts left out of Metrics (yours always is), so testing doesn't skew the numbers. */
+function TestAccounts() {
+  const [items, setItems] = useState<TestAccount[] | null>(null);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    fetchTestAccounts()
+      .then(setItems)
+      .catch(() => setError("Couldn't load test accounts."));
+  }, []);
+  useEffect(load, [load]);
+
+  async function change(username: string, on: boolean) {
+    setBusy(true);
+    setError(null);
+    try {
+      await setTestAccount(username, on);
+      if (on) setName("");
+      load();
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "";
+      setError(code === "not_found" ? "No one has that username." : code === "own_account" ? "Your own account is always left out." : "That didn't work. Try again?");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="admin-tests">
+      <p className="admin-meta admin-note">
+        Votes, polls, shares, sign-ups and visits from these accounts (and from any phone they&apos;ve signed in on) are left
+        out of Metrics. Your own account always is.
+      </p>
+      <form
+        className="admin-tests-add"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (name.trim()) change(name, true);
+        }}
+      >
+        <label className="sr-only" htmlFor="test-account">
+          Username
+        </label>
+        <input id="test-account" className="field-input" placeholder="@username" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
+        <button type="submit" className="mini-btn" disabled={busy || !name.trim()}>
+          Add
+        </button>
+      </form>
+      {error && (
+        <p className="poll-error" role="alert">
+          {error}
+        </p>
+      )}
+      {!items ? (
+        <p className="admin-empty" aria-busy="true">Loading…</p>
+      ) : !items.length ? (
+        <p className="admin-empty">No test accounts yet.</p>
+      ) : (
+        <ul className="admin-list admin-list-flush">
+          {items.map((t) => (
+            <li key={t.username} className="admin-card admin-log">
+              <span className="admin-person">
+                <Avatar url={t.avatarUrl} name={t.username} size={32} />
+                <span>
+                  <strong>@{t.username}</strong>
+                  <span className="admin-meta">
+                    {" "}
+                    · {t.votes} votes · joined {new Date(t.joined).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                  </span>
+                </span>
+              </span>
+              <button type="button" className="mini-btn" disabled={busy} aria-label={`Count @${t.username} again`} onClick={() => change(t.username, false)}>
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 /** Targets from docs/poll-app-validation.md (after ~4 weeks with real users). */
 const TARGETS = {
   votePct: { min: 60, label: "≥60%" },
@@ -314,6 +503,13 @@ function Metrics() {
   const [rows, setRows] = useState<DayMetrics[] | null>(null);
   const [views, setViews] = useState<Map<string, { views: number; per100: number | null }> | null>(null);
   const [error, setError] = useState(false);
+  const [tests, setTests] = useState(0);
+
+  useEffect(() => {
+    fetchTestAccounts()
+      .then((t) => setTests(t.length))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let live = true;
@@ -413,7 +609,7 @@ function Metrics() {
             </table>
           </div>
           <p className="admin-meta admin-note">
-            Days are India time. Visitors are browsers (a random id, no personal data); votes per session counts signed-in
+            Leaving out your account{tests ? ` and ${tests} test account${tests === 1 ? "" : "s"}` : ""} (Run → Test accounts). Days are India time. Visitors are browsers (a random id, no personal data); votes per session counts signed-in
             sessions; views are counted from the day the live-feed update was installed; D1 / D7 are the share of each day&apos;s new visitors who came back 1 / 7 days later, shown once that
             day is over.
           </p>
