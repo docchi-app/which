@@ -1,3 +1,4 @@
+import { askTextCheck } from "./moderation";
 import { getSupabase } from "./supabase";
 import type { PollKind, Visibility } from "./types";
 
@@ -75,5 +76,6 @@ export async function createPoll(input: {
     const code = /docchi:(\w+)/.exec(error.message)?.[1];
     throw code ? new CreatePollError(code) : error;
   }
+  askTextCheck(data as string);
   return data as string;
 }

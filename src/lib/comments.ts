@@ -1,3 +1,4 @@
+import { askTextCheck } from "./moderation";
 import { getSupabase } from "./supabase";
 
 export type Comment = {
@@ -73,6 +74,7 @@ export async function fetchThread(pollId: string): Promise<Thread> {
 export async function postComment(pollId: string, text: string): Promise<void> {
   const { error } = (await getSupabase()?.rpc("post_comment", { poll: pollId, body: text })) ?? { error: null };
   if (error) throw fail(error.message);
+  askTextCheck(pollId);
 }
 
 export async function deleteComment(commentId: string): Promise<void> {
