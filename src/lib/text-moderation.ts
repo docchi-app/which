@@ -41,6 +41,10 @@ export function textVerdict(scores: Scores): { verdict: TextVerdict; reason: str
     const over = s / review;
     if (level > best.level || (level > 0 && level === best.level && over > best.over)) best = { level, over, cat };
   }
+  // Violence aimed at someone ("should we beat up the new kid?") is hidden even below
+  // violence's own line: a film fight scores high on violence but not on threat.
+  const aimed = (scores["harassment/threatening"] ?? 0) >= 0.2 || (scores["illicit/violent"] ?? 0) >= 0.3;
+  if (best.level < 2 && (scores.violence ?? 0) >= 0.7 && aimed) return { verdict: "hide", reason: "violence" };
   return { verdict: (["ok", "review", "hide"] as const)[best.level], reason: best.cat };
 }
 
