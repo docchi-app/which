@@ -54,6 +54,8 @@ export function SnapCamera({ onShot, onPick }: Props) {
   const stream = useRef<MediaStream | null>(null);
   const [facing, setFacing] = useState<"environment" | "user">("environment");
   const [state, setState] = useState<CamState>("starting");
+  // Bumped to start the camera again (back from another app, or the camera was taken away).
+  const [wake, setWake] = useState(0);
   const [caps, setCaps] = useState<Caps>(NO_CAPS);
   const [zoom, setZoom] = useState(1);
   // -1 (darker) … 0 … +1 (brighter).
@@ -90,6 +92,9 @@ export function SnapCamera({ onShot, onPick }: Props) {
         });
         if (cancelled) return s.getTracks().forEach((t) => t.stop());
         stream.current = s;
+        s.getVideoTracks()[0]?.addEventListener("ended", () => {
+          if (document.visibilityState === "visible") setWake((w) => w + 1);
+        });
         if (video.current) {
           video.current.srcObject = s;
           await video.current.play().catch(() => {});
@@ -114,7 +119,23 @@ export function SnapCamera({ onShot, onPick }: Props) {
       cancelled = true;
       stop();
     };
-  }, [facing, stop]);
+  }, [facing, stop, wake]);
+
+  // Off while the app is in the background (the camera light goes out), on again when it's back.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "hidden") {
+        countRef.current = 0;
+        setCountdown(0);
+        stop();
+        setState("starting");
+      } else if (!stream.current || stream.current.getVideoTracks()[0]?.readyState !== "live") {
+        setWake((w) => w + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [stop]);
 
   // Stop a running timer when the camera goes away.
   useEffect(() => () => void (countRef.current = 0), []);

@@ -105,7 +105,9 @@ The first slice of the build order:
 - **The + button:** two big choices pop up right above it, **📸 Snap it** and **✍️ Type it**; one
   tap opens that screen. Tap + again (now ✕), outside, or Escape to close.
 - **Create poll (Type it, `/create`):** the keyboard opens on the question (up to 140 characters),
-  then 2 to 4 answers (up to 40 each). Everything else is on the same screen, no "More options":
+  then 2 to 4 answers (up to 40 each); Enter moves to the next box and never posts. Picking
+  Mystery takes you to its teaser box. On Android the keyboard shrinks the page
+  (`interactive-widget=resizes-content`), so Post and Send stay above it. Everything else is on the same screen, no "More options":
   **Who sees it** (Everyone / Friends / Link only; Friends can pick lists), **Style** (Classic / Hot
   take / Mystery) and how long it's open (1, 3 or 7 days). The live preview is off; admins can turn
   it on for their phone in **Settings → Live preview**. Anyone signed in
@@ -225,16 +227,19 @@ The first slice of the build order:
   and a grid. Phones differ in what they let a website control, so: real focus, zoom and exposure
   where the camera offers them (most Android phones), otherwise zoom crops and brightness is applied
   to the photo (iPhone: autofocus only, 1× / 2×); flash is the torch on the back camera where there
-  is one, and the screen lights up white for the front camera. Camera shots get the 📸 Live badge. A gallery photo
+  is one, and the screen lights up white for the front camera. The camera turns off while the app
+  is in the background and back on when you return. Camera shots get the 📸 Live badge. A gallery photo
   that's upright goes straight through; any other photo gets a **Frame your photo** step (drag
   and pinch to fill the card, or **Show whole photo** on a blurred fill). Then one screen
-  finishes it: the last idea is already filled in on the photo (so Send works straight away); tap
-  the question to type your own (the idea's text is selected, so typing replaces it), or tap
-  another idea (Buy or skip? / Rate my fit / Should I go? / This or that? / Rate my food / Too
-  much?; they wrap, no sideways scrolling). Your own question gets 2–4 answers you can edit (+ to add, × to remove),
+  finishes it: the last idea is already filled in on the photo (so Send works straight away) and
+  the keyboard comes up on it with its text selected (typing replaces it; iPhone only opens the
+  keyboard on a tap). Pick another idea right there, or put the keyboard away (Done, ‹, or the
+  phone's own back/hide key: the screen notices) to see the ideas and Who sees it again. Ideas (Buy or skip? / Rate my fit / Should I go? / This or that? / Rate my food / Too
+  much?) wrap, no sideways scrolling. Your own question gets 2–4 answers you can edit (+ to add, × to remove),
   with suggestions above: the two sides of an "X or Y?" question, Yes / No, or 🔥😍😐🙅.
-  **Who sees it** sits right above Send: 👥 Friends (they see who picked what), 🌍 Everyone
-  (counts only) or 🔗 Link only (in nobody's feed: after Send, "Send it to someone" opens with
+  **Who sees it** sits right above Send, and Send says where it's going ("Send to friends →"):
+  👥 Friends (they see who picked what; greyed out with "add friends first" until you have one),
+  🌍 Everyone (counts only; "from tomorrow" for accounts under a day old) or 🔗 Link only (in nobody's feed: after Send, "Send it to someone" opens with
   WhatsApp first; whoever opens the link can see it and vote). The last idea and audience are
   remembered. Every photo is made
   exactly 3:4 at 1080 × 1440 on the phone (WebP, about 150–400 KB, location data removed), so
