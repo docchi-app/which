@@ -223,12 +223,17 @@ export function SnapScreen() {
   const backToCamera = useBackClose(phase === "frame" || phase === "ask", retake);
 
   // The photo is in: the keyboard comes up on the question (an idea's text selected,
-  // so typing replaces it). Phones that only open it on a tap (iPhone) show the caret.
+  // so typing replaces it). Phones that only open it on a tap (iPhone) show the caret, and
+  // the screen stays as it is (who sees it, Send) until a tap brings the keyboard: being
+  // focused by us isn't typing, only a tap or a keyboard that actually shows is.
+  const focusingByUs = useRef(false);
   useEffect(() => {
     if (phase !== "ask") return;
     const box = questionRef.current;
     if (!box) return;
+    focusingByUs.current = true;
     box.focus({ preventScroll: true });
+    focusingByUs.current = false;
     if (idea) box.select();
     else box.setSelectionRange(box.value.length, box.value.length);
     // Only when a new photo arrives.
@@ -257,8 +262,12 @@ export function SnapScreen() {
       up = now;
       setKeyboard(now);
       const box = document.activeElement as HTMLElement | null;
-      if (now) requestAnimationFrame(() => box?.scrollIntoView({ block: "center" }));
-      else if (box?.closest(".ask-card")) box.blur();
+      if (now) {
+        // Up on a box that was already focused (Android after the photo, or a tap on the
+        // caret on iPhone): that's typing.
+        if (box?.closest(".ask-card")) setTyping(true);
+        requestAnimationFrame(() => box?.scrollIntoView({ block: "center" }));
+      } else if (box?.closest(".ask-card")) box.blur();
     };
     vv.addEventListener("resize", onResize);
     return () => {
@@ -358,7 +367,7 @@ export function SnapScreen() {
 
         <div
           className={`ask-card${keyboard ? " ask-card-typing" : ""}`}
-          onFocus={() => setTyping(true)}
+          onFocus={() => !focusingByUs.current && setTyping(true)}
           onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && setTyping(false)}
         >
           <SnapCardShell src={preview} live={live} who="You" sub="Gone in 24 hours">

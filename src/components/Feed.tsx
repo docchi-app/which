@@ -557,7 +557,15 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
   }, []);
 
   // Live numbers for the cards on screen, in one request every few seconds.
-  useLiveCounts((rows) => setPolls((list) => (list ? mergeLive(list, rows) : list)));
+  // Polls that are gone (removed, hidden, deleted) leave the list; the other tabs and the
+  // phone's copy have already dropped them (forgetPolls).
+  useLiveCounts((rows, gone) =>
+    setPolls((list) => {
+      if (!list) return list;
+      const next = mergeLive(list, rows);
+      return gone.length ? next.filter((p) => !gone.includes(p.id)) : next;
+    }),
+  );
 
   // Is there a poll newer than anything in the loaded feed?
   useLiveInterval(
