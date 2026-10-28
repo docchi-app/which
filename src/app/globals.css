@@ -987,6 +987,29 @@ button.ghost-action { cursor: pointer; }
   text-decoration: underline;
   cursor: pointer;
 }
+/* Turn on notifications: a sheet at a moment worth it, full screen the first time from the Home Screen. */
+.notify-ask { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.notify-ask .sheet-title { margin: 0; }
+.notify-ask-bell { font-size: 44px; line-height: 1; }
+.notify-ask-btn { align-self: stretch; }
+.notify-ask-done { margin: 6px 0; color: #11795a; font-weight: 800; }
+.notify-ask-note { margin: 6px 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.notify-ask-full {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+  background: var(--cream);
+}
+.notify-ask-page { width: 100%; max-width: 420px; }
+.notify-ask-page .notify-ask-bell { font-size: 64px; }
+.notify-ask-page .sheet-title { font-size: 28px; }
+.notify-ask-reasons { display: flex; flex-direction: column; gap: 10px; align-self: stretch; margin: 8px 0 12px; padding: 0; list-style: none; text-align: left; }
+.notify-ask-reasons li { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: var(--outline); border-radius: 16px; background: var(--white); font-weight: 700; }
+.notify-ask-reasons span { font-size: 22px; }
 
 /* ─── Auth callback + account ────────────────────────────────────────────── */
 

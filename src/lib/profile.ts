@@ -107,3 +107,12 @@ export const DELETE_ERRORS: Record<string, string> = {
   sign_in: "You're signed out already.",
   demo: "Demo mode: there's no account to delete.",
 };
+
+/** Settings → "Email me what I missed" (the evening summary for people without notifications). */
+export async function emailSummary(off: boolean | null = null): Promise<{ on: boolean; hasEmail: boolean } | null> {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+  const { data, error } = await supabase.rpc("my_email_summary", { off });
+  if (error) throw error;
+  return { on: data.on === true, hasEmail: data.has_email === true };
+}

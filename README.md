@@ -307,6 +307,16 @@ The first slice of the build order:
   real **Install Eithr** button when Chrome offers it (Settings → The app), otherwise ⋮ →
   Install app. After someone's 3rd vote in a browser it offers itself once; "Not now" waits a
   week. iPhone can't show an install prompt like Android: Apple doesn't allow it for websites.
+- **Asking people back in (`lib/asks.ts`):** at the moments worth hearing about again (you
+  posted a poll, got props, added or accepted a friend) Eithr asks for whichever step is
+  missing: on iPhone in Safari or inside Instagram/WhatsApp, the Home Screen sheet with a reason
+  that fits ("Want to know the moment friends vote?"); where notifications can work, a
+  **Turn on notifications** sheet whose button asks the phone straight from the tap (the only way
+  iPhone shows its "Allow" box). Each at most once a week, never after "Don't Allow" or turning
+  them off in Settings (right after posting, the poll's own "Get a ping" row asks instead). The
+  **first time Eithr is opened from the Home Screen** (iPhone or Android) it asks full screen,
+  once, with what notifications bring: votes on your polls, props (never who), friend requests,
+  the Poll of the Day. People push can't reach get the evening email instead (setup step 8).
 - **Terms, Privacy and Community guidelines** at `/terms`, `/privacy`, `/guidelines`, linked from
   the sign-in sheet, the + screen and Settings. Set `NEXT_PUBLIC_CONTACT_EMAIL` to
   show a contact address on them.
@@ -591,6 +601,26 @@ The same key and secret run the AI check on typed polls and comments. Those go l
 are checked a second later; without the key (or before the moderation migration) only the word
 filter applies. Posts the app didn't send are picked up by the notifications job every 2 minutes.
 
+### 8. Evening email (for people without notifications)
+
+On iPhone, notifications only work once Eithr is on the Home Screen, so many people never get
+them. Once a day at most, between 6 and 9 pm India time, anyone with no phone set up for push,
+who hasn't opened Eithr since yesterday and has something waiting (votes or comments on their
+polls, props, friend requests), gets one short email from the notifications job. Every email has
+a one-click **Stop these emails** link (signed per person); Settings → **Email me what I missed**
+turns it off or on. Props never say who.
+
+1. Run `20261201000000_email_summary.sql` in the SQL Editor (then the migration check).
+2. Sign up at https://resend.com (free: 3,000 emails a month, 100 a day). **Domains → Add
+   Domain** → `eithr.app`, and add the DNS records it shows where your domain is managed (wait
+   for "Verified").
+3. **API Keys → Create** (permission: Sending access) and add it in Vercel as `RESEND_API_KEY`,
+   marked **Sensitive**. Optionally set `EMAIL_FROM` (default `Eithr <hello@eithr.app>`; the
+   address must be on the verified domain). Redeploy.
+
+Without `RESEND_API_KEY` nothing is sent and nothing else changes. Sends are recorded in
+`email_sends` (one per person per day; a send that fails isn't retried that day).
+
 ### Free tier limits to know about
 
 - **A free project pauses after about a week with no activity.** You can restore it from the
@@ -691,7 +721,7 @@ weeks are kept, so last week's champ is a lookup.
   from public, anon, authenticated` on internal helpers (Supabase grants new functions to `anon`
   and `authenticated` by default, so revoking from `public` alone isn't enough).
 - **Secrets stay on the server:** the service_role key is never in the app; `GOOGLE_CLIENT_SECRET`,
-  `VAPID_PRIVATE_KEY`, `PUSH_CRON_SECRET` and `OPENAI_API_KEY` are server-only (mark them
+  `VAPID_PRIVATE_KEY`, `PUSH_CRON_SECRET`, `OPENAI_API_KEY` and `RESEND_API_KEY` are server-only (mark them
   **Sensitive** in Vercel). Only the URL, the anon key, the Google client id, the VAPID public key,
   the site URL and the contact email are `NEXT_PUBLIC_`.
 - **Headers** (`next.config.ts`): a Content-Security-Policy (scripts only from this site, network only

@@ -2,4 +2,4 @@
 export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || null;
 
 /** Last time the Terms, Privacy or Guidelines text changed. */
-export const POLICIES_UPDATED = "2026-10-27";
+export const POLICIES_UPDATED = "2026-10-29";

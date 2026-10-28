@@ -23,6 +23,7 @@ import {
   type Suggestion,
 } from "@/lib/circle";
 import { recall, remember } from "@/lib/screen-cache";
+import { askAt } from "@/lib/asks";
 import { Avatar } from "./Avatar";
 import { markRequestsSeen } from "./NavBadge";
 
@@ -91,7 +92,7 @@ export function FriendsPanel({ username }: { username: string | null }) {
               <li key={r.username} className="person">
                 <PersonLink person={r} />
                 <div className="person-actions">
-                  <button type="button" className="mini-btn mini-btn-mint" onClick={() => act(() => respondRequest(r.username, true))}>
+                  <button type="button" className="mini-btn mini-btn-mint" onClick={() => act(() => respondRequest(r.username, true)).then((ok) => ok && askAt("friend"))}>
                     Accept
                   </button>
                   <button type="button" className="mini-btn" onClick={() => act(() => respondRequest(r.username, false))}>
@@ -129,7 +130,7 @@ export function FriendsPanel({ username }: { username: string | null }) {
                       className="mini-btn mini-btn-coral"
                       onClick={() => {
                         setRequested((r) => new Set(r).add(s.username));
-                        act(() => addFriend(s.username)).then((ok) => !ok && setRequested((r) => (r.delete(s.username), new Set(r))));
+                        act(() => addFriend(s.username)).then((ok) => (ok ? askAt("friend") : setRequested((r) => (r.delete(s.username), new Set(r)))));
                       }}
                     >
                       Add
@@ -284,9 +285,11 @@ function FindPeople({ onChanged }: { onChanged: () => void }) {
       search(query);
       announceCircleChange();
       onChanged();
+      return true;
     } catch (e) {
       setError(circleErrorText(e));
       search(query);
+      return false;
     }
   }
 
@@ -318,8 +321,8 @@ function FindPeople({ onChanged }: { onChanged: () => void }) {
               <div className="person-actions">
                 <FriendButton
                   status={p.status}
-                  onAdd={() => run(() => addFriend(p.username), p.username, "requested")}
-                  onAccept={() => run(() => respondRequest(p.username, true), p.username, "friends")}
+                  onAdd={() => run(() => addFriend(p.username), p.username, "requested").then((ok) => ok && askAt("friend"))}
+                  onAccept={() => run(() => respondRequest(p.username, true), p.username, "friends").then((ok) => ok && askAt("friend"))}
                 />
               </div>
             </li>

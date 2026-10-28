@@ -12,10 +12,14 @@ import {
   type InstallPlatform,
 } from "@/lib/install";
 import { useBackClose } from "@/lib/back";
+import type { AskMoment } from "@/lib/asks";
 
 type Props = {
-  /** notifications: from the notifications prompt or settings · nudge: after a few votes · app: Settings → The app. */
-  reason: "notifications" | "nudge" | "app";
+  /**
+   * notifications: from the notifications prompt or settings · nudge: after a few votes ·
+   * app: Settings → The app · posted / props / friend: a moment worth hearing about again (MomentAsk).
+   */
+  reason: "notifications" | "nudge" | "app" | AskMoment;
   onClose: () => void;
 };
 
@@ -75,12 +79,19 @@ export function InstallSheet({ reason, onClose }: Props) {
     }
   }
 
+  const homeScreen = iphone
+    ? "iPhone only sends notifications to apps on your Home Screen. It takes 10 seconds:"
+    : "Notifications need Eithr in a real browser. It takes 10 seconds:";
   const why =
     reason === "notifications"
-      ? iphone
-        ? "iPhone only sends notifications to apps on your Home Screen. It takes 10 seconds:"
-        : "Notifications need Eithr in a real browser. It takes 10 seconds:"
-      : "Open it with one tap, full screen, and get told when your polls take off.";
+      ? homeScreen
+      : reason === "posted"
+        ? `Want to know the moment friends vote? ${homeScreen}`
+        : reason === "props"
+          ? `💜 Someone picked you! Hear about the next one. ${homeScreen}`
+          : reason === "friend"
+            ? `Hear when your friends post or pick you. ${homeScreen}`
+            : "Open it with one tap, full screen, and get told when your polls take off.";
 
   const arrow = platform === "ios" ? (otherIosBrowser ? "top" : "bottom") : platform === "android" && !canPrompt ? "top" : null;
 
