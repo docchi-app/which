@@ -95,7 +95,8 @@ The first slice of the build order:
   it's close) and **mystery polls** (people see a teaser like "Pick a colour" and the answers; the
   real question stays on the server until they vote, then it's revealed). Anyone can post one of
   these a day. Eithr's own polls show a **verified** tick, in the app and on link previews.
-- **The phone's back button:** closes whatever is on top (comments, share, report, sign-in,
+- **The phone's back button:** on the feed, from New or Friends it goes back to For you (only
+  then out of the app). It closes whatever is on top (comments, share, report, sign-in,
   install and delete sheets, the + menu, ••• menus, "How Eithr works") instead of leaving the
   screen; on a snap it goes from the question back to the camera. Each open layer adds a history
   step for the same page (`src/lib/back.ts`), and closing it with its own button removes that step,
@@ -233,8 +234,9 @@ The first slice of the build order:
   and pinch to fill the card, or **Show whole photo** on a blurred fill). Then one screen
   finishes it: the last idea is already filled in on the photo (so Send works straight away) and
   the keyboard comes up on it with its text selected (typing replaces it; iPhone only opens the
-  keyboard on a tap). Pick another idea right there, or put the keyboard away (Done, ‹, or the
-  phone's own back/hide key: the screen notices) to see the ideas and Who sees it again. Ideas (Buy or skip? / Rate my fit / Should I go? / This or that? / Rate my food / Too
+  keyboard on a tap). While the keyboard is up only the photo with its question and answers
+  shows; put it away (Done, ‹, or the phone's own back/hide key: the screen notices) and the
+  ideas, Who sees it and Send come back. Ideas (Buy or skip? / Rate my fit / Should I go? / This or that? / Rate my food / Too
   much?) wrap, no sideways scrolling. Your own question gets 2–4 answers you can edit (+ to add, × to remove),
   with suggestions above: the two sides of an "X or Y?" question, Yes / No, or 🔥😍😐🙅.
   **Who sees it** sits right above Send, and Send says where it's going ("Send to friends →"):

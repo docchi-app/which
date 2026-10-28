@@ -130,7 +130,22 @@ export type SnapInfo = { path: string | null; status: SnapStatus; live: boolean 
 export async function snapInfo(pollId: string): Promise<SnapInfo | null> {
   const { data } = (await getSupabase()?.rpc("snap_info", { ids: [pollId] })) ?? {};
   const row = (data as { photo_path: string | null; photo_status: SnapStatus; photo_live: boolean }[] | null)?.[0];
-  return row ? { path: row.photo_path, status: row.photo_status, live: row.photo_live } : null;
+  const info = row ? { path: row.photo_path, status: row.photo_status, live: row.photo_live } : null;
+  if (info) infos.set(pollId, info);
+  return info;
+}
+
+// What each snap card last showed, so a card coming back on screen (back to the feed,
+// another tab) shows its photo at once instead of loading it again.
+const infos = new Map<string, SnapInfo>();
+
+/** The photo a snap card already showed, while its signed link is still good. */
+export function knownSnapPhoto(pollId: string): { src: string | null; tint: string | null; live: boolean } | null {
+  const info = infos.get(pollId);
+  if (!info) return null;
+  if (!info.path) return { src: null, tint: null, live: false };
+  const hit = urls.get(info.path);
+  return hit && hit.until > Date.now() ? { src: hit.url, tint: photoTint(info.path), live: info.live } : null;
 }
 
 // Signed photo links last an hour; reuse them so the browser can cache the photo.

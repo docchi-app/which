@@ -24,6 +24,7 @@ import type { SheetPick } from "./SignInSheet";
 import { BottomNav, FEED_TOP } from "./BottomNav";
 import { Bell } from "./Bell";
 import { StreakChip } from "./StreakChip";
+import { useBackClose } from "@/lib/back";
 
 // Sheets load only when they open, so the first screen needs less JavaScript.
 const SignInSheet = dynamic(() => import("./SignInSheet").then((m) => m.SignInSheet), { ssr: false });
@@ -414,6 +415,10 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
     },
     [tab, keepTab, load],
   );
+
+  // New and Friends are a step away from For you: the phone's back button returns to
+  // For you (instead of closing the app), and tapping For you takes that step back.
+  const backToForYou = useBackClose(tab !== "trending", () => switchTab("trending"));
 
   // Put the scroll position back once the restored list has rendered. Coming back from another
   // screen, Next.js scrolls the new page to the top right after this, so it's done again once
@@ -823,7 +828,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
               aria-selected={tab === t.id}
               className="tab press"
               data-tip={t.id === "circle" ? "circle" : undefined}
-              onClick={() => switchTab(t.id)}
+              onClick={() => (t.id === "trending" && tab !== "trending" ? backToForYou() : switchTab(t.id))}
             >
               {t.label}
             </button>

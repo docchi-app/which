@@ -2901,8 +2901,8 @@ button.ghost-action { cursor: pointer; }
 }
 .ask-screen .cam-top { padding: 0 12px 10px; }
 .ask-card { width: min(calc(100% - 64px), 400px, calc((100dvh - 370px - env(safe-area-inset-top)) * 0.75)); flex: none; transition: width 0.25s var(--ease-pop); }
-.ask-card-typing { width: max(210px, min(calc(100% - 96px), 320px, calc((100dvh - 330px) * 0.62))); }
-/* While typing (a smaller card): just the photo, the question and the answers. */
+.ask-card-typing { width: max(210px, min(calc(100% - 64px), 400px, calc((100dvh - 90px - env(safe-area-inset-top)) * 0.75))); }
+/* Keyboard up: only the card (fitted above the keyboard), and on it just the photo, question and answers. */
 .ask-card-typing .snapc-badges,
 .ask-card-typing .snapc-name small { display: none; }
 .ask-card-typing .snapc-answers { gap: 6px; }

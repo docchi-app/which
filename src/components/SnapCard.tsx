@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { isEmojiAnswers, photoTint, snapInfo, snapPhotoUrl } from "@/lib/snap";
+import { isEmojiAnswers, knownSnapPhoto, photoTint, snapInfo, snapPhotoUrl } from "@/lib/snap";
 import type { Poll } from "@/lib/types";
 
 /**
@@ -121,10 +121,12 @@ export function SnapPoll({
   onMore?: () => void;
   menu?: ReactNode;
 }) {
+  // Shown before (back on the feed, another tab): straight away, no loading.
+  const [known] = useState(() => knownSnapPhoto(poll.id));
   // undefined: loading · null: no photo (it has disappeared)
-  const [src, setSrc] = useState<string | null | undefined>(undefined);
-  const [tint, setTint] = useState<string | null>(null);
-  const [live, setLive] = useState(false);
+  const [src, setSrc] = useState<string | null | undefined>(known ? known.src : undefined);
+  const [tint, setTint] = useState<string | null>(known?.tint ?? null);
+  const [live, setLive] = useState(known?.live ?? false);
 
   useEffect(() => {
     if (!near) return;
