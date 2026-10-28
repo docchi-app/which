@@ -244,6 +244,10 @@ const SCREENS = ["/friends", "/leaders", "/profile", "/settings", "/activity", "
     await p.waitForTimeout(1200);
     await p.locator(".cam-shutter").click();
     await p.waitForTimeout(1200);
+    // The keyboard is on the question first; then put away.
+    await check(`/snap ask typing ${w}px`, ".ask-screen");
+    await p.evaluate(() => document.activeElement?.blur());
+    await p.waitForTimeout(300);
     await p.getByRole("radio", { name: /Link only/ }).click();
     await check(`/snap ask ${w}px`, ".ask-screen");
     // Create, as a mystery poll with the longest teaser.
