@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { fetchLiveCounts } from "./polls";
+import { forgetPolls } from "./screen-cache";
 import type { LiveCounts } from "./types";
 
 // Live numbers for the cards on screen. One loop for the whole feed: every 5 seconds it asks
@@ -19,7 +20,7 @@ const SOON_MS = 400;
 const onScreen = new Map<string, number>(); // poll id → how many cards show it right now
 const fetchedAt = new Map<string, number>();
 const seen = new Map<string, string>(); // poll id → its last numbers, to notice change
-const listeners = new Set<(rows: LiveCounts[]) => void>();
+const listeners = new Set<(rows: LiveCounts[], gone: string[]) => void>();
 let timer: ReturnType<typeof setTimeout> | null = null;
 let timerAt = 0;
 let inFlight = false;
@@ -48,7 +49,7 @@ async function tick() {
   const ids = [...onScreen.keys()].slice(0, 12);
   inFlight = true;
   try {
-    const rows = await fetchLiveCounts(ids);
+    const { rows, gone } = await fetchLiveCounts(ids);
     const now = Date.now();
     ids.forEach((id) => fetchedAt.set(id, now));
     for (const r of rows) {
@@ -56,7 +57,12 @@ async function tick() {
       if (seen.has(r.id) && seen.get(r.id) !== sig) lastChange = now;
       seen.set(r.id, sig);
     }
-    listeners.forEach((f) => f(rows));
+    for (const id of gone) {
+      onScreen.delete(id);
+      seen.delete(id);
+    }
+    if (gone.length) forgetPolls(gone);
+    listeners.forEach((f) => f(rows, gone));
   } catch {
     // Offline for a moment: try again next time.
   } finally {
@@ -109,14 +115,17 @@ export function useLiveCard(ref: RefObject<Element | null>, pollId: string, enab
   }, [ref, pollId, enabled]);
 }
 
-/** Calls `onRows` with fresh numbers for the cards on screen, every few seconds. */
-export function useLiveCounts(onRows: (rows: LiveCounts[]) => void) {
+/**
+ * Calls `onRows` with fresh numbers for the cards on screen, every few seconds, and the
+ * polls among them that are gone (removed, hidden or deleted), to take off the list.
+ */
+export function useLiveCounts(onRows: (rows: LiveCounts[], gone: string[]) => void) {
   const latest = useRef(onRows);
   useEffect(() => {
     latest.current = onRows;
   });
   useEffect(() => {
-    const f = (rows: LiveCounts[]) => latest.current(rows);
+    const f = (rows: LiveCounts[], gone: string[]) => latest.current(rows, gone);
     listeners.add(f);
     listen();
     soon();

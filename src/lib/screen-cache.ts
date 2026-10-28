@@ -39,6 +39,27 @@ export function openingFeedOnPoll() {
   store.delete(FEED_CACHE);
 }
 
+/**
+ * Polls that are gone (removed by an admin, hidden by reports or the AI check, deleted):
+ * out of every list the feed remembers, and out of the copy kept on the phone, so going
+ * back to a tab or reopening the app doesn't bring them back.
+ */
+export function forgetPolls(ids: string[]) {
+  if (!ids.length) return;
+  const gone = new Set(ids);
+  const feed = store.get(FEED_CACHE)?.value as { tabs?: Record<string, { polls: { id: string }[] } | undefined> } | undefined;
+  // In place: the feed holds the same lists.
+  for (const t of Object.values(feed?.tabs ?? {})) if (t) t.polls = t.polls.filter((p) => !gone.has(p.id));
+  for (const id of ids) store.delete(`poll:${id}`);
+  try {
+    const s = JSON.parse(localStorage.getItem(FEED_SNAP) ?? "null") as { polls?: { id: string }[] } | null;
+    if (s?.polls?.some((p) => gone.has(p.id))) {
+      s.polls = s.polls.filter((p) => !gone.has(p.id));
+      localStorage.setItem(FEED_SNAP, JSON.stringify(s));
+    }
+  } catch {}
+}
+
 export function clearScreenCache() {
   store.clear();
   forgetFeedSnap();

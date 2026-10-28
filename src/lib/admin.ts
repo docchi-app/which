@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import { forgetPolls } from "./screen-cache";
 
 export type QueueItem = {
   targetType: "poll" | "user" | "comment";
@@ -120,6 +121,8 @@ export async function fetchQueue(status: "open" | "done"): Promise<QueueItem[]> 
 
 export async function moderate(targetType: "poll" | "user" | "comment", targetId: string, action: AdminAction): Promise<void> {
   await call("admin_act", { kind: targetType, target: targetId, act: action });
+  // Removed: off this phone's feed now, not when the feed next asks.
+  if (targetType === "poll" && action === "remove") forgetPolls([targetId]);
 }
 
 export async function fetchLog(): Promise<LogItem[]> {

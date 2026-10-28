@@ -97,6 +97,9 @@ http.createServer((req, res) => {
       case 'set_props_off': pOff = a.off; log.push('PROPS_OFF ' + a.off); return json(200, null);
       case 'mark_snap_photos_deleted': log.push('MARK ' + a.paths.join(',')); return json(200, null);
       case '/__log': return json(200, log);
+      // A poll hidden or removed behind the app's back (e.g. by an admin on another phone).
+      case '/__hide': { const i = polls.findIndex((p) => p.id === url.searchParams.get('id')); if (i >= 0) polls.splice(i, 1); log.push('HIDE ' + url.searchParams.get('id')); return json(200, null); }
+      case 'admin_act': { if (a.kind === 'poll' && a.act === 'remove') { const i = polls.findIndex((p) => p.id === a.target); if (i >= 0) polls.splice(i, 1); } log.push(`ADMIN ${a.act} ${a.kind} ${a.target}`); return json(200, null); }
       case 'get_feed': return json(200, (a.tab === 'circle' ? [polls.find((p) => p.visibility === 'circle')] : polls).filter((p) => p.kind !== 'snap' || snaps[p.id]?.status === 'live').map(view));
       case 'get_poll': return json(200, polls.filter((p) => p.id === a.poll).map(view));
       case 'cast_vote': { votes[a.target_poll] = a.target_option; const p = polls.find((x) => x.id === a.target_poll); p.vote_count++; p.options.find((o) => o.id === a.target_option)._v++; const v = view(p); return json(200, [{ my_option_id: v.my_option_id, vote_count: v.vote_count, question: p.question, options: v.options }]); }
