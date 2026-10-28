@@ -101,6 +101,8 @@ export async function markPropsSeen() {
 }
 
 export const setPropsOff = (off: boolean) => call("set_props_off", { off });
+/** Admins, for testing: props picked for you arrive without the 5–30 minute wait. Reads it when `on` is null. */
+export const propsNoWait = (on: boolean | null = null) => call<boolean>("admin_props_no_wait", { on_now: on });
 
 export const PROPS_ERRORS: Record<string, string> = {
   sign_in: "Sign in to give props.",

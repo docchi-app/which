@@ -40,6 +40,7 @@ let requests = [{ username: 'zoya', avatar_url: null, at: iso(-1) }];
 let members = [{ username: 'priya', avatar_url: null, since: iso(-48), groups: [] }];
 const status = { zoya: ['none', 'pending'], priya: ['member', 'member'], aman: ['none', 'none'], ravi: ['none', 'none'] };
 const LAT = Number(process.env.LAT || 0);
+let propsNoWait = false;
 http.createServer((req, res) => {
   if (LAT && req.method !== 'OPTIONS' && !req.url.startsWith('/__log')) { const orig = res.end.bind(res); res.end = (...args) => { setTimeout(() => orig(...args), LAT); return res; }; }
   const chunks = [];
@@ -97,6 +98,7 @@ http.createServer((req, res) => {
       case 'set_props_off': pOff = a.off; log.push('PROPS_OFF ' + a.off); return json(200, null);
       case 'mark_snap_photos_deleted': log.push('MARK ' + a.paths.join(',')); return json(200, null);
       case '/__log': return json(200, log);
+      case 'admin_props_no_wait': if (a.on_now !== null && a.on_now !== undefined) { propsNoWait = a.on_now; log.push('PROPS_NOWAIT ' + a.on_now); } return json(200, propsNoWait);
       // A poll hidden or removed behind the app's back (e.g. by an admin on another phone).
       case '/__hide': { const i = polls.findIndex((p) => p.id === url.searchParams.get('id')); if (i >= 0) polls.splice(i, 1); log.push('HIDE ' + url.searchParams.get('id')); return json(200, null); }
       case 'admin_act': { if (a.kind === 'poll' && a.act === 'remove') { const i = polls.findIndex((p) => p.id === a.target); if (i >= 0) polls.splice(i, 1); } log.push(`ADMIN ${a.act} ${a.kind} ${a.target}`); return json(200, null); }

@@ -266,7 +266,7 @@ The first slice of the build order:
   a few polls into **For you** (and all of today's questions are at `/props`, from the Friends tab):
   a question Eithr wrote ("Who has the best laugh?") with 4 of your friends as answers. Pick one,
   **Shuffle** (twice per question) or **Skip**. It's anonymous: the friend gets a push and an
-  Activity item ("💜 You got props for Best laugh"), delayed a random 10–60 minutes and grouped so
+  Activity item ("💜 You got props for Best laugh"), delayed a random 5–30 minutes and grouped so
   the timing doesn't give you away, and nobody ever sees who picked them. 10 questions a day
   (India time), the same question not again for 7 days, never the same friend twice for one
   question. Needs 4 friends who can be picked; before that, an "Unlock Props" card (once a day)

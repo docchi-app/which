@@ -7,7 +7,7 @@ import { isSignedIn, continueWithGoogle, onUserChange, saveReturnTo, signOut } f
 import { CREATE_PREVIEW_KEY } from "@/lib/create";
 import { installPlatform, type InstallPlatform } from "@/lib/install";
 import { getMyProfile, type Profile } from "@/lib/profile";
-import { propsState, setPropsOff } from "@/lib/props";
+import { propsNoWait, propsState, setPropsOff } from "@/lib/props";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { BottomNav } from "./BottomNav";
 import { DeleteAccountSheet } from "./DeleteAccountSheet";
@@ -27,6 +27,8 @@ export function SettingsScreen() {
   const [preview, setPreview] = useState(false);
   // "Include me in Props" (null until known).
   const [propsOn, setPropsOn] = useState<boolean | null>(null);
+  // Admins, for testing: props picked for you arrive without the wait (null until known).
+  const [noWait, setNoWait] = useState<boolean | null>(null);
 
   useEffect(() => {
     // The platform is only known in the browser.
@@ -43,7 +45,12 @@ export function SettingsScreen() {
 
   useEffect(() => {
     if (!signedIn) return;
-    getMyProfile().then(setProfile).catch(() => {});
+    getMyProfile()
+      .then((p) => {
+        setProfile(p);
+        if (p?.isAdmin) propsNoWait().then(setNoWait).catch(() => {});
+      })
+      .catch(() => {});
     propsState()
       .then((s) => setPropsOn(!s.off))
       .catch(() => {});
@@ -120,6 +127,27 @@ export function SettingsScreen() {
                     } catch {
                       // Storage blocked: not saved.
                     }
+                  }}
+                />
+              </label>
+            )}
+            {profile?.isAdmin && noWait !== null && (
+              <label className="settings-row">
+                <span>
+                  <strong>Props without the wait</strong>
+                  <span className="notif-hint">Admins: props picked for you arrive at once, for testing (others still wait 5–30 min)</span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="switch"
+                  checked={noWait}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    setNoWait(on);
+                    propsNoWait(on)
+                      .then(setNoWait)
+                      .catch(() => setNoWait(!on));
                   }}
                 />
               </label>
