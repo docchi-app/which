@@ -326,7 +326,11 @@ function Person({ id, onBack }: { id: string; onBack: () => void }) {
       .catch(() => setFailed(true));
   }, [id]);
   useEffect(load, [load]);
-  useEffect(() => top.current?.scrollIntoView({ block: "start" }), []);
+  // Braces: newer Chrome and Edge return a Promise from scrollIntoView, and an effect that
+  // returns anything but a cleanup function crashes when the page closes.
+  useEffect(() => {
+    top.current?.scrollIntoView({ block: "start" });
+  }, []);
 
   async function act(fn: () => Promise<unknown>, done: string) {
     setBusy(true);

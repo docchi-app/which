@@ -158,6 +158,10 @@ export function reportThrown(e: unknown, kind?: string) {
 
 const SUPABASE = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 
+// Best-effort counting (visits, where people came from, taps, opens, views): a blocker or a
+// dropped connection losing one isn't something to fix, so those failures aren't reported.
+const COUNTING = new Set(["database: track_visit", "database: record_visitor", "database: push_opened", "database: email_opened", "database: note_push_off", "database: note_blocked", "/api/views"]);
+
 /** What a request was for, in words: "database: feed_page", "/api/snap/check". */
 export function targetOf(url: string): string | null {
   try {
@@ -213,7 +217,7 @@ export function installErrorCatcher() {
     } catch (e) {
       const aborted = init?.signal?.aborted || (e instanceof DOMException && e.name === "AbortError");
       // Offline, or leaving the page (Safari cancels requests then): not an error.
-      if (target && !aborted && navigator.onLine && document.visibilityState !== "hidden") {
+      if (target && !COUNTING.has(target) && !aborted && navigator.onLine && document.visibilityState !== "hidden") {
         reportError({ message: e instanceof Error ? e.message : "Request failed", kind: "NetworkError", code: target });
       }
       throw e;
