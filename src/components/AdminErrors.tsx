@@ -21,6 +21,9 @@ const RANGES = [
   { days: 30, label: "30 days" },
 ];
 const SOURCE_LABEL: Record<ErrorSource, string> = { app: "The app", server: "Server", job: "Background job" };
+/** "Background job · push send", without saying "Background job" twice. */
+const whereOf = (source: ErrorSource, place: string | null) =>
+  [SOURCE_LABEL[source], place?.startsWith(`${SOURCE_LABEL[source]} · `) ? place.slice(SOURCE_LABEL[source].length + 3) : place].filter(Boolean).join(" · ");
 
 const minutesSince = (iso: string) => (Date.now() - new Date(iso).getTime()) / 60000;
 
@@ -66,12 +69,12 @@ export function errorReport(d: ErrorDetail, days: number, origin: string) {
   return [
     "Eithr error report",
     `Error: ${d.message} (${d.kind})`,
-    `Where: ${SOURCE_LABEL[d.source]}${d.place ? ` · ${d.place}` : ""}`,
+    `Where: ${whereOf(d.source, d.place)}`,
     ...(d.code ? [`Code: ${d.code}`] : []),
     `Status: ${statusLabel(d)}${d.spike ? " · spike" : ""}`,
-    `Seen: ${plural(d.times, "time")} by ${plural(d.people, "person", "people")} in the last ${range} (${d.timesTotal} in all)`,
+    `Seen: ${plural(d.times, "time")}${d.source === "app" ? ` by ${plural(d.people, "person", "people")}` : ""} in the last ${range} (${d.timesTotal} in all)`,
     `First: ${ist(d.firstSeen)} IST · last: ${ist(d.lastSeen)}`,
-    ...(d.devices.length ? [`Phones: ${d.devices.map((x) => `${x.label} ${x.people}`).join(" · ")}`] : []),
+    ...(d.devices.length && d.source === "app" ? [`Phones: ${d.devices.map((x) => `${x.label} ${x.people}`).join(" · ")}`] : []),
     `Who: ${whoLine(d).replace(/^Server only$/, "the server")}`,
     ...(d.versions.length ? [`App version: ${d.versions.join(", ")}`] : []),
     ...(stack.length ? ["Stack (first lines):", ...stack] : []),
@@ -226,8 +229,7 @@ export function AdminErrors({ initialId, onChange }: { initialId: number | null;
                     <span className="err-row-main">
                       <strong>{r.message}</strong>
                       <span className="err-row-where">
-                        {SOURCE_LABEL[r.source]}
-                        {r.place ? ` · ${r.place}` : ""}
+                        {whereOf(r.source, r.place)}
                       </span>
                     </span>
                     <span className="err-row-num">
@@ -322,8 +324,7 @@ function Detail({ id, days, onStatus }: { id: number; days: number; onStatus: ()
       </div>
       <h2 className="err-title">{d.message}</h2>
       <p className="err-sub">
-        {SOURCE_LABEL[d.source]}
-        {d.place ? ` · ${d.place}` : ""}
+        {whereOf(d.source, d.place)}
         {d.code ? ` · ${d.code}` : ""}
       </p>
 

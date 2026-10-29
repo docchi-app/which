@@ -1,4 +1,5 @@
 // Server only: holds the VAPID private key and the cron secret.
+import { createHash } from "node:crypto";
 import webpush from "web-push";
 
 /** A device to push to, and what to show. */
@@ -10,6 +11,16 @@ export function tagUrl(url: string, id: number) {
   const hash = url.indexOf("#");
   const [path, frag] = hash < 0 ? [url, ""] : [url.slice(0, hash), url.slice(hash)];
   return `${path}${path.includes("?") ? "&" : "?"}n=${id}&utm_source=push${frag}`;
+}
+
+/**
+ * The Topic header for a notification's tag: a newer push with the same topic replaces an
+ * undelivered older one. Apple's push service turned away some raw tags (BadWebPushTopic, e.g.
+ * 5 or 13 letters long), so the tag is hashed into exactly 32 URL-safe Base64 characters:
+ * the same tag still gives the same topic.
+ */
+export function topicOf(tag: string | null | undefined) {
+  return tag ? createHash("sha256").update(tag).digest("base64url").slice(0, 32) : undefined;
 }
 
 // Trimmed: a stray space or newline pasted into Vercel shouldn't break push.
@@ -72,12 +83,14 @@ export function isPushEndpoint(endpoint: string) {
 
 export async function sendAll(
   items: { target: PushTarget; payload: PushPayload }[],
-): Promise<{ sent: number; gone: string[]; failed: number; firstError?: string }> {
+): Promise<{ sent: number; gone: string[]; failed: number; firstError?: string; firstDetail?: string }> {
   setup();
   const gone: string[] = [];
   let sent = 0;
   let failed = 0;
   let firstError: string | undefined;
+  // Which notification and push service the first failure was (for Admin → Errors).
+  let firstDetail: string | undefined;
   const queue = [...items];
   async function worker() {
     for (let item = queue.shift(); item; item = queue.shift()) {
@@ -92,7 +105,7 @@ export async function sendAll(
           // "high": Android holds "normal" pushes while the phone is idle until it next wakes
           // (they arrived when the app was opened). Every push shows a notification, which
           // is what high priority asks for.
-          { TTL: 60 * 60 * 6, urgency: "high", topic: item.payload.tag?.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 32) || undefined },
+          { TTL: 60 * 60 * 6, urgency: "high", topic: topicOf(item.payload.tag) },
         );
         sent++;
       } catch (e) {
@@ -100,12 +113,15 @@ export async function sendAll(
         if (status === 404 || status === 410) gone.push(item.target.endpoint);
         else {
           failed++;
-          firstError ??= `${status ?? ""} ${(e as { body?: string }).body ?? (e as Error).message}`.trim().slice(0, 200);
+          if (!firstError) {
+            firstError = `${status ?? ""} ${(e as { body?: string }).body ?? (e as Error).message}`.trim().slice(0, 200);
+            firstDetail = `${new URL(item.target.endpoint).hostname} · tag "${item.payload.tag ?? "none"}" · topic "${topicOf(item.payload.tag) ?? "none"}" · “${item.payload.title}”`.slice(0, 160);
+          }
         }
       }
     }
   }
   await Promise.all(Array.from({ length: 16 }, worker));
-  if (firstError) console.error("push send failed:", firstError);
-  return { sent, gone, failed, firstError };
+  if (firstError) console.error("push send failed:", firstError, firstDetail);
+  return { sent, gone, failed, firstError, firstDetail };
 }

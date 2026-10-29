@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     total.gone += result.gone.length;
     total.failed += result.failed;
     if (result.firstError) Object.assign(total, { error: result.firstError });
-    if (result.failed) await reportServerError("Background job · push send", result.firstError ?? `${result.failed} pushes failed`, "job");
+    if (result.failed) await reportServerError("Background job · push send", result.firstError ?? `${result.failed} pushes failed`, "job", result.firstDetail);
     if (rows.length < 300) break;
   }
   // The lunch and evening emails for people push can't reach (12:30–2 pm and 6:30–9 pm India time;
