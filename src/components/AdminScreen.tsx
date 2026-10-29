@@ -26,15 +26,18 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { Avatar } from "./Avatar";
 import { Schedule } from "./AdminSchedule";
 import { AdminErrors } from "./AdminErrors";
+import { AdminGuests } from "./AdminGuests";
+import { AdminUsers } from "./AdminUsers";
 import { AdminSnaps } from "./AdminSnaps";
 import { AdminWords } from "./AdminWords";
 import { LogoMark, Wordmark } from "./Logo";
 
-type Tab = "errors" | "reports" | "snaps" | "words" | "metrics" | "schedule" | "tests" | "log";
+type Tab = "errors" | "users" | "guests" | "reports" | "snaps" | "words" | "metrics" | "schedule" | "tests" | "log";
 
 // The sections, grouped as the laptop sidebar shows them (one row of tabs on a phone).
 const SECTIONS: { group: string; items: { id: Tab; label: string }[] }[] = [
   { group: "Health", items: [{ id: "errors", label: "Errors" }] },
+  { group: "People", items: [{ id: "users", label: "Users" }, { id: "guests", label: "Guests" }] },
   { group: "Safety", items: [{ id: "reports", label: "Reports" }, { id: "snaps", label: "Snaps" }, { id: "words", label: "Words" }] },
   { group: "Numbers", items: [{ id: "metrics", label: "Metrics" }] },
   { group: "Run", items: [{ id: "schedule", label: "Schedule" }, { id: "tests", label: "Test accounts" }, { id: "log", label: "Admin log" }] },
@@ -65,6 +68,8 @@ export function AdminScreen() {
   // #errors/12 opens that error (the link in an alert or a GitHub issue).
   const [errorId, setErrorId] = useState<number | null>(null);
   const [newErrors, setNewErrors] = useState(0);
+  // #users/<id> opens that person's page.
+  const [personId, setPersonId] = useState<string | null>(null);
   const loadBadge = useCallback(() => {
     fetchErrorsSummary(1)
       .then((s) => setNewErrors(s.new))
@@ -86,6 +91,7 @@ export function AdminScreen() {
       const [h, id] = window.location.hash.slice(1).split("/");
       if (isTab(h)) setTabState(h);
       if (h === "errors" && id && /^\d+$/.test(id)) setErrorId(Number(id));
+      if (h === "users") setPersonId(id && /^[0-9a-f-]{36}$/i.test(id) ? id : null);
     };
     read();
     window.addEventListener("hashchange", read);
@@ -93,7 +99,13 @@ export function AdminScreen() {
   }, []);
   const setTab = (t: Tab) => {
     setTabState(t);
+    if (t === "users") setPersonId(null);
     window.history.replaceState(window.history.state, "", `#${t}`);
+  };
+  const openPerson = (id: string | null) => {
+    setTabState("users");
+    setPersonId(id);
+    window.history.replaceState(window.history.state, "", id ? `#users/${id}` : "#users");
   };
 
   useEffect(() => {
@@ -162,6 +174,8 @@ export function AdminScreen() {
         </div>
         <h1 className="admin-title">{ALL.find((i) => i.id === tab)!.label}</h1>
         {tab === "errors" && <AdminErrors key={errorId ?? "list"} initialId={errorId} onChange={loadBadge} />}
+        {tab === "users" && <AdminUsers key={personId ?? "list"} openId={personId} onOpen={openPerson} />}
+        {tab === "guests" && <AdminGuests onOpenUser={openPerson} />}
         {tab === "reports" && <Queue />}
         {tab === "snaps" && <AdminSnaps />}
         {tab === "words" && <AdminWords />}
