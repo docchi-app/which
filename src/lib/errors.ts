@@ -178,6 +178,16 @@ export function targetOf(url: string): string | null {
   return null;
 }
 
+/** The word filter stopped a post: counted for Admin → Polls & snaps (where only, never the words). */
+async function noteBlocked(res: Response, target: string) {
+  try {
+    if (!(await res.text()).includes("blocked_words")) return;
+    await getSupabase()?.rpc("note_blocked", { place: target.replace(/^database: /, "") });
+  } catch {
+    // Counting never gets in the way.
+  }
+}
+
 let installed = false;
 /** Listens for script errors, unhandled promise errors and failed requests (once). */
 export function installErrorCatcher() {
@@ -198,6 +208,7 @@ export function installErrorCatcher() {
       if (target && res.status >= 500) {
         reportError({ message: `${res.status} from ${target}`, kind: "ServerResponse", code: target });
       }
+      if (target && res.status === 400) void noteBlocked(res.clone(), target);
       return res;
     } catch (e) {
       const aborted = init?.signal?.aborted || (e instanceof DOMException && e.name === "AbortError");

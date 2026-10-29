@@ -191,10 +191,27 @@ The first slice of the build order:
   an admin looks at it.
 - **Admin (`/admin`):** only for the one admin account (`profiles.is_admin`; the database allows
   exactly one). Everyone else, signed in or not, gets the normal "page not found", decided on the
-  server before anything is sent. On a laptop the sections sit in a sidebar (Health: Errors · People:
-  Users, Guests · Safety: Reports, Snaps, Words · Numbers: Metrics · Run: Schedule, Test accounts, Admin log) with **← Back to
-  Eithr** at the top; on a phone they're tabs, with ‹ back. The section is in the address
-  (`/admin#metrics`). **Reports** lists what's waiting
+  server before anything is sent. On a laptop the sections sit in a sidebar (Today: Overview ·
+  Health: Errors · People: Users, Guests · Growth: Funnel & retention, Sources, Metrics · Content:
+  Polls & snaps, Notifications · Safety: Reports, Snaps, Words · Run: Schedule, Test accounts, Admin
+  log) with **← Back to Eithr** at the top; on a phone they're tabs, with ‹ back. The section is in
+  the address (`/admin#metrics`). **Overview** is what `/admin` opens: what needs you (a new error,
+  reports waiting, no sign-ups for a day, the background job stopped), each with a button to fix it;
+  today against yesterday and the same day last week; four goals; and visitors and voters for 14
+  days. The goals are fixed launch targets (60% of visitors vote, 30% back the next day, 2 shares
+  per poll, 50% of people with notifications on), drawn as the marker on each bar; changing them is
+  a code change (`GOALS` in `src/components/AdminGrowth.tsx`). **Funnel & retention:** daily,
+  weekly and monthly active, where first visits drop off (visited → voted → signed in → made a poll
+  → shared → added a friend, each within 7 days), come back after 1 / 7 / 30 days by the week people
+  joined, and back-next-day compared (notifications on or off, invited or found it, signed in or
+  guest). **Sources:** where first visits came from, who brings people in, which polls brought the
+  most, and each phone and browser's vote, sign-in and error rate. **Polls & snaps:** polls made by
+  kind per day, votes per poll, polls with no votes, comments, the top polls, snaps (live, sent to
+  you, turned down), safety checks (AI, blocked words, reports) and props by question.
+  **Notifications:** pushes sent and tapped by kind, expired and failed, emails (lunch, evening,
+  clicked), who turned notifications off, who allows them by phone, and the 2-minute job. Settings
+  has **Morning summary at 9 am** for the admin (off at first): a push with yesterday's visitors,
+  sign-ups, votes and anything waiting. **Reports** lists what's waiting
   (auto-hidden polls first) with the full poll, who posted it and their report history:
   Remove poll, Keep / Dismiss, or Ban (they can't vote, post or report, and all their polls are
   hidden). Reports filed by the AI check show as "🤖 Auto check: harassment" (and the like).
@@ -687,6 +704,16 @@ and browser type, whether Eithr is installed, and its notifications answer (`vis
 the full address, the exact model or an IP address). Browsers seen before this went in show
 "Unknown" for where they came from. Guests who link Google get `profiles.was_guest` and
 `signed_up_at` from now on; older accounts count as joining when they were made.
+
+### 11. Overview and growth (Admin → Overview, Growth, Content)
+
+Run `20261207000000_growth.sql` in the SQL Editor (then the migration check). Overview, Funnel,
+Sources and Polls & snaps work at once from what's already recorded. From then on the app also
+counts: a tapped notification (each push link carries its id, `?n=…`; only its owner can mark it),
+an opened email link, notifications turned off in Settings, and posts the word filter stopped (where,
+never the words). The 2-minute job adds a daily count of pushes sent, expired and failed (expired
+and failed are per day, not per kind). Kept 90 days (the daily job counts a year). To get the 9 am
+summary, turn on Settings → **Morning summary at 9 am** (it needs notifications on that phone).
 
 ### Free tier limits to know about
 

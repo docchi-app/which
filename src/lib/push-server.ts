@@ -5,6 +5,13 @@ import webpush from "web-push";
 export type PushTarget = { endpoint: string; p256dh: string; auth: string };
 export type PushPayload = { title: string; body: string; url: string; tag?: string | null };
 
+/** Adds ?n=<notification id>&utm_source=push to a push link so the app can count the tap. */
+export function tagUrl(url: string, id: number) {
+  const hash = url.indexOf("#");
+  const [path, frag] = hash < 0 ? [url, ""] : [url.slice(0, hash), url.slice(hash)];
+  return `${path}${path.includes("?") ? "&" : "?"}n=${id}&utm_source=push${frag}`;
+}
+
 // Trimmed: a stray space or newline pasted into Vercel shouldn't break push.
 const env = (name: string) => process.env[name]?.trim() || undefined;
 const url = env("NEXT_PUBLIC_SUPABASE_URL");

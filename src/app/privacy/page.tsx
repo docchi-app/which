@@ -19,6 +19,7 @@ export default function PrivacyPage() {
         <li><strong>Visits:</strong> a random ID stored in your browser, which days you opened Eithr and how many times. We use it to count visitors and see whether people come back. It isn&apos;t shared with other sites.</li>
         <li><strong>Views:</strong> that you saw a poll (its card was on your screen for a second), so we can count how many people saw it. If you&apos;re not signed in, you&apos;re counted as a scrambled code made from your connection and browser, never your IP address itself. Nobody is shown who viewed a poll, only the total.</li>
         <li><strong>Your device and how you found us:</strong> the type of phone and browser (for example &ldquo;iPhone, Safari&rdquo;), whether Eithr is on your Home Screen, what you answered when asked about notifications, and where your first visit came from (for example a shared poll, an invite or Instagram; only the kind of place or a site&apos;s name, never the full address). We use it to see what&apos;s working.</li>
+        <li><strong>Notifications and emails:</strong> whether you tapped a notification we sent you, that an email link was opened, and when you turn notifications off. Only to see which ones are useful. Kept 90 days.</li>
         <li><strong>App errors:</strong> to fix problems, when something breaks we record the error, which screen it was on, the type of phone and browser (for example &ldquo;iPhone, Safari&rdquo;), the app version and whether you were signed in. Never anything you typed, your photos or your IP address. Kept 30 days.</li>
         <li><strong>Technical logs</strong> kept by our hosting providers (like IP address and browser) for security, for a short time.</li>
       </ul>
@@ -46,6 +47,7 @@ export default function PrivacyPage() {
         <li>Visit records, and your device and how you found us: up to 2 years, then deleted.</li>
         <li>Who viewed a poll: deleted a day after the poll closes. Only its total stays.</li>
         <li>App errors: 30 days, then deleted.</li>
+        <li>Notification taps, email link opens and turning notifications off: 90 days, then deleted.</li>
       </ul>
 
       <h2>Your choices</h2>

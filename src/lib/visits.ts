@@ -60,9 +60,27 @@ export async function trackVisit(onLoad: boolean): Promise<void> {
     if (!onLoad && !newSession) return;
     await supabase.rpc("track_visit", { visitor: visitorId(s), new_session: newSession });
     await recordVisitor(s);
+    if (onLoad) await noteOpened();
   } catch {
     // Metrics never get in the way.
   }
+}
+
+/**
+ * Counts a tapped push (?n=<id>, only for the person it was sent to) or an opened email link
+ * (?utm_source=email), then takes those bits off the address so a reload doesn't count again.
+ */
+async function noteOpened() {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  const url = new URL(location.href);
+  const n = url.searchParams.get("n");
+  const from = url.searchParams.get("utm_source");
+  if (!from && !n) return;
+  if (n && /^\d{1,15}$/.test(n)) await supabase.rpc("push_opened", { n: Number(n) });
+  if (from === "email") await supabase.rpc("email_opened", { campaign: url.searchParams.get("utm_campaign") ?? "" });
+  for (const k of ["n", "utm_source", "utm_medium", "utm_campaign"]) url.searchParams.delete(k);
+  history.replaceState(history.state, "", url.pathname + url.search + url.hash);
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

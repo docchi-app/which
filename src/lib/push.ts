@@ -101,6 +101,8 @@ export async function turnOnPush(): Promise<"on" | "denied"> {
 
 export async function turnOffPush(): Promise<void> {
   setTurnedOff(true);
+  // Counted for Admin → Notifications ("turned off this week").
+  void getSupabase()?.rpc("note_push_off").then(undefined, () => {});
   const sub = await currentSubscription();
   if (!sub) return;
   await getSupabase()?.rpc("delete_push_subscription", { endpoint: sub.endpoint });
