@@ -1,5 +1,6 @@
 // Server only: our API routes and the 2-minute job report their errors to Admin → Errors
 // (with the job's secret; without PUSH_CRON_SECRET nothing is reported).
+import "server-only";
 import { cronSecret, rpc } from "./push-server";
 
 /** Records a server or job error (`detail` shows as its code: what it was working on). Never throws. */

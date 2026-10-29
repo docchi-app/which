@@ -2,6 +2,7 @@
 // photo in snap-moderation.ts). OpenAI's moderation is free and reads English, Hindi,
 // Hinglish and Marathi; the word filter in the database has already run by now.
 
+import "server-only";
 import { reportServerError } from "./server-errors";
 
 const env = (name: string) => process.env[name]?.trim() || undefined;

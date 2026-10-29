@@ -95,8 +95,8 @@ http.createServer((req, res) => {
         const m = /boundary=(.+)$/.exec(type || '');
         if (m) { const parts = raw.toString('latin1').split('--' + m[1]); const part = parts.find((x) => /Content-Type: image/i.test(x)); const head = part.indexOf('\r\n\r\n'); type = /Content-Type: (\S+)/i.exec(part)[1]; buf = Buffer.from(part.slice(head + 4, part.lastIndexOf('\r\n')), 'latin1'); }
         files[rest.slice(6)] = { type, buf }; log.push('UPLOAD ' + rest + ' ' + raw.length + ' ' + req.headers['content-type']); return json(200, { Key: rest }); }
-      if (req.method === 'POST' && rest.startsWith('sign/snaps/')) { const p = rest.slice(11); return json(200, { signedURL: `/object/public-ish/snaps/${p}?token=t` }); }
-      if (req.method === 'GET' && (rest.startsWith('public-ish/snaps/') || rest.startsWith('authenticated/snaps/'))) { const p = rest.replace(/^(public-ish|authenticated)\/snaps\//, ''); const f = files[p]; if (!f) return json(404, {}); res.writeHead(200, { ...cors, 'content-type': f.type }); return res.end(f.buf); }
+      if (req.method === 'POST' && rest.startsWith('sign/snaps/')) { const p = rest.slice(11); return json(200, { signedURL: `/object/sign/snaps/${p}?token=t` }); } // the shape Supabase signs
+      if (req.method === 'GET' && (rest.startsWith('sign/snaps/') || rest.startsWith('authenticated/snaps/'))) { const p = rest.replace(/^(sign|authenticated)\/snaps\//, ''); const f = files[p]; if (!f) return json(404, {}); res.writeHead(200, { ...cors, 'content-type': f.type }); return res.end(f.buf); }
       if (req.method === 'DELETE' && rest === 'snaps') { const a2 = JSON.parse(raw.toString()); for (const p of a2.prefixes) delete files[p]; log.push('REMOVE ' + a2.prefixes.join(',')); return json(200, a2.prefixes.map((n) => ({ name: n }))); }
     }
     // Tests: other people voting on a poll (live numbers), e.g. /__bump?id=…&n=3

@@ -1,3 +1,5 @@
+import "server-only";
+
 export type SharedPoll = {
   id: string;
   kind: "classic" | "hot_take" | "mystery";

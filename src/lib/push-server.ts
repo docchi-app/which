@@ -1,4 +1,5 @@
 // Server only: holds the VAPID private key and the cron secret.
+import "server-only";
 import { createHash } from "node:crypto";
 import webpush from "web-push";
 

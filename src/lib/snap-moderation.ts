@@ -1,5 +1,7 @@
 // Server only: turns OpenAI moderation scores into a verdict for a snap.
 
+import "server-only";
+
 export type Verdict = "live" | "review" | "rejected";
 export type Scores = Record<string, number>;
 
