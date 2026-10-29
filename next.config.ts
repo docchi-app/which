@@ -51,6 +51,13 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/p/[id]/opengraph-image": ["./assets/fonts/**/*"],
   },
+  // Next.js traces its image library (sharp, ~47 MB with its native builds) into the shared-poll
+  // functions in case they resize images. Nothing here does: the link-preview card is drawn by
+  // next/og (resvg), and the app doesn't use next/image. Leaving it out keeps each deployment small
+  // (Vercel stores every deployment's functions).
+  outputFileTracingExcludes: {
+    "/**": ["node_modules/sharp/**", "node_modules/@img/**"],
+  },
   poweredByHeader: false,
   async headers() {
     return [
