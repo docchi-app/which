@@ -299,9 +299,14 @@ The first slice of the build order:
   WhatsApp first; whoever opens the link can see it and vote). The last idea and audience are
   remembered. Every photo is made
   exactly 3:4 at 1080 × 1440 on the phone (WebP, about 150–400 KB, location data removed), so
-  upright photos fill the card with nothing cut off. In the feed you vote right on the photo
-  and the answers fill with the results. On your own snap, **•••** → Share or **Delete snap**
-  (gone for everyone, and its photo is removed straight away). It disappears after 24 hours.
+  upright photos fill the card with nothing cut off. In the feed a snap is a normal Eithr card
+  with the photo filling its top edge to edge (nothing on it but who posted it) and the question
+  and answers below it, where the answers fill with the results. On your own snap, **•••** →
+  Share, **Who sees it** (Everyone / Friends / Link only, say it went to Everyone by mistake;
+  it leaves the public feed at once and votes stay; a snap can't go public after it's sent,
+  because public snaps get a stricter photo check) or **Delete snap** (gone for everyone, and
+  its photo is removed straight away). Your own typed polls in the feed have the same **•••**
+  → Who sees it. It disappears after 24 hours.
   Photos go to the private `snaps` bucket and the snap stays hidden until `/api/snap/check`
   passes the photo and its words through OpenAI's free moderation: clean → live (and the share
   sheet opens), unsure → **Admin → Snaps** for you to approve or reject (turned down after 12

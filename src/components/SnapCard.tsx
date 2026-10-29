@@ -6,8 +6,8 @@ import { isEmojiAnswers, knownSnapPhoto, photoTint, snapInfo, snapPhotoUrl } fro
 import type { Poll } from "@/lib/types";
 
 /**
- * The snap card: a 3:4 photo filling the card, who posted it on top, and the
- * question with its answers (or results) on the bottom of the photo. Used in
+ * The snap card: the photo on top (3:4, as taken, nothing on it but who posted it), then the
+ * question and its answers (or results) under it, like a typed poll's card. Used in
  * the feed and while asking, so both look the same.
  */
 export function SnapCardShell({
@@ -50,42 +50,43 @@ export function SnapCardShell({
     </>
   );
   return (
-    <div className="snapc" style={tint ? { background: tint } : undefined}>
-      {src ? (
-        // A signed link (or local preview) of a private photo; next/image can't optimise it.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          className="snapc-img"
-          src={src}
-          alt=""
-          decoding="async"
-          onLoad={(e) => e.currentTarget.classList.add("snapc-img-in")}
-          ref={(img) => {
-            // Already in the browser's cache: no fade.
-            if (img?.complete) img.classList.add("snapc-img-in");
-          }}
-        />
-      ) : (
-        <div className="snapc-empty">{src === null ? (gone ? "👻 This snap has disappeared" : "📷 Photo unavailable") : null}</div>
-      )}
-      <div className="snapc-shade-top" aria-hidden="true" />
-      <div className="snapc-shade-bottom" aria-hidden="true" />
-      <div className="snapc-top">
-        {href ? (
-          <Link href={href} className="snapc-who">
-            {name}
-          </Link>
+    <div className="snapc">
+      <div className="snapc-photo" style={tint ? { background: tint } : undefined}>
+        {src ? (
+          // A signed link (or local preview) of a private photo; next/image can't optimise it.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            className="snapc-img"
+            src={src}
+            alt=""
+            decoding="async"
+            onLoad={(e) => e.currentTarget.classList.add("snapc-img-in")}
+            ref={(img) => {
+              // Already in the browser's cache: no fade.
+              if (img?.complete) img.classList.add("snapc-img-in");
+            }}
+          />
         ) : (
-          <span className="snapc-who">{name}</span>
+          <div className="snapc-empty">{src === null ? (gone ? "👻 This snap has disappeared" : "📷 Photo unavailable") : null}</div>
         )}
-        <span className="snapc-badges">
-          {live && <span className="snapc-live">📸 Live</span>}
-          {more && (
-            <button type="button" className="snapc-more" aria-label="Snap options" aria-haspopup="menu" onClick={more}>
-              •••
-            </button>
+        <div className="snapc-shade-top" aria-hidden="true" />
+        <div className="snapc-top">
+          {href ? (
+            <Link href={href} className="snapc-who">
+              {name}
+            </Link>
+          ) : (
+            <span className="snapc-who">{name}</span>
           )}
-        </span>
+          <span className="snapc-badges">
+            {live && <span className="snapc-live">📸 Live</span>}
+            {more && (
+              <button type="button" className="snapc-more" aria-label="Snap options" aria-haspopup="menu" onClick={more}>
+                •••
+              </button>
+            )}
+          </span>
+        </div>
       </div>
       {menu}
       <div className="snapc-bottom">{children}</div>
