@@ -75,6 +75,7 @@ const events = [{ at: new Date(Date.now() - 3600e3).toISOString(), action: 'word
 // The signed-in user's id, from the request's JWT.
 const whoIs = (req) => { try { return JSON.parse(Buffer.from(String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').split('.')[1], 'base64url').toString()).sub; } catch { return null; } };
 let propsNoWait = false;
+let adminMorning = false;
 http.createServer((req, res) => {
   if (LAT && req.method !== 'OPTIONS' && !req.url.startsWith('/__log')) { const orig = res.end.bind(res); res.end = (...args) => { setTimeout(() => orig(...args), LAT); return res; }; }
   const chunks = [];
@@ -165,6 +166,49 @@ http.createServer((req, res) => {
           { id: people[2].id, code: '52be', started: iso(-30), source: 'invite', source_by: 'arjun_07', site: null, device: 'Android', browser: 'Chrome', in_app: null, votes: 22, last_seen: iso(-20), signed_up: true, username: 'kabir.s' },
         ];
         return json(200, a.filter === 'still' ? g.filter((x) => !x.signed_up) : a.filter === 'signed' ? g.filter((x) => x.signed_up) : g);
+      }
+      // Growth: what the app counts (push taps, email clicks, turned off, blocked words), the job's
+      // tally and morning push, and Admin → Overview / Funnel / Sources / Polls & snaps / Notifications.
+      case 'push_opened': { if (!whoIs(req)) return json(401, { message: 'JWT required' }); log.push('PUSH_OPENED ' + a.n); return json(200, null); }
+      case 'email_opened': log.push('EMAIL_OPENED ' + a.campaign); return json(200, null);
+      case 'note_push_off': { if (!whoIs(req)) return json(401, { message: 'JWT required' }); log.push('PUSH_OFF'); return json(200, null); }
+      case 'note_blocked': log.push('BLOCKED ' + a.place); return json(200, null);
+      case 'push_tally': { if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:forbidden' }); log.push('PUSH_TALLY ' + a.sent + '|' + a.expired + '|' + a.failed); return json(200, null); }
+      case 'morning_summary': { if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:forbidden' }); log.push('MORNING'); return json(200, { alert: null }); }
+      case 'admin_morning': { const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' }); if (a.on_now !== null && a.on_now !== undefined) { adminMorning = a.on_now; log.push('MORNING_SWITCH ' + a.on_now); } return json(200, adminMorning); }
+      case 'admin_overview': case 'admin_funnel': case 'admin_sources': case 'admin_content': case 'admin_notifications': {
+        const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
+        const fn = url.pathname.replace('/rest/v1/rpc/', '');
+        log.push(fn.toUpperCase() + (a.days !== undefined ? ' ' + a.days : ''));
+        const d = (n) => new Date(Date.now() + 330 * 60000 - n * 864e5).toISOString().slice(0, 10);
+        if (fn === 'admin_overview') return json(200, {
+          today: { visitors: 41, signups: 0, guests: 7, votes: 186, polls: 5, snaps: 3, shares: 9 },
+          yesterday: { visitors: 44, signups: 3, guests: 5, votes: 204, polls: 6, snaps: 2, shares: 12 },
+          last_week: { visitors: 24, signups: 2, guests: 4, votes: 140, polls: 4, snaps: 0, shares: 7 },
+          series: Array.from({ length: 14 }, (_, i) => ({ day: d(13 - i), visitors: [20, 24, 31, 28, 35, 40, 38, 44, 52, 61, 98, 70, 44, 41][i], voters: [4, 5, 7, 6, 9, 11, 10, 13, 16, 19, 6, 22, 15, 14][i] })),
+          vote_rate: 34, vote_rate_before: 18, back_rate: 11, back_rate_before: 4.3, shares_per_poll: 1.6, push_on: 34,
+          signups_24h: 0, signups_week_avg: 2, visitors_24h: 41, reports_waiting: 2, reports_oldest: iso(-3),
+          errors_new: 1, errors_newest: { id: 12, message: 'Failed to fetch', place: 'the feed', since: iso(-0.5), people: 14 },
+          job_last_run: new Date(Date.now() - 60000).toISOString(), job_result: { sent: 12, failed: 0 },
+          email_last: { at: iso(-2), count: 18 }, morning: adminMorning,
+        });
+        if (fn === 'admin_funnel') return json(200, { visited: 212, voted: 74, signed: 31, polled: 13, shared: 8, friended: 5, dau: 38, wau: 96, mau: 241,
+          cohorts: [{ week: d(3), n: 34, d1: 38, d7: null, d30: null }, { week: d(10), n: 22, d1: 41, d7: 27, d30: null }, { week: d(17), n: 15, d1: 33, d7: 20, d30: null }, { week: d(38), n: 9, d1: 22, d7: 11, d30: 11 }],
+          d1_push_on: 52, d1_push_off: 14, d1_invited: 44, d1_found: 19, d1_signed: 31, d1_guest: 9 });
+        if (fn === 'admin_sources') return json(200, { total: 217,
+          sources: [['poll', 86], ['instagram', 71], ['direct', 28], ['invite', 14], ['whatsapp', 8], ['email', 5], ['search', 3], ['other_site', 2]].map(([source, n]) => ({ source, n })),
+          bringers: [{ username: 'riya.k', visitors: 31, voted: 9, signed: 3, polls: 4, invites: 0 }, { username: 'arjun_07', visitors: 18, voted: 7, signed: 2, polls: 2, invites: 3 }, { username: 'sana_x', visitors: 12, voted: 5, signed: 0, polls: 2, invites: 0 }],
+          top_polls: [{ id: 'f1000000-0000-4000-8000-000000000003', question: "Who's the funniest in the group?", kind: 'classic', visibility: 'circle', author: 'arjun_07', visitors: 22 }, { id: 'f1000000-0000-4000-8000-000000000001', question: 'Rate my fit 🔥 or 🧊', kind: 'snap', visibility: 'link', author: 'riya.k', visitors: 17 }],
+          phones: [{ label: 'iPhone · Safari', visitors: 96, voted: 39, signed: 16, errors: 1 }, { label: 'iPhone · inside Instagram', visitors: 74, voted: 7, signed: 1, errors: 5 }, { label: 'Android · Chrome', visitors: 31, voted: 14, signed: 7, errors: 0 }, { label: 'iPhone · installed app', visitors: 19, voted: 16, signed: 19, errors: 0 }, { label: 'Mac · computer', visitors: 11, voted: 3, signed: 1, errors: 0 }] });
+        if (fn === 'admin_content') return json(200, { polls: 37, snaps: 21, median_votes: 14, p90_votes: 61.4, no_votes: 9, no_votes_open: 4, comments: 132,
+          by_day: Array.from({ length: a.days ?? 7 }, (_, i) => ({ day: d((a.days ?? 7) - 1 - i), classic: (i * 3) % 7, snap: (i * 5) % 4, hot_take: i % 2, mystery: i % 3 === 0 ? 1 : 0 })),
+          top: [{ id: 'f1000000-0000-4000-8000-000000000003', question: "Who's the funniest in the group?", kind: 'classic', visibility: 'circle', author: 'arjun_07', votes: 88, comments: 9 }, { id: 'f1000000-0000-4000-8000-000000000001', question: 'Rate my fit 🔥 or 🧊', kind: 'snap', visibility: 'link', author: 'riya.k', votes: 64, comments: 12 }, { id: 'f1000000-0000-4000-8000-000000000004', question: 'Poll of the Day: Chai or coffee?', kind: 'classic', visibility: 'public', author: null, votes: 61, comments: 3 }],
+          snap_live: 18, snap_review: 2, snap_rejected: 1, ai_flags: 3, reports: 4, blocked: 11,
+          props: [{ label: 'Best laugh', emoji: '😂', n: 34 }, { label: 'Always shows up', emoji: '🫶', n: 21 }, { label: 'Best fits', emoji: '🔥', n: 17 }] });
+        return json(200, { kinds: [{ kind: 'votes', made: 188, sent: 186, opened: 52 }, { kind: 'props', made: 64, sent: 64, opened: 31 }, { kind: 'circle', made: 39, sent: 39, opened: 14 }, { kind: 'results', made: 71, sent: 70, opened: 9 }, { kind: 'daily', made: 52, sent: 51, opened: 3 }],
+          sent: 410, opened: 109, expired: 4, failed: 0, runs_today: Math.floor(((Date.now() + 330 * 60000) % 864e5) / 120000) + 1, emails: 96, emails_lunch: 41, emails_evening: 55, email_opens: 17, turned_off: 4,
+          phones: [{ label: 'iPhone · installed', people: 24, on: 19, cant: 0 }, { label: 'Android', people: 21, on: 10, cant: 0 }, { label: 'iPhone · browser', people: 30, on: 0, cant: 30 }, { label: 'Computer', people: 9, on: 2, cant: 0 }],
+          job_last_run: new Date(Date.now() - 60000).toISOString(), job_problem: { message: 'timeout', place: 'push_scan', at: iso(-72), status: 'fixed' } });
       }
       // Errors: what the app reports, and Admin → Errors (sample data plus what was reported).
       case 'report_error': { errorReports.push(a); log.push('ERROR_REPORT ' + a.kind + '|' + a.message + '|' + a.place); return json(200, null); }

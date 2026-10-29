@@ -1,4 +1,4 @@
-import { cronSecret, pushConfigured, rpc, sendAll, type PushPayload } from "@/lib/push-server";
+import { cronSecret, pushConfigured, rpc, sendAll, tagUrl, type PushPayload } from "@/lib/push-server";
 import { sweepTexts } from "@/lib/text-moderation";
 import { sendSummaries } from "@/lib/email-server";
 import { reportServerError } from "@/lib/server-errors";
@@ -7,6 +7,7 @@ import { reportServerError } from "@/lib/server-errors";
 export const maxDuration = 60;
 
 type Row = { id: number; endpoint: string; p256dh: string; auth: string; payload: PushPayload };
+type Alert = { alert: PushPayload | null; targets?: { endpoint: string; p256dh: string; auth: string }[] };
 
 export async function POST(request: Request) {
   if (!pushConfigured) return Response.json({ error: "push isn't configured" }, { status: 503 });
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
       return Response.json({ error, detail: message.slice(0, 300), ...total }, { status: 500 });
     }
     if (!rows.length) break;
-    const result = await sendAll(rows.map((r) => ({ target: r, payload: r.payload })));
+    const result = await sendAll(rows.map((r) => ({ target: r, payload: { ...r.payload, url: tagUrl(r.payload.url ?? "/", r.id) } })));
     if (result.gone.length) await rpc("push_gone", { secret: cronSecret, endpoints: result.gone });
     total.sent += result.sent;
     total.gone += result.gone.length;
@@ -59,10 +60,7 @@ export async function POST(request: Request) {
   // Errors: note this run, clear what's over 30 days, and tell the admin's phone about a new
   // error, a spike or one back after a fix (at most one an hour).
   try {
-    const tick = await rpc<{ alert: PushPayload | null; targets?: { endpoint: string; p256dh: string; auth: string }[] }>(
-      "errors_tick",
-      { secret: cronSecret, run: total },
-    );
+    const tick = await rpc<Alert>("errors_tick", { secret: cronSecret, run: total });
     if (tick.alert && tick.targets?.length) {
       const sent = await sendAll(tick.targets.map((target) => ({ target, payload: tick.alert! })));
       total.alerted = sent.sent;
@@ -70,6 +68,23 @@ export async function POST(request: Request) {
   } catch (e) {
     // Before the errors migration ran: nothing to do.
     console.error("errors tick:", e instanceof Error ? e.message : e);
+  }
+  // The admin's 9 am summary of yesterday (only when switched on in Settings), then the day's
+  // tally of pushes sent, expired and failed for Admin → Notifications.
+  try {
+    const morning = await rpc<Alert>("morning_summary", { secret: cronSecret });
+    if (morning.alert && morning.targets?.length) {
+      const sent = await sendAll(morning.targets.map((target) => ({ target, payload: morning.alert! })));
+      total.morning = sent.sent;
+    }
+  } catch (e) {
+    console.error("morning summary:", e instanceof Error ? e.message : e);
+  }
+  try {
+    await rpc("push_tally", { secret: cronSecret, sent: total.sent, expired: total.gone, failed: total.failed });
+  } catch (e) {
+    // Before the growth migration ran: nothing to do.
+    console.error("push tally:", e instanceof Error ? e.message : e);
   }
   return Response.json(total);
 }

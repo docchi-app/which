@@ -26,20 +26,51 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { Avatar } from "./Avatar";
 import { Schedule } from "./AdminSchedule";
 import { AdminErrors } from "./AdminErrors";
+import { AdminContent, AdminFunnel, AdminNotifications, AdminOverview, AdminSources } from "./AdminGrowth";
 import { AdminGuests } from "./AdminGuests";
 import { AdminUsers } from "./AdminUsers";
 import { AdminSnaps } from "./AdminSnaps";
 import { AdminWords } from "./AdminWords";
 import { LogoMark, Wordmark } from "./Logo";
 
-type Tab = "errors" | "users" | "guests" | "reports" | "snaps" | "words" | "metrics" | "schedule" | "tests" | "log";
+type Tab =
+  | "overview"
+  | "errors"
+  | "users"
+  | "guests"
+  | "funnel"
+  | "sources"
+  | "metrics"
+  | "content"
+  | "notifications"
+  | "reports"
+  | "snaps"
+  | "words"
+  | "schedule"
+  | "tests"
+  | "log";
 
 // The sections, grouped as the laptop sidebar shows them (one row of tabs on a phone).
 const SECTIONS: { group: string; items: { id: Tab; label: string }[] }[] = [
+  { group: "Today", items: [{ id: "overview", label: "Overview" }] },
   { group: "Health", items: [{ id: "errors", label: "Errors" }] },
   { group: "People", items: [{ id: "users", label: "Users" }, { id: "guests", label: "Guests" }] },
+  {
+    group: "Growth",
+    items: [
+      { id: "funnel", label: "Funnel & retention" },
+      { id: "sources", label: "Sources" },
+      { id: "metrics", label: "Metrics" },
+    ],
+  },
+  {
+    group: "Content",
+    items: [
+      { id: "content", label: "Polls & snaps" },
+      { id: "notifications", label: "Notifications" },
+    ],
+  },
   { group: "Safety", items: [{ id: "reports", label: "Reports" }, { id: "snaps", label: "Snaps" }, { id: "words", label: "Words" }] },
-  { group: "Numbers", items: [{ id: "metrics", label: "Metrics" }] },
   { group: "Run", items: [{ id: "schedule", label: "Schedule" }, { id: "tests", label: "Test accounts" }, { id: "log", label: "Admin log" }] },
 ];
 const ALL = SECTIONS.flatMap((g) => g.items);
@@ -59,12 +90,13 @@ function ago(iso: string) {
   return `${Math.round(m / 1440)}d ago`;
 }
 
-/** Reports queue, recent actions with undo, and the launch metrics. */
+/** The owner's admin: Overview first, then health, people, growth, content, safety and running it. */
 export function AdminScreen() {
   // undefined: checking · false: not the admin. The server has already turned away
   // anyone it could tell isn't; this covers a sign-in that had expired.
   const [allowed, setAllowed] = useState<boolean | undefined>(isSupabaseConfigured ? undefined : false);
-  const [tab, setTabState] = useState<Tab>("reports");
+  // Overview is the admin home (what /admin opens).
+  const [tab, setTabState] = useState<Tab>("overview");
   // #errors/12 opens that error (the link in an alert or a GitHub issue).
   const [errorId, setErrorId] = useState<number | null>(null);
   const [newErrors, setNewErrors] = useState(0);
@@ -173,6 +205,11 @@ export function AdminScreen() {
           ))}
         </div>
         <h1 className="admin-title">{ALL.find((i) => i.id === tab)!.label}</h1>
+        {tab === "overview" && <AdminOverview onGo={setTab} />}
+        {tab === "funnel" && <AdminFunnel />}
+        {tab === "sources" && <AdminSources />}
+        {tab === "content" && <AdminContent />}
+        {tab === "notifications" && <AdminNotifications />}
         {tab === "errors" && <AdminErrors key={errorId ?? "list"} initialId={errorId} onChange={loadBadge} />}
         {tab === "users" && <AdminUsers key={personId ?? "list"} openId={personId} onOpen={openPerson} />}
         {tab === "guests" && <AdminGuests onOpenUser={openPerson} />}

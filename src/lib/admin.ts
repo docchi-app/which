@@ -570,3 +570,197 @@ export async function fetchGuestList(days: number, filter: "still" | "signed" | 
     username: (r.username as string | null) ?? null,
   }));
 }
+
+// ─── Growth: Overview, Funnel & retention, Sources, Polls & snaps, Notifications ───
+
+export type DaySnapshot = { visitors: number; signups: number; guests: number; votes: number; polls: number; snaps: number; shares: number };
+export type Overview = {
+  today: DaySnapshot;
+  yesterday: DaySnapshot;
+  lastWeek: DaySnapshot;
+  series: { day: string; visitors: number; voters: number }[];
+  voteRate: number | null;
+  voteRateBefore: number | null;
+  backRate: number | null;
+  backRateBefore: number | null;
+  sharesPerPoll: number | null;
+  pushOn: number | null;
+  signups24h: number;
+  signupsWeekAvg: number;
+  visitors24h: number;
+  reportsWaiting: number;
+  reportsOldest: string | null;
+  errorsNew: number;
+  errorsNewest: { id: number; message: string; place: string | null; since: string; people: number } | null;
+  jobLastRun: string | null;
+  jobResult: Record<string, unknown> | null;
+  emailLast: { at: string | null; count: number };
+  morning: boolean;
+};
+export type Funnel = {
+  steps: { visited: number; voted: number; signed: number; polled: number; shared: number; friended: number };
+  dau: number | null;
+  wau: number;
+  mau: number;
+  cohorts: { week: string; n: number; d1: number | null; d7: number | null; d30: number | null }[];
+  d1: { pushOn: number | null; pushOff: number | null; invited: number | null; found: number | null; signed: number | null; guest: number | null };
+};
+export type Sources = {
+  total: number;
+  sources: { source: string; n: number }[];
+  bringers: { username: string; visitors: number; voted: number; signed: number; polls: number; invites: number }[];
+  topPolls: { id: string; question: string; kind: string; visibility: string; author: string | null; visitors: number }[];
+  phones: { label: string; visitors: number; voted: number; signed: number; errors: number }[];
+};
+export type ContentStats = {
+  polls: number;
+  snaps: number;
+  medianVotes: number | null;
+  p90Votes: number | null;
+  noVotes: number;
+  noVotesOpen: number;
+  comments: number;
+  byDay: { day: string; classic: number; snap: number; hot_take: number; mystery: number }[];
+  top: { id: string; question: string; kind: string; visibility: string; author: string | null; votes: number; comments: number }[];
+  snapLive: number;
+  snapReview: number;
+  snapRejected: number;
+  aiFlags: number;
+  reports: number;
+  blocked: number;
+  props: { label: string; emoji: string; n: number }[];
+};
+export type NotifStats = {
+  kinds: { kind: string; made: number; sent: number; opened: number }[];
+  sent: number;
+  opened: number;
+  expired: number;
+  failed: number;
+  runsToday: number | null;
+  emails: number;
+  emailsLunch: number;
+  emailsEvening: number;
+  emailOpens: number;
+  turnedOff: number;
+  phones: { label: string; people: number; on: number; cant: number }[];
+  jobLastRun: string | null;
+  jobProblem: { message: string; place: string | null; at: string; status: string } | null;
+};
+
+const ints = <K extends string>(o: Record<string, unknown> | null | undefined, keys: K[]) =>
+  Object.fromEntries(keys.map((k) => [k, Number(o?.[k] ?? 0)])) as Record<K, number>;
+const snap = (o: unknown) => ints(o as Record<string, unknown>, ["visitors", "signups", "guests", "votes", "polls", "snaps", "shares"]);
+const list = <T>(v: unknown) => (v as T[] | null) ?? [];
+
+export async function fetchOverview(): Promise<Overview> {
+  const o = await call<Record<string, unknown>>("admin_overview");
+  const e = o.errors_newest as Record<string, unknown> | null;
+  const m = (o.email_last ?? {}) as Record<string, unknown>;
+  return {
+    today: snap(o.today),
+    yesterday: snap(o.yesterday),
+    lastWeek: snap(o.last_week),
+    series: list<Record<string, unknown>>(o.series).map((r) => ({ day: r.day as string, visitors: Number(r.visitors ?? 0), voters: Number(r.voters ?? 0) })),
+    voteRate: num(o.vote_rate),
+    voteRateBefore: num(o.vote_rate_before),
+    backRate: num(o.back_rate),
+    backRateBefore: num(o.back_rate_before),
+    sharesPerPoll: num(o.shares_per_poll),
+    pushOn: num(o.push_on),
+    signups24h: Number(o.signups_24h ?? 0),
+    signupsWeekAvg: Number(o.signups_week_avg ?? 0),
+    visitors24h: Number(o.visitors_24h ?? 0),
+    reportsWaiting: Number(o.reports_waiting ?? 0),
+    reportsOldest: (o.reports_oldest as string | null) ?? null,
+    errorsNew: Number(o.errors_new ?? 0),
+    errorsNewest: e ? { id: Number(e.id), message: String(e.message ?? ""), place: (e.place as string | null) ?? null, since: e.since as string, people: Number(e.people ?? 0) } : null,
+    jobLastRun: (o.job_last_run as string | null) ?? null,
+    jobResult: (o.job_result as Record<string, unknown> | null) ?? null,
+    emailLast: { at: (m.at as string | null) ?? null, count: Number(m.count ?? 0) },
+    morning: o.morning === true,
+  };
+}
+
+export async function fetchFunnel(days: number): Promise<Funnel> {
+  const f = await call<Record<string, unknown>>("admin_funnel", { days });
+  return {
+    steps: ints(f, ["visited", "voted", "signed", "polled", "shared", "friended"]),
+    dau: num(f.dau),
+    wau: Number(f.wau ?? 0),
+    mau: Number(f.mau ?? 0),
+    cohorts: list<Record<string, unknown>>(f.cohorts).map((c) => ({ week: c.week as string, n: Number(c.n ?? 0), d1: num(c.d1), d7: num(c.d7), d30: num(c.d30) })),
+    d1: { pushOn: num(f.d1_push_on), pushOff: num(f.d1_push_off), invited: num(f.d1_invited), found: num(f.d1_found), signed: num(f.d1_signed), guest: num(f.d1_guest) },
+  };
+}
+
+export async function fetchSources(days: number): Promise<Sources> {
+  const s = await call<Record<string, unknown>>("admin_sources", { days });
+  return {
+    total: Number(s.total ?? 0),
+    sources: list<Record<string, unknown>>(s.sources).map((r) => ({ source: String(r.source), n: Number(r.n ?? 0) })),
+    bringers: list<Record<string, unknown>>(s.bringers).map((r) => ({ username: String(r.username), ...ints(r, ["visitors", "voted", "signed", "polls", "invites"]) })),
+    topPolls: list<Record<string, unknown>>(s.top_polls).map((r) => ({
+      id: r.id as string,
+      question: String(r.question ?? ""),
+      kind: String(r.kind ?? ""),
+      visibility: String(r.visibility ?? ""),
+      author: (r.author as string | null) ?? null,
+      visitors: Number(r.visitors ?? 0),
+    })),
+    phones: list<Record<string, unknown>>(s.phones).map((r) => ({ label: String(r.label), ...ints(r, ["visitors", "voted", "signed", "errors"]) })),
+  };
+}
+
+export async function fetchContent(days: number): Promise<ContentStats> {
+  const c = await call<Record<string, unknown>>("admin_content", { days });
+  return {
+    polls: Number(c.polls ?? 0),
+    snaps: Number(c.snaps ?? 0),
+    medianVotes: num(c.median_votes),
+    p90Votes: num(c.p90_votes),
+    noVotes: Number(c.no_votes ?? 0),
+    noVotesOpen: Number(c.no_votes_open ?? 0),
+    comments: Number(c.comments ?? 0),
+    byDay: list<Record<string, unknown>>(c.by_day).map((r) => ({ day: r.day as string, ...ints(r, ["classic", "snap", "hot_take", "mystery"]) })),
+    top: list<Record<string, unknown>>(c.top).map((r) => ({
+      id: r.id as string,
+      question: String(r.question ?? ""),
+      kind: String(r.kind ?? ""),
+      visibility: String(r.visibility ?? ""),
+      author: (r.author as string | null) ?? null,
+      votes: Number(r.votes ?? 0),
+      comments: Number(r.comments ?? 0),
+    })),
+    snapLive: Number(c.snap_live ?? 0),
+    snapReview: Number(c.snap_review ?? 0),
+    snapRejected: Number(c.snap_rejected ?? 0),
+    aiFlags: Number(c.ai_flags ?? 0),
+    reports: Number(c.reports ?? 0),
+    blocked: Number(c.blocked ?? 0),
+    props: list<Record<string, unknown>>(c.props).map((r) => ({ label: String(r.label ?? ""), emoji: String(r.emoji ?? ""), n: Number(r.n ?? 0) })),
+  };
+}
+
+export async function fetchNotifStats(days: number): Promise<NotifStats> {
+  const n = await call<Record<string, unknown>>("admin_notifications", { days });
+  const p = n.job_problem as Record<string, unknown> | null;
+  return {
+    kinds: list<Record<string, unknown>>(n.kinds).map((r) => ({ kind: String(r.kind), ...ints(r, ["made", "sent", "opened"]) })),
+    sent: Number(n.sent ?? 0),
+    opened: Number(n.opened ?? 0),
+    expired: Number(n.expired ?? 0),
+    failed: Number(n.failed ?? 0),
+    runsToday: num(n.runs_today),
+    emails: Number(n.emails ?? 0),
+    emailsLunch: Number(n.emails_lunch ?? 0),
+    emailsEvening: Number(n.emails_evening ?? 0),
+    emailOpens: Number(n.email_opens ?? 0),
+    turnedOff: Number(n.turned_off ?? 0),
+    phones: list<Record<string, unknown>>(n.phones).map((r) => ({ label: String(r.label), ...ints(r, ["people", "on", "cant"]) })),
+    jobLastRun: (n.job_last_run as string | null) ?? null,
+    jobProblem: p ? { message: String(p.message ?? ""), place: (p.place as string | null) ?? null, at: p.at as string, status: String(p.status ?? "") } : null,
+  };
+}
+
+/** The admin's 9 am summary push: read it, or switch it on or off (written in the admin log). */
+export const adminMorning = (on?: boolean) => call<boolean>("admin_morning", on === undefined ? {} : { on_now: on });

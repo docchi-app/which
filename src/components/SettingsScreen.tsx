@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { isSignedIn, continueWithGoogle, onUserChange, saveReturnTo, signOut } from "@/lib/auth";
 import { CREATE_PREVIEW_KEY } from "@/lib/create";
 import { installPlatform, type InstallPlatform } from "@/lib/install";
+import { adminMorning } from "@/lib/admin";
 import { emailSummary, getMyProfile, sendTestEmail, type EmailTestResult, type Profile } from "@/lib/profile";
 import { propsNoWait, propsState, setPropsOff } from "@/lib/props";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -29,6 +30,8 @@ export function SettingsScreen() {
   const [propsOn, setPropsOn] = useState<boolean | null>(null);
   // Admins, for testing: props picked for you arrive without the wait (null until known).
   const [noWait, setNoWait] = useState<boolean | null>(null);
+  // Admins: yesterday's numbers in a 9 am push (null until known).
+  const [morning, setMorning] = useState<boolean | null>(null);
   // The lunch and evening emails for when notifications can't reach you (null until known).
   const [email, setEmail] = useState<{ on: boolean; hasEmail: boolean } | null>(null);
 
@@ -50,7 +53,9 @@ export function SettingsScreen() {
     getMyProfile()
       .then((p) => {
         setProfile(p);
-        if (p?.isAdmin) propsNoWait().then(setNoWait).catch(() => {});
+        if (!p?.isAdmin) return;
+        propsNoWait().then(setNoWait).catch(() => {});
+        adminMorning().then(setMorning).catch(() => {});
       })
       .catch(() => {});
     propsState()
@@ -181,6 +186,27 @@ export function SettingsScreen() {
                     propsNoWait(on)
                       .then(setNoWait)
                       .catch(() => setNoWait(!on));
+                  }}
+                />
+              </label>
+            )}
+            {profile?.isAdmin && morning !== null && (
+              <label className="settings-row">
+                <span>
+                  <strong>Morning summary at 9 am</strong>
+                  <span className="notif-hint">Admins: a push with yesterday&apos;s visitors, sign-ups, votes and anything waiting</span>
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="switch"
+                  checked={morning}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    setMorning(on);
+                    adminMorning(on)
+                      .then(setMorning)
+                      .catch(() => setMorning(!on));
                   }}
                 />
               </label>
