@@ -252,3 +252,143 @@ export async function fetchAdminEvents(max = 50): Promise<AdminEvent[]> {
   const rows = await call<Record<string, unknown>[]>("admin_events_list", { max_rows: max });
   return rows.map((r) => ({ at: r.at as string, action: r.action as string, detail: (r.detail as string | null) ?? null, admin: (r.admin as string | null) ?? null }));
 }
+
+// ─── Errors (see supabase/migrations/20261205000000_errors.sql) ──────────────
+
+export type ErrorStatus = "new" | "open" | "fixed" | "ignored";
+export type ErrorFilter = "look" | ErrorStatus | "all";
+export type ErrorSource = "app" | "server" | "job";
+
+export type ErrorRow = {
+  id: number;
+  source: ErrorSource;
+  kind: string;
+  message: string;
+  place: string;
+  status: ErrorStatus;
+  cameBack: boolean;
+  firstSeen: string;
+  lastSeen: string;
+  times: number;
+  people: number;
+  spike: boolean;
+};
+
+export type ErrorsSummary = {
+  new: number;
+  look: number;
+  newest: string | null;
+  newestPlace: string | null;
+  newestSince: string | null;
+  people: number;
+  opened: number;
+  times: number;
+  kinds: number;
+  jobLastRun: string | null;
+  jobResult: Record<string, unknown> | null;
+};
+
+export type ErrorOccurrence = {
+  at: string;
+  who: "user" | "guest" | "visitor" | "server";
+  username: string | null;
+  device: string | null;
+  browser: string | null;
+  inApp: string | null;
+  installed: boolean | null;
+  appVersion: string | null;
+  path: string | null;
+  prevPath: string | null;
+  stack: string | null;
+};
+
+export type ErrorDetail = Omit<ErrorRow, "times" | "people"> & {
+  code: string | null;
+  fixedAt: string | null;
+  times: number;
+  people: number;
+  timesTotal: number;
+  buckets: number[];
+  devices: { label: string; people: number }[];
+  who: { user: number; guest: number; visitor: number; names: string[] };
+  versions: string[];
+  latest: ErrorOccurrence[];
+};
+
+export async function fetchErrors(days: number, status: ErrorFilter, source: ErrorSource | null): Promise<ErrorRow[]> {
+  const rows = await call<Record<string, unknown>[]>("admin_errors", { days, status_filter: status, source_filter: source });
+  return rows.map((r) => ({
+    id: Number(r.id),
+    source: r.source as ErrorSource,
+    kind: r.kind as string,
+    message: r.message as string,
+    place: (r.place as string) ?? "",
+    status: r.status as ErrorStatus,
+    cameBack: r.came_back === true,
+    firstSeen: r.first_seen as string,
+    lastSeen: r.last_seen as string,
+    times: Number(r.times ?? 0),
+    people: Number(r.people ?? 0),
+    spike: r.spike === true,
+  }));
+}
+
+export async function fetchErrorsSummary(days: number): Promise<ErrorsSummary> {
+  const s = await call<Record<string, unknown>>("admin_errors_summary", { days });
+  return {
+    new: Number(s.new ?? 0),
+    look: Number(s.look ?? 0),
+    newest: (s.newest as string | null) ?? null,
+    newestPlace: (s.newest_place as string | null) ?? null,
+    newestSince: (s.newest_since as string | null) ?? null,
+    people: Number(s.people ?? 0),
+    opened: Number(s.opened ?? 0),
+    times: Number(s.times ?? 0),
+    kinds: Number(s.kinds ?? 0),
+    jobLastRun: (s.job_last_run as string | null) ?? null,
+    jobResult: (s.job_result as Record<string, unknown> | null) ?? null,
+  };
+}
+
+export async function fetchErrorDetail(id: number, days: number): Promise<ErrorDetail> {
+  const d = await call<Record<string, unknown>>("admin_error_detail", { err: id, days });
+  const who = (d.who ?? {}) as Record<string, unknown>;
+  return {
+    id: Number(d.id),
+    source: d.source as ErrorSource,
+    kind: d.kind as string,
+    message: d.message as string,
+    place: (d.place as string) ?? "",
+    code: (d.code as string | null) ?? null,
+    status: d.status as ErrorStatus,
+    cameBack: d.came_back === true,
+    firstSeen: d.first_seen as string,
+    lastSeen: d.last_seen as string,
+    fixedAt: (d.fixed_at as string | null) ?? null,
+    spike: d.spike === true,
+    times: Number(d.times ?? 0),
+    people: Number(d.people ?? 0),
+    timesTotal: Number(d.times_total ?? 0),
+    buckets: ((d.buckets as unknown[]) ?? []).map(Number),
+    devices: ((d.devices as { label: string; people: number }[]) ?? []).map((x) => ({ label: x.label, people: Number(x.people) })),
+    who: { user: Number(who.user ?? 0), guest: Number(who.guest ?? 0), visitor: Number(who.visitor ?? 0), names: (who.names as string[]) ?? [] },
+    versions: (d.versions as string[]) ?? [],
+    latest: ((d.latest as Record<string, unknown>[]) ?? []).map((l) => ({
+      at: l.at as string,
+      who: l.who as ErrorOccurrence["who"],
+      username: (l.username as string | null) ?? null,
+      device: (l.device as string | null) ?? null,
+      browser: (l.browser as string | null) ?? null,
+      inApp: (l.in_app as string | null) ?? null,
+      installed: (l.installed as boolean | null) ?? null,
+      appVersion: (l.app_version as string | null) ?? null,
+      path: (l.path as string | null) ?? null,
+      prevPath: (l.prev_path as string | null) ?? null,
+      stack: (l.stack as string | null) ?? null,
+    })),
+  };
+}
+
+export async function setErrorStatus(id: number, status: "open" | "fixed" | "ignored"): Promise<ErrorStatus> {
+  return call<ErrorStatus>("admin_error_status", { err: id, new_status: status });
+}

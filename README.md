@@ -191,8 +191,8 @@ The first slice of the build order:
   an admin looks at it.
 - **Admin (`/admin`):** only for the one admin account (`profiles.is_admin`; the database allows
   exactly one). Everyone else, signed in or not, gets the normal "page not found", decided on the
-  server before anything is sent. On a laptop the sections sit in a sidebar (Safety: Reports,
-  Snaps, Words · Numbers: Metrics · Run: Schedule, Test accounts, Admin log) with **← Back to
+  server before anything is sent. On a laptop the sections sit in a sidebar (Health: Errors ·
+  Safety: Reports, Snaps, Words · Numbers: Metrics · Run: Schedule, Test accounts, Admin log) with **← Back to
   Eithr** at the top; on a phone they're tabs, with ‹ back. The section is in the address
   (`/admin#metrics`). **Reports** lists what's waiting
   (auto-hidden polls first) with the full poll, who posted it and their report history:
@@ -205,7 +205,15 @@ The first slice of the build order:
   shares, sign-ups, and visits from any phone they've signed in on. **Admin log** lists
   moderation actions with Undo, and other changes (words, test accounts, settings). **Metrics** shows visitors, votes, % of
   visitors who vote, votes per session, votes per 100 views, share rate and D1/D7 retention
-  against the launch targets, plus a table by day.
+  against the launch targets, plus a table by day. **Errors** (setup step 9) shows what broke and
+  for whom: new errors, people hit, and whether the background jobs ran; one line per kind of
+  error (repeats grouped) with people, times, last seen and New / Open / Back after fix / Fixed /
+  Ignored; open one for its hour-by-hour chart, phones and browsers, who (signed in, guests,
+  visitors), the latest times with their stack, **Copy for Claude** (a ready-to-paste report,
+  counts only), **Open GitHub issue** (the same text in a new issue) and Mark as Open / Fixed /
+  Ignore. `/admin#errors/12` opens one directly.
+- **Something went wrong:** a screen that fails to draw shows "Something went wrong" with **Try
+  again** and **Go to the feed** instead of a blank page, and the error goes to Admin → Errors.
 - **Tips, one at a time:** a small dark bubble beside the thing it explains, shown once, at the
   moment it's useful: + after your 2nd vote, 💬 when you vote on a poll that has comments (on that
   poll's card), Leaders
@@ -637,6 +645,26 @@ Without `RESEND_API_KEY` nothing is sent and nothing else changes. Sends are rec
 that window). Resend's free plan allows 100 emails a day, about 50 people at two a day; past that,
 move to its paid plan.
 
+### 9. Errors (Admin → Errors)
+
+Run `20261205000000_errors.sql` in the SQL Editor (then the migration check). From then on:
+
+- **The app** reports its own errors: a screen that fails to draw, script errors, unhandled
+  promise errors, and requests to the database or our API that fail or get a server error.
+  Ignored: being offline, leaving the page, cancelled requests, browser-extension noise.
+- **The server routes** (snap check, AI text check, views, test notification) and **the 2-minute
+  job** (push, email, AI sweep) report theirs with `PUSH_CRON_SECRET`; the database job's own
+  errors (`push_errors`) come in by themselves.
+- Recorded: the error, the screen, the first lines of the stack, phone and browser type, app
+  version (`NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA`, set by Vercel), and whether the person was signed
+  in, a guest or a visitor. Never anything typed, photos or IP addresses. At most 20 reports an
+  hour per person or browser; kept 30 days.
+- **Alerts:** the job pushes your phone for a new error hitting 3+ people, a spike (10+ in an hour
+  and 5× its usual rate) or one back after you marked it fixed. At most one an hour, never for an
+  ignored error, and between 11 pm and 8 am India time only if 25+ people were hit. Your phone
+  needs notifications on.
+- **GitHub issues** go to `docchi-app/which`; set `NEXT_PUBLIC_GITHUB_REPO` (owner/name) to change it.
+
 ### Free tier limits to know about
 
 - **A free project pauses after about a week with no activity.** You can restore it from the
@@ -677,6 +705,7 @@ per Supabase auth user, created automatically by a database trigger.
 | Comments only for people who voted (or a closed poll, or its creator), and circle polls stay in the circle | `can_read_comments()` in `get_comments()` / `post_comment()`; the comments table isn't readable by clients |
 | Reports: signed-in only, 20 a day, one per person per poll; 3 reporters hide a poll | `report()` |
 | Only the admin sees reports and metrics, or removes / bans | One admin at most (`profiles_one_admin` unique index); `require_admin()` in every `admin_…()` function; `/admin` answers 404 on the server to anyone else; `reports`, `visits`, `mod_actions`, `admin_events` aren't readable by clients |
+| Error reports can't be read or flooded | `app_errors`, `app_error_events`, `job_status` aren't readable by clients; `report_error()` keeps 20 an hour per person or browser (2,000 in 10 minutes in all) and cuts long values; server and job reports and `errors_tick()` need `PUSH_CRON_SECRET`; `admin_error…()` need `require_admin()` |
 | Banned accounts can't vote, post or report, and their polls are hidden | `admin_act('ban')`, checked by `cast_vote()`, `create_poll()`, `report()` |
 | Push goes only to your own devices, only for things you can see | `save_push_subscription()` ties a phone to the signed-in account; `push_scan()` uses `can_view_poll()` for circle polls; subscriptions and the outbox aren't readable by clients |
 | Only the app's sender can collect and send pushes | `push_collect()`, `push_gone()`, `push_test_targets()` need the `PUSH_CRON_SECRET` (stored hashed in `push_config`) |

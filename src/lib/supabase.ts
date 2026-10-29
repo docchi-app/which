@@ -11,6 +11,7 @@ let client: SupabaseClient | null = null;
 /** Browser Supabase client, or null when the env vars aren't set (demo mode). */
 export function getSupabase(): SupabaseClient | null {
   if (!isSupabaseConfigured) return null;
-  client ??= createBrowserClient(url!, anonKey!);
+  // Through the current fetch at call time, so failed requests reach Admin → Errors (lib/errors.ts).
+  client ??= createBrowserClient(url!, anonKey!, { global: { fetch: (...args) => globalThis.fetch(...args) } });
   return client;
 }

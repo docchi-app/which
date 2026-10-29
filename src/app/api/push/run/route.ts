@@ -1,6 +1,7 @@
 import { cronSecret, pushConfigured, rpc, sendAll, type PushPayload } from "@/lib/push-server";
 import { sweepTexts } from "@/lib/text-moderation";
 import { sendSummaries } from "@/lib/email-server";
+import { reportServerError } from "@/lib/server-errors";
 
 // Called by pg_cron (via pg_net) every 2 minutes; see supabase/migrations/20261105000000_push.sql.
 export const maxDuration = 60;
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
     total.checked = await sweepTexts();
   } catch (e) {
     console.error("text sweep:", e instanceof Error ? e.message : e);
+    await reportServerError("Background job · AI text check", e, "job");
   }
   // A few batches per run, leaving time to finish before the limit.
   for (let batch = 0; batch < 10 && Date.now() - started < 40_000; batch++) {
@@ -29,6 +31,7 @@ export async function POST(request: Request) {
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       console.error("push run:", message);
+      await reportServerError("Background job · push collect", e, "job");
       const error = message.includes("forbidden") ? "secret_mismatch" : "collect_failed";
       // Only the cron (which knows the secret) sees this; it lands in net._http_response.
       return Response.json({ error, detail: message.slice(0, 300), ...total }, { status: 500 });
@@ -40,6 +43,7 @@ export async function POST(request: Request) {
     total.gone += result.gone.length;
     total.failed += result.failed;
     if (result.firstError) Object.assign(total, { error: result.firstError });
+    if (result.failed) await reportServerError("Background job · push send", result.firstError ?? `${result.failed} pushes failed`, "job");
     if (rows.length < 300) break;
   }
   // The lunch and evening emails for people push can't reach (12:30–2 pm and 6:30–9 pm India time;
@@ -47,8 +51,25 @@ export async function POST(request: Request) {
   try {
     const mail = await sendSummaries();
     if (mail.sent || mail.failed) total.emails = mail;
+    if (mail.failed) await reportServerError("Background job · email", `${mail.failed} emails failed to send`, "job");
   } catch (e) {
     console.error("email summaries:", e instanceof Error ? e.message : e);
+    await reportServerError("Background job · email", e, "job");
+  }
+  // Errors: note this run, clear what's over 30 days, and tell the admin's phone about a new
+  // error, a spike or one back after a fix (at most one an hour).
+  try {
+    const tick = await rpc<{ alert: PushPayload | null; targets?: { endpoint: string; p256dh: string; auth: string }[] }>(
+      "errors_tick",
+      { secret: cronSecret, run: total },
+    );
+    if (tick.alert && tick.targets?.length) {
+      const sent = await sendAll(tick.targets.map((target) => ({ target, payload: tick.alert! })));
+      total.alerted = sent.sent;
+    }
+  } catch (e) {
+    // Before the errors migration ran: nothing to do.
+    console.error("errors tick:", e instanceof Error ? e.message : e);
   }
   return Response.json(total);
 }
