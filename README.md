@@ -266,7 +266,8 @@ The first slice of the build order:
   passes the photo and its words through OpenAI's free moderation: clean → live (and the share
   sheet opens), unsure → **Admin → Snaps** for you to approve or reject (turned down after 12
   hours), clearly bad → rejected. Everyone snaps get a stricter bar (and a snap can't be
-  switched to Everyone afterwards); accounts under a day old can send to Friends or Link only; 3 snaps a day (deleting one doesn't give it back). Snaps stay off
+  switched to Everyone afterwards); accounts under a day old can send to Friends or Link only; 3 snaps a day, counted from midnight
+  India time (deleting one doesn't give it back; the admin isn't limited). Snaps stay off
   profiles, and their photos are deleted once they close (by the owner's app, or Admin → Snaps →
   Clean up).
 - **Props (💜 compliment polls about your friends):** a purple "About your friends" card shows up
@@ -607,13 +608,17 @@ On iPhone, notifications only work once Eithr is on the Home Screen, so many peo
 them. Anyone with no phone set up for push gets up to two short emails a day from the
 notifications job: at **lunch** (12:30–2 pm India time) and in the **evening** (6:30–9 pm). Each
 covers only what came in since the previous email (votes or comments on their polls, props,
-friend requests), so nothing repeats; with nothing new, no email. It goes out whether or not
-they've opened Eithr that day. The subject leads with the strongest thing (props, then friend
-requests, then votes, then comments); votes show the poll's answers with the result hidden.
+friend requests, a poll that closed), so nothing repeats; with nothing new, no email. It goes out
+whether or not they've opened Eithr that day. The subject leads with the strongest thing (props,
+then friend requests, then votes, then comments). Votes emails say how the race looks without
+saying which answer leads: the poll closed, a milestone (10, 25, 50, 100 votes), the first vote,
+a tie, neck and neck, or one answer pulling ahead, with the answers shown as "???". Each line
+has a few wordings, picked per person per day.
 Every email has a one-click **Stop these emails** link (signed per person); Settings → **Email me
 what I missed** turns it off or on. Props never say who.
 
-1. Run `20261201000000_email_summary.sql` and `20261202000000_email_twice.sql` in the SQL Editor
+1. Run `20261201000000_email_summary.sql`, `20261202000000_email_twice.sql` and
+   `20261203000000_snap_day_limit.sql` in the SQL Editor
    (then the migration check).
 2. Sign up at https://resend.com (free: 3,000 emails a month, 100 a day). **Domains → Add
    Domain** → `eithr.app`, and add the DNS records it shows where your domain is managed (wait

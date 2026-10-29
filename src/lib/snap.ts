@@ -190,7 +190,7 @@ export const SNAP_ERRORS: Record<string, string> = {
   sign_in: "Sign in to post a snap.",
   need_username: "Pick a username first.",
   banned: "This account can't post.",
-  snap_limit: "That's 3 snaps today. Come back tomorrow!",
+  snap_limit: "That's 3 snaps today. You can snap again after midnight.",
   snap_too_new: "New accounts can send snaps to friends for the first day. Everyone opens up tomorrow.",
   empty_circle: "No friends yet. Pick Link only and send it to someone.",
   question_length: "Questions need 3 to 80 characters.",
