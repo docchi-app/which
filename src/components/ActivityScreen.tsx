@@ -7,6 +7,7 @@ import { continueWithGoogle, isSignedIn, onUserChange, saveReturnTo } from "@/li
 import { announceCircleChange, circleErrorText, getMyCircle, respondRequest, type MyCircle } from "@/lib/circle";
 import { fetchRecentResults, type RecentResult } from "@/lib/streak";
 import { markPropsSeen, myProps, type MyProps } from "@/lib/props";
+import { askAt } from "@/lib/asks";
 import { recall, remember } from "@/lib/screen-cache";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { BottomNav } from "./BottomNav";
@@ -52,7 +53,10 @@ export function ActivityScreen() {
     myProps()
       .then((p) => {
         setProps(p);
-        if (p.fresh > 0) markPropsSeen().catch(() => {});
+        if (p.fresh > 0) {
+          markPropsSeen().catch(() => {});
+          askAt("props");
+        }
       })
       .catch(() => {});
     fetchActivity()

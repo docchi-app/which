@@ -20,7 +20,7 @@ function setTurnedOff(off: boolean) {
   } catch {}
 }
 
-function turnedOff(): boolean {
+export function turnedOff(): boolean {
   try {
     return localStorage.getItem(OFF_KEY) === "1";
   } catch {

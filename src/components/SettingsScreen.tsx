@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { isSignedIn, continueWithGoogle, onUserChange, saveReturnTo, signOut } from "@/lib/auth";
 import { CREATE_PREVIEW_KEY } from "@/lib/create";
 import { installPlatform, type InstallPlatform } from "@/lib/install";
-import { getMyProfile, type Profile } from "@/lib/profile";
+import { emailSummary, getMyProfile, type Profile } from "@/lib/profile";
 import { propsNoWait, propsState, setPropsOff } from "@/lib/props";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { BottomNav } from "./BottomNav";
@@ -29,6 +29,8 @@ export function SettingsScreen() {
   const [propsOn, setPropsOn] = useState<boolean | null>(null);
   // Admins, for testing: props picked for you arrive without the wait (null until known).
   const [noWait, setNoWait] = useState<boolean | null>(null);
+  // The evening email for when notifications can't reach you (null until known).
+  const [email, setEmail] = useState<{ on: boolean; hasEmail: boolean } | null>(null);
 
   useEffect(() => {
     // The platform is only known in the browser.
@@ -54,6 +56,9 @@ export function SettingsScreen() {
     propsState()
       .then((s) => setPropsOn(!s.off))
       .catch(() => {});
+    emailSummary()
+      .then(setEmail)
+      .catch(() => {});
   }, [signedIn]);
 
   const installable = platform === "android" || platform === "ios" || platform === "in-app";
@@ -70,6 +75,33 @@ export function SettingsScreen() {
       </header>
 
       {signedIn && <NotificationSettings />}
+
+      {signedIn && email?.hasEmail && (
+        <section className="settings-group" aria-labelledby="email-title">
+          <h2 id="email-title" className="settings-heading">
+            Email
+          </h2>
+          <label className="settings-row">
+            <span>
+              <strong>Email me what I missed</strong>
+              <span className="notif-hint">One evening email, only when something&apos;s waiting and notifications can&apos;t reach you</span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              className="switch"
+              checked={email.on}
+              onChange={(e) => {
+                const on = e.target.checked;
+                setEmail({ ...email, on });
+                emailSummary(!on)
+                  .then((r) => r && setEmail(r))
+                  .catch(() => setEmail({ ...email, on: !on }));
+              }}
+            />
+          </label>
+        </section>
+      )}
 
       {installable && (
         <section className="settings-group" aria-labelledby="app-title">

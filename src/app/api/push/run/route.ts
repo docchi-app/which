@@ -1,5 +1,6 @@
 import { cronSecret, pushConfigured, rpc, sendAll, type PushPayload } from "@/lib/push-server";
 import { sweepTexts } from "@/lib/text-moderation";
+import { sendSummaries } from "@/lib/email-server";
 
 // Called by pg_cron (via pg_net) every 2 minutes; see supabase/migrations/20261105000000_push.sql.
 export const maxDuration = 60;
@@ -40,6 +41,13 @@ export async function POST(request: Request) {
     total.failed += result.failed;
     if (result.firstError) Object.assign(total, { error: result.firstError });
     if (rows.length < 300) break;
+  }
+  // The evening email for people push can't reach (only 6–9 pm India time; off without RESEND_API_KEY).
+  try {
+    const mail = await sendSummaries();
+    if (mail.sent || mail.failed) total.emails = mail;
+  } catch (e) {
+    console.error("email summaries:", e instanceof Error ? e.message : e);
   }
   return Response.json(total);
 }

@@ -12,6 +12,7 @@ import { HOW_IT_WORKS_KEY, showTip, tipsAfterVote } from "@/lib/tips";
 import { FEED_PAGE_SIZE, fetchFeed, fetchPoll, recordOpen } from "@/lib/polls";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { FEED_CACHE, FEED_SNAP, recall, remember } from "@/lib/screen-cache";
+import { askAt } from "@/lib/asks";
 import { warmProfile, warmTabs } from "@/lib/warm";
 import { isPropsSlot, propsSlot, propsState } from "@/lib/props";
 import { useLiveCounts } from "@/lib/live";
@@ -962,7 +963,16 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
         </p>
       )}
       {sheet && <SignInSheet pick={sheet === "save" ? undefined : sheet} onClose={closeSheet} />}
-      {sharing && <ShareSheet poll={sharing} onClose={() => setSharing(null)} />}
+      {sharing && (
+        <ShareSheet
+          poll={sharing}
+          onClose={() => {
+            // Just posted: worth hearing when the votes come in.
+            if (sharing.id === createdId) askAt("posted");
+            setSharing(null);
+          }}
+        />
+      )}
       <HowItWorks />
       {installNudge && !sheet && !sharing && <InstallSheet reason="nudge" onClose={() => setInstallNudge(false)} />}
     </div>
