@@ -42,7 +42,8 @@ export async function POST(request: Request) {
     if (result.firstError) Object.assign(total, { error: result.firstError });
     if (rows.length < 300) break;
   }
-  // The evening email for people push can't reach (only 6–9 pm India time; off without RESEND_API_KEY).
+  // The lunch and evening emails for people push can't reach (12:30–2 pm and 6:30–9 pm India time;
+  // off without RESEND_API_KEY).
   try {
     const mail = await sendSummaries();
     if (mail.sent || mail.failed) total.emails = mail;

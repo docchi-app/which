@@ -24,7 +24,7 @@ function page(title: string, text: string, status = 200) {
 export async function GET(request: Request) {
   try {
     if (!(await stop(request))) return page("That link didn't work", "It may be cut short. You can also turn these emails off in Eithr: Settings → Email me what I missed.", 400);
-    return page("Done, no more emails", "You won't get Eithr's evening summary any more. You can turn it back on in Settings.");
+    return page("Done, no more emails", "You won't get Eithr's emails about what you missed any more. You can turn it back on in Settings.");
   } catch {
     return page("That didn't work", "Try again in a bit, or turn these emails off in Eithr: Settings → Email me what I missed.", 500);
   }
