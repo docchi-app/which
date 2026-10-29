@@ -44,6 +44,14 @@ let testAccounts = [];
 let emailDue = [];
 let emailOn = true;
 let emailTests = 0;
+const errorReports = [];
+let crashGetPoll = false;
+const errorRows = [
+  { id: 101, source: 'app', kind: 'TypeError', message: 'Failed to fetch', place: 'Feed (/)', status: 'new', came_back: false, first_seen: iso(-0.08), last_seen: iso(-0.001), times: 31, people: 14, spike: true },
+  { id: 102, source: 'app', kind: 'NotAllowedError', message: "Camera didn't start", place: 'Snap (/snap)', status: 'open', came_back: false, first_seen: iso(-2), last_seen: iso(-0.04), times: 5, people: 3, spike: false },
+  { id: 103, source: 'app', kind: 'Render', message: "Cannot read properties of undefined (reading 'options')", place: 'Poll page (/p/:id)', status: 'open', came_back: true, first_seen: iso(-5), last_seen: iso(-0.12), times: 2, people: 1, spike: false },
+  { id: 104, source: 'server', kind: 'Error', message: 'Snap check timed out', place: '/api/snap/check', status: 'ignored', came_back: false, first_seen: iso(-1), last_seen: iso(-0.2), times: 4, people: 0, spike: false },
+];
 // Admin → Metrics: the shape of the real first two weeks (visitors, new, voters, votes), newest first.
 const METRIC_DAYS = [[69, 64, 15, 97], [98, 95, 6, 18], [20, 16, 7, 27], [21, 17, 3, 19], [62, 59, 10, 74], [25, 25, 13, 204]];
 const metricDays = (n = 14) => Array.from({ length: n }, (_, i) => {
@@ -115,6 +123,25 @@ http.createServer((req, res) => {
       case '/__log': return json(200, log);
       case 'admin_test_accounts': return json(200, testAccounts.map((u) => ({ username: u, avatar_url: null, joined: iso(-72), votes: 3 })));
       case 'admin_set_test': { const u = String(a.username).toLowerCase(); if (u === 'mayank') return json(400, { message: 'docchi:own_account' }); if (!/^[a-z0-9_.]+$/.test(u) || u === 'nobody') return json(400, { message: 'docchi:not_found' }); testAccounts = a.on_now ? [...new Set([...testAccounts, u])] : testAccounts.filter((x) => x !== u); events.unshift({ at: iso(0), action: a.on_now ? 'test_added' : 'test_removed', detail: '@' + u, admin: 'mayank' }); log.push(`TEST ${u} ${a.on_now}`); return json(200, null); }
+      // Errors: what the app reports, and Admin → Errors (sample data plus what was reported).
+      case 'report_error': { errorReports.push(a); log.push('ERROR_REPORT ' + a.kind + '|' + a.message + '|' + a.place); return json(200, null); }
+      case 'report_server_error': { if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:forbidden' }); log.push('SERVER_ERROR ' + a.source + '|' + a.place + '|' + a.message); return json(200, null); }
+      case 'errors_tick': { if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:forbidden' }); log.push('ERRORS_TICK'); return json(200, { alert: null }); }
+      case 'admin_errors': case 'admin_errors_summary': case 'admin_error_detail': case 'admin_error_status': {
+        const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
+        const fn = url.pathname.replace('/rest/v1/rpc/', '');
+        if (fn === 'admin_error_status') { const e = errorRows.find((x) => x.id === Number(a.err)); if (!e) return json(400, { message: 'docchi:not_found' }); e.status = a.new_status; e.came_back = false; log.push('ERROR_STATUS ' + a.err + ' ' + a.new_status); return json(200, a.new_status); }
+        if (fn === 'admin_errors_summary') return json(200, { new: errorRows.filter((e) => e.status === 'new').length, look: errorRows.filter((e) => e.status === 'new' || e.status === 'open').length, newest: 'Failed to fetch', newest_place: 'Feed (/)', newest_since: iso(-0.08), people: 19, opened: 212, times: 43, kinds: errorRows.length, job_last_run: new Date(Date.now() - 60000).toISOString(), job_result: { sent: 12, failed: 0 } });
+        if (fn === 'admin_errors') { log.push('ERRORS_LIST ' + a.days + ' ' + a.status_filter + ' ' + a.source_filter); const f = a.status_filter || 'look'; return json(200, errorRows.filter((e) => (!a.source_filter || e.source === a.source_filter) && (f === 'all' || (f === 'look' ? ['new', 'open'].includes(e.status) : e.status === f)))); }
+        const e = errorRows.find((x) => x.id === Number(a.err)); if (!e) return json(400, { message: 'docchi:not_found' });
+        log.push('ERROR_DETAIL ' + a.err + ' ' + a.days);
+        const n = a.days === 1 ? 24 : a.days;
+        return json(200, { ...e, code: 'polls.ts fetchFeed', fixed_at: null, times_total: e.times + 3, buckets: Array.from({ length: n }, (_, i) => (i >= n - 3 ? [9, 14, 8][i - (n - 3)] : 0)),
+          devices: [{ label: 'iPhone · Safari', people: 9 }, { label: 'iPhone · Instagram', people: 4 }, { label: 'Android · Chrome', people: 1 }],
+          who: { user: 3, guest: 6, visitor: 5, names: ['riya.k', 'arjun_07'] }, versions: ['abc1234'],
+          latest: [{ at: iso(-0.001), who: 'guest', username: null, device: 'iPhone', browser: 'Safari', in_app: null, installed: false, app_version: 'abc1234', path: 'Feed (/)', prev_path: 'Poll page (/p/:id)', stack: 'TypeError: Failed to fetch\n    at fetchFeed (polls.ts:88:11)\n    at load (Feed.tsx:212:9)' },
+                   { at: iso(-0.006), who: 'user', username: 'riya.k', device: 'Android', browser: 'Chrome', in_app: null, installed: true, app_version: 'abc1234', path: 'Feed (/)', prev_path: null, stack: null }] });
+      }
       case 'admin_events_list': return json(200, events);
       case 'admin_metrics': return json(200, metricDays(a.days));
       case 'admin_view_stats': return json(200, metricDays(a.days).map((d) => ({ day: d.day, views: d.votes * 2, votes: d.votes, votes_per_100_views: d.votes ? 50 : null })));
@@ -122,8 +149,12 @@ http.createServer((req, res) => {
       // A poll hidden or removed behind the app's back (e.g. by an admin on another phone).
       case '/__hide': { const i = polls.findIndex((p) => p.id === url.searchParams.get('id')); if (i >= 0) polls.splice(i, 1); log.push('HIDE ' + url.searchParams.get('id')); return json(200, null); }
       case 'admin_act': { if (a.kind === 'poll' && a.act === 'remove') { const i = polls.findIndex((p) => p.id === a.target); if (i >= 0) polls.splice(i, 1); } log.push(`ADMIN ${a.act} ${a.kind} ${a.target}`); return json(200, null); }
-      case 'get_feed': return json(200, (a.tab === 'circle' ? [polls.find((p) => p.visibility === 'circle')] : polls).filter((p) => p.kind !== 'snap' || snaps[p.id]?.status === 'live').map(view));
-      case 'get_poll': return json(200, polls.filter((p) => p.id === a.poll).map(view));
+      case 'get_feed': { const out = (a.tab === 'circle' ? [polls.find((p) => p.visibility === 'circle')] : polls).filter((p) => p.kind !== 'snap' || snaps[p.id]?.status === 'live').map(view); return json(200, crashGetPoll ? out.map((p) => ({ ...p, options: null })) : out); }
+      // /__crash_get_poll (?off to stop): the feed and poll pages get broken data (a screen that fails to draw).
+      case 'get_poll': { const out = polls.filter((p) => p.id === a.poll).map(view); if (crashGetPoll) return json(200, out.map((p) => ({ ...p, options: null }))); return json(200, out); }
+      case '/__crash_get_poll': crashGetPoll = url.searchParams.get('off') === null; return json(200, null);
+      case '/__error_reports': return json(200, errorReports);
+      case 'boom_500': return json(500, { message: 'boom' });
       case 'cast_vote': { votes[a.target_poll] = a.target_option; const p = polls.find((x) => x.id === a.target_poll); p.vote_count++; p.options.find((o) => o.id === a.target_option)._v++; const v = view(p); return json(200, [{ my_option_id: v.my_option_id, vote_count: v.vote_count, question: p.question, options: v.options }]); }
       case 'record_views': return json(200, null);
       case 'friends_voted': return json(200, a.poll === polls[0].id ? { count: 3, people: [{ username: U20, avatar_url: null }, { username: 'zoya', avatar_url: null }, { username: 'aman', avatar_url: null }] } : { count: 0, people: [] });

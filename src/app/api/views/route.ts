@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { cronSecret, rpc } from "@/lib/push-server";
+import { reportServerError } from "@/lib/server-errors";
 
 // Views from signed-out visitors (opened from a WhatsApp or X link). The visitor
 // is a hash of their connection and browser plus our secret: nothing personal is
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
     await rpc<number>("record_views_anon", { secret: cronSecret, key, polls: ids });
   } catch (e) {
     console.error("views:", e instanceof Error ? e.message : e);
+    await reportServerError("/api/views", e);
     return new Response(null, { status: 502 });
   }
   return done();

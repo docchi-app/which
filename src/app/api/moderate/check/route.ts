@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { checkTexts, rpc, textCheckConfigured, type TextItem } from "@/lib/text-moderation";
+import { reportServerError } from "@/lib/server-errors";
 
 // Right after posting a typed poll or a comment, the app asks for the AI check of
 // what it just posted (it's already live). Only the author's own, unchecked posts
@@ -16,6 +17,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ checked: items?.length ? await checkTexts(items) : 0 });
   } catch (e) {
     console.error("moderate check:", e instanceof Error ? e.message : e);
+    await reportServerError("/api/moderate/check", e);
     // The 2-minute job picks it up.
     return NextResponse.json({ checked: 0, error: "check_failed" }, { status: 500 });
   }

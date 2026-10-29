@@ -2,6 +2,8 @@
 // photo in snap-moderation.ts). OpenAI's moderation is free and reads English, Hindi,
 // Hinglish and Marathi; the word filter in the database has already run by now.
 
+import { reportServerError } from "./server-errors";
+
 const env = (name: string) => process.env[name]?.trim() || undefined;
 const OPENAI_KEY = env("OPENAI_API_KEY");
 const url = env("NEXT_PUBLIC_SUPABASE_URL");
@@ -63,6 +65,7 @@ export async function scoreText(text: string): Promise<Scores | null> {
     return body.results?.[0]?.category_scores ?? null;
   } catch (e) {
     console.error("text check:", e instanceof Error ? e.message : e);
+    await reportServerError("AI text check (OpenAI)", e);
     return null;
   }
 }

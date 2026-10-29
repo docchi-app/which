@@ -23,6 +23,16 @@ function visitorId(s: Storage): string {
   return id;
 }
 
+/** This browser's random visitor code (null when storage is blocked). */
+export function visitorCode(): string | null {
+  const s = store();
+  try {
+    return s ? visitorId(s) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Remembers when the app was last on screen. */
 export function markSeen() {
   try {

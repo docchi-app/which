@@ -1,4 +1,5 @@
 import { cronSecret, pushConfigured, rpc, sendAll, userFromToken, type PushTarget } from "@/lib/push-server";
+import { reportServerError } from "@/lib/server-errors";
 
 /** "Send me a test": pushes to the signed-in person's own devices right away. */
 export async function POST(request: Request) {
@@ -13,6 +14,7 @@ export async function POST(request: Request) {
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error("push test:", message);
+    if (!message.includes("too_many")) await reportServerError("/api/push/test", e);
     if (message.includes("too_many")) return Response.json({ error: "too_many" }, { status: 429 });
     // The database doesn't know this secret: schedule_push() wasn't run, or with another value.
     if (message.includes("forbidden")) return Response.json({ error: "secret_mismatch" }, { status: 500 });

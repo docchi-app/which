@@ -10,6 +10,7 @@ import { MovedWelcome } from "@/components/MovedWelcome";
 import { InAppNotify } from "@/components/InAppNotify";
 import { MomentAsk } from "@/components/MomentAsk";
 import { TipLayer } from "@/components/TipLayer";
+import { ErrorCatcher } from "@/components/ErrorCatcher";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
       <body>
+        <ErrorCatcher />
         {children}
         <UsernameGate />
         <VisitTracker />

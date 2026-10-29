@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   fetchAdminEvents,
+  fetchErrorsSummary,
   fetchLog,
   fetchMetrics,
   fetchTestAccounts,
@@ -24,14 +25,16 @@ import { REPORT_REASONS } from "@/lib/safety";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { Avatar } from "./Avatar";
 import { Schedule } from "./AdminSchedule";
+import { AdminErrors } from "./AdminErrors";
 import { AdminSnaps } from "./AdminSnaps";
 import { AdminWords } from "./AdminWords";
 import { LogoMark, Wordmark } from "./Logo";
 
-type Tab = "reports" | "snaps" | "words" | "metrics" | "schedule" | "tests" | "log";
+type Tab = "errors" | "reports" | "snaps" | "words" | "metrics" | "schedule" | "tests" | "log";
 
 // The sections, grouped as the laptop sidebar shows them (one row of tabs on a phone).
 const SECTIONS: { group: string; items: { id: Tab; label: string }[] }[] = [
+  { group: "Health", items: [{ id: "errors", label: "Errors" }] },
   { group: "Safety", items: [{ id: "reports", label: "Reports" }, { id: "snaps", label: "Snaps" }, { id: "words", label: "Words" }] },
   { group: "Numbers", items: [{ id: "metrics", label: "Metrics" }] },
   { group: "Run", items: [{ id: "schedule", label: "Schedule" }, { id: "tests", label: "Test accounts" }, { id: "log", label: "Admin log" }] },
@@ -59,6 +62,14 @@ export function AdminScreen() {
   // anyone it could tell isn't; this covers a sign-in that had expired.
   const [allowed, setAllowed] = useState<boolean | undefined>(isSupabaseConfigured ? undefined : false);
   const [tab, setTabState] = useState<Tab>("reports");
+  // #errors/12 opens that error (the link in an alert or a GitHub issue).
+  const [errorId, setErrorId] = useState<number | null>(null);
+  const [newErrors, setNewErrors] = useState(0);
+  const loadBadge = useCallback(() => {
+    fetchErrorsSummary(1)
+      .then((s) => setNewErrors(s.new))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -72,8 +83,9 @@ export function AdminScreen() {
   // The section is in the address (#metrics), so a reload or a bookmark opens it again.
   useEffect(() => {
     const read = () => {
-      const h = window.location.hash.slice(1);
+      const [h, id] = window.location.hash.slice(1).split("/");
       if (isTab(h)) setTabState(h);
+      if (h === "errors" && id && /^\d+$/.test(id)) setErrorId(Number(id));
     };
     read();
     window.addEventListener("hashchange", read);
@@ -83,6 +95,10 @@ export function AdminScreen() {
     setTabState(t);
     window.history.replaceState(window.history.state, "", `#${t}`);
   };
+
+  useEffect(() => {
+    if (allowed) loadBadge();
+  }, [allowed, loadBadge]);
 
   // Nothing of the admin (not even its sections) until the sign-in is confirmed as yours.
   if (allowed !== true) {
@@ -118,6 +134,7 @@ export function AdminScreen() {
             {g.items.map((i) => (
               <button key={i.id} type="button" className="admin-side-item" aria-current={tab === i.id ? "page" : undefined} onClick={() => setTab(i.id)}>
                 {i.label}
+                {i.id === "errors" && newErrors > 0 && <span className="admin-badge">{newErrors} new</span>}
               </button>
             ))}
           </div>
@@ -139,10 +156,12 @@ export function AdminScreen() {
           {ALL.map((i) => (
             <button key={i.id} role="tab" type="button" aria-selected={tab === i.id} className="tab press" onClick={() => setTab(i.id)}>
               {i.label}
+              {i.id === "errors" && newErrors > 0 && <span className="admin-dot" aria-label={`${newErrors} new`} />}
             </button>
           ))}
         </div>
         <h1 className="admin-title">{ALL.find((i) => i.id === tab)!.label}</h1>
+        {tab === "errors" && <AdminErrors key={errorId ?? "list"} initialId={errorId} onChange={loadBadge} />}
         {tab === "reports" && <Queue />}
         {tab === "snaps" && <AdminSnaps />}
         {tab === "words" && <AdminWords />}

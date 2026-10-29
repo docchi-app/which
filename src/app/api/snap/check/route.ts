@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { moderate } from "@/lib/snap-moderation";
+import { reportServerError } from "@/lib/server-errors";
 
 // Runs the safety check on a snap that was just posted, as its creator, and
 // records the verdict (signed with PUSH_CRON_SECRET so only this route can).
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status });
   } catch (e) {
     console.error(e instanceof Error ? e.message : e);
+    await reportServerError("/api/snap/check", e);
     return NextResponse.json({ status: "pending", error: "check_failed" }, { status: 500 });
   }
 }
