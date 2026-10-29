@@ -199,9 +199,16 @@ begin
 end;
 $$;
 revoke execute on function public.push_errors_to_errors() from public, anon, authenticated;
-drop trigger if exists push_errors_to_errors on public.push_errors;
-create trigger push_errors_to_errors after insert on public.push_errors
-  for each row execute function public.push_errors_to_errors();
+-- (push_errors comes from 20261125000000_push_repair.sql.)
+do $$
+begin
+  if to_regclass('public.push_errors') is not null then
+    drop trigger if exists push_errors_to_errors on public.push_errors;
+    create trigger push_errors_to_errors after insert on public.push_errors
+      for each row execute function public.push_errors_to_errors();
+  end if;
+end;
+$$;
 
 -- How many times in the last hour against its usual rate: 10+ and 5× the hourly average
 -- of the day before.
