@@ -139,6 +139,15 @@ http.createServer((req, res) => {
       // People: what the app records about a browser, and Admin → Users / Guests.
       case 'record_visitor': { visitorInfos.push(a); log.push('VISITOR ' + (a.source ?? '-') + '|' + (a.source_by ?? '-') + '|' + (a.source_poll ?? '-') + '|' + (a.site ?? '-') + '|' + a.device + '|' + a.browser + '|' + (a.in_app ?? '-') + '|' + a.installed + '|' + a.notif); return json(200, null); }
       case '/__visitors': return json(200, visitorInfos);
+      // /__mine_in_feed: my own live snap (sent to Everyone) and my own typed poll, at the top of the feed.
+      case '/__mine_in_feed': {
+        if (!polls.some((x) => x.id === 'b1000000-0000-4000-8000-000000000001')) {
+          polls.unshift(mk('b2000000-0000-4000-8000-000000000002', 'Movie night: comedy or horror?', ['Comedy', 'Horror'], [4, 2], { creator: 'mayank', is_system: false, is_mine: true, created_at: iso(-1), closes_at: iso(47) }));
+          polls.unshift(mk('b1000000-0000-4000-8000-000000000001', 'Rate my fit for tonight?', ['🔥', '🧊'], [5, 2], { kind: 'snap', creator: 'mayank', is_system: false, is_mine: true, created_at: iso(-1), closes_at: iso(23) }));
+          snaps['b1000000-0000-4000-8000-000000000001'] = { path: 'u9/a5.jpg', status: 'live', live: false };
+        }
+        return json(200, null);
+      }
       case 'admin_users': case 'admin_users_summary': case 'admin_user_detail': case 'admin_user_email': case 'admin_reset_username': case 'admin_guests': case 'admin_guest_list': {
         const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
         const fn = url.pathname.replace('/rest/v1/rpc/', '');
@@ -268,7 +277,7 @@ http.createServer((req, res) => {
         ].filter((p) => !deletedMine.has(p.id)).map((p) => ({ ...p, visibility: visMine[p.id] ?? p.visibility, options: p.options.map(({ _v, ...o }) => ({ ...o, votes: _v })) }));
         return json(200, a.which === 'voted' ? polls.filter((p) => votes[p.id]).map(view) : mineList);
       }
-      case 'set_poll_visibility': visMine[a.poll] = a.visibility; log.push('VIS ' + a.poll + ' ' + a.visibility); return json(200, null);
+      case 'set_poll_visibility': { visMine[a.poll] = a.visibility; const fp = polls.find((x) => x.id === a.poll); if (fp) { fp.visibility = a.visibility; fp.audience = a.visibility === 'circle' ? 'Whole circle' : null; } log.push('VIS ' + a.poll + ' ' + a.visibility); return json(200, null); }
       case 'get_push_settings': return json(200, null);
       case 'my_circle': return json(200, { requests, members, groups: [{ id: 'g1', name: 'Family', count: 0 }], joined: [{ username: 'ravi', avatar_url: null, status: 'pending', at: iso(-2) }, ...members.map((m) => ({ ...m, status: 'member', at: m.since }))] });
       case 'suggest_friends': return json(200, [{ username: 'aman', avatar_url: null, mutual: 2, voted: 0 }, { username: 'neha', avatar_url: null, mutual: 0, voted: 3 }]);

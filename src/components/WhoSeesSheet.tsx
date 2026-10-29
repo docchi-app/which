@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useBackClose } from "@/lib/back";
 import { setPollVisibility } from "@/lib/polls";
 import type { Visibility } from "@/lib/types";
@@ -56,7 +57,8 @@ export function WhoSeesSheet({
     }
   }
 
-  return (
+  // On document.body: a poll card's swipe transform would trap a fixed layer.
+  return createPortal(
     <div className="sheet-layer">
       <div className="sheet-backdrop" aria-hidden="true" onClick={close} />
       <section role="dialog" aria-modal="true" aria-labelledby="who-title" className="sheet">
@@ -93,6 +95,7 @@ export function WhoSeesSheet({
           {busy ? "Saving…" : "Save"}
         </button>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
