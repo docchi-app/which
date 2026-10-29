@@ -764,3 +764,17 @@ export async function fetchNotifStats(days: number): Promise<NotifStats> {
 
 /** The admin's 9 am summary push: read it, or switch it on or off (written in the admin log). */
 export const adminMorning = (on?: boolean) => call<boolean>("admin_morning", on === undefined ? {} : { on_now: on });
+
+// ─── Limits (Admin → Run → Limits) ───
+
+export type Limits = { polls: number; snaps: number; changes: { at: string; detail: string }[] };
+
+/** Reads the daily limits, or saves new ones (each change goes in the admin log). */
+export async function adminLimits(next?: { polls: number; snaps: number }): Promise<Limits> {
+  const d = await call<Record<string, unknown>>("admin_limits", next ? { polls: next.polls, snaps: next.snaps } : {});
+  return {
+    polls: Number(d.polls ?? 10),
+    snaps: Number(d.snaps ?? 3),
+    changes: ((d.changes as { at: string; detail: string }[] | null) ?? []).map((c) => ({ at: c.at, detail: c.detail })),
+  };
+}

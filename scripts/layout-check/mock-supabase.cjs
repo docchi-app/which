@@ -76,6 +76,7 @@ const events = [{ at: new Date(Date.now() - 3600e3).toISOString(), action: 'word
 const whoIs = (req) => { try { return JSON.parse(Buffer.from(String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').split('.')[1], 'base64url').toString()).sub; } catch { return null; } };
 let propsNoWait = false;
 let adminMorning = false;
+let limits = { polls: 10, snaps: 3 }, limitChanges = [];
 http.createServer((req, res) => {
   if (LAT && req.method !== 'OPTIONS' && !req.url.startsWith('/__log')) { const orig = res.end.bind(res); res.end = (...args) => { setTimeout(() => orig(...args), LAT); return res; }; }
   const chunks = [];
@@ -175,6 +176,12 @@ http.createServer((req, res) => {
       case 'note_blocked': log.push('BLOCKED ' + a.place); return json(200, null);
       case 'push_tally': { if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:forbidden' }); log.push('PUSH_TALLY ' + a.sent + '|' + a.expired + '|' + a.failed); return json(200, null); }
       case 'morning_summary': { if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:forbidden' }); log.push('MORNING'); return json(200, { alert: null }); }
+      case 'admin_limits': { const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
+        const bad = (v, hi) => v !== null && v !== undefined && (v < 1 || v > hi);
+        if (bad(a.polls, 50) || bad(a.snaps, 20)) return json(400, { message: 'docchi:out_of_range' });
+        if (a.polls !== undefined && a.polls !== null && a.polls !== limits.polls) { limitChanges.unshift({ at: new Date().toISOString(), detail: `Polls a day: ${limits.polls} → ${a.polls}` }); limits.polls = a.polls; log.push('LIMITS polls ' + a.polls); }
+        if (a.snaps !== undefined && a.snaps !== null && a.snaps !== limits.snaps) { limitChanges.unshift({ at: new Date().toISOString(), detail: `Snaps a day: ${limits.snaps} → ${a.snaps}` }); limits.snaps = a.snaps; log.push('LIMITS snaps ' + a.snaps); }
+        return json(200, { ...limits, changes: limitChanges }); }
       case 'admin_morning': { const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' }); if (a.on_now !== null && a.on_now !== undefined) { adminMorning = a.on_now; log.push('MORNING_SWITCH ' + a.on_now); } return json(200, adminMorning); }
       case 'admin_overview': case 'admin_funnel': case 'admin_sources': case 'admin_content': case 'admin_notifications': {
         const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
@@ -273,7 +280,7 @@ http.createServer((req, res) => {
       case 'accept_invite': if (a.code !== 'goodcode') return json(400, { message: 'docchi:bad_invite' }); status[a.name] = ['member', 'member']; return json(200, 'member');
       case 'get_profile': { const s = status[a.name] ?? ['none', 'none']; return json(200, { username: a.name, avatar_url: null, joined: iso(-200), is_me: a.name === 'mayank', public_polls: 2, votes_received: 30, circle_size: 4, their_circle: s[0], my_circle: s[1], blocked_by_me: false }); }
       case 'profile_polls': return json(200, []);
-      case 'create_poll_status': return json(200, { signed_in: true, username: 'mayank', suggestions: [], polls_left: 4, special_left: 1 });
+      case 'create_poll_status': return json(200, { signed_in: true, username: 'mayank', suggestions: [], poll_limit: limits.polls, snap_limit: limits.snaps, polls_left: Math.max(0, limits.polls - 1), snaps_left: limits.snaps, special_left: 1 });
       case 'create_poll': { const id = 'aaaaaaaa-0000-4000-8000-' + String(polls.length).padStart(12, '0'); log.push('CREATE_POLL ' + JSON.stringify({ q: a.question, vis: a.visibility, kind: a.kind, days: a.days })); polls.unshift(mk(id, a.question, a.answers, a.answers.map(() => 0), { creator: 'mayank', is_system: false, is_mine: true, created_at: iso(0), visibility: a.visibility ?? 'public', kind: a.kind ?? 'classic' })); return json(200, id); }
       case 'my_streak': return json(200, Object.keys(votes).length ? { current: 3, best: 5, today: true } : { current: 2, best: 5, today: false });
       case 'recent_results': return json(200, [{ poll_id: polls[0].id, question: 'Mountains or beaches?', kind: 'classic', vote_count: 40, winner: 'Beaches', winner_pct: 62, my_pick: 'Beaches', mine: false, closed_at: iso(-2) }, { poll_id: polls[1].id, question: 'Is cereal soup?', kind: 'hot_take', vote_count: 12, winner: 'Disagree', winner_pct: 75, my_pick: 'Agree', mine: false, closed_at: iso(-5) }]);

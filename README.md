@@ -112,7 +112,8 @@ The first slice of the build order:
   **Who sees it** (Everyone / Friends / Link only; Friends can pick lists), **Style** (Classic / Hot
   take / Mystery) and how long it's open (1, 3 or 7 days). The live preview is off; admins can turn
   it on for their phone in **Settings → Live preview**. Anyone signed in
-  can post up to 5 polls in 24 hours. The first poll also picks a username: a free one is prefilled
+  can post up to 10 polls a day (counted from midnight India time; the number is set in **Admin →
+  Run → Limits**, and the admin isn't limited). The first poll also picks a username: a free one is prefilled
   from the Google name, it's checked as you type, and a taken name comes with free suggestions to
   tap. Unfinished drafts survive a reload or a trip through sign-in. After posting you land on your
   poll and the share sheet opens by itself ("Your poll is live 🎉 Drop it in the group chat"); the
@@ -193,7 +194,7 @@ The first slice of the build order:
   exactly one). Everyone else, signed in or not, gets the normal "page not found", decided on the
   server before anything is sent. On a laptop the sections sit in a sidebar (Today: Overview ·
   Health: Errors · People: Users, Guests · Growth: Funnel & retention, Sources, Metrics · Content:
-  Polls & snaps, Notifications · Safety: Reports, Snaps, Words · Run: Schedule, Test accounts, Admin
+  Polls & snaps, Notifications · Safety: Reports, Snaps, Words · Run: Schedule, Limits, Test accounts, Admin
   log) with **← Back to Eithr** at the top; on a phone they're tabs, with ‹ back. The section is in
   the address (`/admin#metrics`). **Overview** is what `/admin` opens: what needs you (a new error,
   reports waiting, no sign-ups for a day, the background job stopped), each with a button to fix it;
@@ -305,7 +306,7 @@ The first slice of the build order:
   passes the photo and its words through OpenAI's free moderation: clean → live (and the share
   sheet opens), unsure → **Admin → Snaps** for you to approve or reject (turned down after 12
   hours), clearly bad → rejected. Everyone snaps get a stricter bar (and a snap can't be
-  switched to Everyone afterwards); accounts under a day old can send to Friends or Link only; 3 snaps a day, counted from midnight
+  switched to Everyone afterwards); accounts under a day old can send to Friends or Link only; 3 snaps a day (Admin → Limits), counted from midnight
   India time (deleting one doesn't give it back; the admin isn't limited). Snaps stay off
   profiles, and their photos are deleted once they close (by the owner's app, or Admin → Snaps →
   Clean up).
@@ -714,6 +715,13 @@ an opened email link, notifications turned off in Settings, and posts the word f
 never the words). The 2-minute job adds a daily count of pushes sent, expired and failed (expired
 and failed are per day, not per kind). Kept 90 days (the daily job counts a year). To get the 9 am
 summary, turn on Settings → **Morning summary at 9 am** (it needs notifications on that phone).
+
+### 12. Daily limits (Admin → Run → Limits)
+
+Run `20261208000000_limits.sql` in the SQL Editor (then the migration check). Polls go from 5 to
+10 a day and snaps stay at 3, both counted from midnight India time; hot takes and mystery polls
+stay at 1 a day inside the polls limit. Change either number in **Admin → Run → Limits** (polls 1–50,
+snaps 1–20): it works at once, and each change goes in the Admin log. The admin isn't limited.
 
 ### Free tier limits to know about
 

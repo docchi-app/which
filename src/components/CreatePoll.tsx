@@ -68,10 +68,12 @@ const AUDIENCES = [
 // Result of checking one username with the server.
 type NameCheck = { name: string; problem: UsernameProblem; suggestions: string[] };
 
+const limitText = (n: number) => `That's ${n} ${n === 1 ? "poll" : "polls"} today. You can post again after midnight.`;
+
 const ERRORS: Record<string, string> = {
   sign_in: "Your sign-in expired. Sign in again to post.",
   banned: "This account can't post polls.",
-  daily_limit: `That's ${DAILY_POLL_LIMIT} polls today. Come back tomorrow!`,
+  daily_limit: "That's today's polls. You can post again after midnight.",
   question_length: "Questions need 3 to 140 characters.",
   answer_length: `Answers can be up to ${ANSWER_MAX} characters.`,
   answer_count: "Add 2 to 4 answers.",
@@ -79,7 +81,7 @@ const ERRORS: Record<string, string> = {
   duration: "Pick when the poll closes.",
   blocked_words: "Let's keep it friendly: some of those words aren't allowed.",
   empty_circle: "No friends yet (or in those lists). Share your invite link from the Friends tab.",
-  special_limit: "One hot take or mystery poll a day. Post a classic, or come back tomorrow!",
+  special_limit: "One hot take or mystery poll a day. Post a classic, or post one after midnight.",
   teaser_length: "Mystery polls need a teaser of 3 to 60 characters.",
   demo: "Demo mode: polls can't be posted until Supabase is connected.",
 };
@@ -238,7 +240,7 @@ export function CreatePoll() {
               : circleEmpty
                 ? "No friends yet (or in those lists)"
                 : status && status.pollsLeft <= 0
-                ? `That's ${DAILY_POLL_LIMIT} polls today. Come back tomorrow!`
+                ? limitText(status.pollLimit)
                 : null;
 
   async function post() {
@@ -269,7 +271,7 @@ export function CreatePoll() {
           if (r) setChecked({ name: draft.username, ...r });
           return;
         }
-        setError(ERRORS[e.code] ?? "Couldn't post. Try again?");
+        setError(e.code === "daily_limit" && status ? limitText(status.pollLimit) : (ERRORS[e.code] ?? "Couldn't post. Try again?"));
       } else {
         console.error(e);
         setError("Couldn't post. Try again?");
@@ -608,7 +610,7 @@ export function CreatePoll() {
             missing
           ) : (
             <>
-              Keep it fun and kind (<Link href="/guidelines">guidelines</Link>). Up to {DAILY_POLL_LIMIT} polls a day
+              Keep it fun and kind (<Link href="/guidelines">guidelines</Link>). Up to {status?.pollLimit ?? DAILY_POLL_LIMIT} polls a day
               {status?.signedIn ? ` · ${status.pollsLeft} left today` : ""}.
             </>
           )}
