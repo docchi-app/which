@@ -44,6 +44,8 @@ export function eitherOr(question: string): string[] | null {
 export const isEmojiAnswers = (answers: readonly string[]) => answers.length > 2 && answers.every((a) => [...a.trim()].length <= 2);
 
 export class SnapError extends Error {
+  /** snap_limit: the snaps-a-day limit (Admin → Limits), when it could be read. */
+  limit?: number;
   constructor(public code: string) {
     super(code);
   }
@@ -84,7 +86,12 @@ export async function postSnap(input: {
   });
   if (error) {
     await supabase.storage.from("snaps").remove([path]);
-    throw new SnapError(/docchi:(\w+)/.exec(error.message)?.[1] ?? "failed");
+    const fail = new SnapError(/docchi:(\w+)/.exec(error.message)?.[1] ?? "failed");
+    if (fail.code === "snap_limit") {
+      const { data: st } = await supabase.rpc("create_poll_status", { name_seed: null });
+      if (typeof st?.snap_limit === "number") fail.limit = st.snap_limit;
+    }
+    throw fail;
   }
   return id as string;
 }
@@ -190,7 +197,7 @@ export const SNAP_ERRORS: Record<string, string> = {
   sign_in: "Sign in to post a snap.",
   need_username: "Pick a username first.",
   banned: "This account can't post.",
-  snap_limit: "That's 3 snaps today. You can snap again after midnight.",
+  snap_limit: "That's today's snaps. You can snap again after midnight.",
   snap_too_new: "New accounts can send snaps to friends for the first day. Everyone opens up tomorrow.",
   empty_circle: "No friends yet. Pick Link only and send it to someone.",
   question_length: "Questions need 3 to 80 characters.",
@@ -205,7 +212,10 @@ export const SNAP_ERRORS: Record<string, string> = {
   no_photo: "The photo didn't upload. Try again.",
   demo: "Demo mode: snaps need Supabase.",
 };
-export const snapErrorText = (e: unknown) => (e instanceof SnapError && SNAP_ERRORS[e.code]) || "Couldn't post your snap. Try again?";
+export const snapErrorText = (e: unknown) =>
+  e instanceof SnapError && e.code === "snap_limit" && e.limit
+    ? `That's ${e.limit} ${e.limit === 1 ? "snap" : "snaps"} today. You can snap again after midnight.`
+    : (e instanceof SnapError && SNAP_ERRORS[e.code]) || "Couldn't post your snap. Try again?";
 
 // The last idea and audience, so the next snap is one tap shorter.
 const PREFS_KEY = "docchi.snapPrefs";

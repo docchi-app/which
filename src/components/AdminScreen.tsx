@@ -28,6 +28,7 @@ import { Schedule } from "./AdminSchedule";
 import { AdminErrors } from "./AdminErrors";
 import { AdminContent, AdminFunnel, AdminNotifications, AdminOverview, AdminSources } from "./AdminGrowth";
 import { AdminGuests } from "./AdminGuests";
+import { AdminLimits } from "./AdminLimits";
 import { AdminUsers } from "./AdminUsers";
 import { AdminSnaps } from "./AdminSnaps";
 import { AdminWords } from "./AdminWords";
@@ -47,6 +48,7 @@ type Tab =
   | "snaps"
   | "words"
   | "schedule"
+  | "limits"
   | "tests"
   | "log";
 
@@ -71,7 +73,15 @@ const SECTIONS: { group: string; items: { id: Tab; label: string }[] }[] = [
     ],
   },
   { group: "Safety", items: [{ id: "reports", label: "Reports" }, { id: "snaps", label: "Snaps" }, { id: "words", label: "Words" }] },
-  { group: "Run", items: [{ id: "schedule", label: "Schedule" }, { id: "tests", label: "Test accounts" }, { id: "log", label: "Admin log" }] },
+  {
+    group: "Run",
+    items: [
+      { id: "schedule", label: "Schedule" },
+      { id: "limits", label: "Limits" },
+      { id: "tests", label: "Test accounts" },
+      { id: "log", label: "Admin log" },
+    ],
+  },
 ];
 const ALL = SECTIONS.flatMap((g) => g.items);
 const isTab = (x: string): x is Tab => ALL.some((i) => i.id === x);
@@ -218,6 +228,7 @@ export function AdminScreen() {
         {tab === "words" && <AdminWords />}
         {tab === "metrics" && <Metrics />}
         {tab === "schedule" && <Schedule />}
+        {tab === "limits" && <AdminLimits />}
         {tab === "tests" && <TestAccounts />}
         {tab === "log" && <Done />}
       </div>
@@ -470,6 +481,8 @@ function eventText(e: AdminEvent) {
       return `counted ${e.detail} again (not a test account)`;
     case "props_no_wait":
       return `turned props without the wait ${e.detail}`;
+    case "limits":
+      return `changed a limit: ${e.detail}`;
     default:
       return `${e.action.replace(/_/g, " ")}${e.detail ? ` ${e.detail}` : ""}`;
   }

@@ -10,6 +10,8 @@ export type CreateStatus = {
   /** null until the first poll sets one. */
   username: string | null;
   suggestions: string[];
+  /** Polls a day (Admin → Limits), from midnight India time. */
+  pollLimit: number;
   pollsLeft: number;
   /** Hot takes and mystery polls: 1 a day. */
   specialLeft: number;
@@ -17,17 +19,19 @@ export type CreateStatus = {
 
 export type UsernameProblem = "ok" | "format" | "reserved" | "blocked" | "taken";
 
-export const DAILY_POLL_LIMIT = 5;
+/** Until the server says (Admin → Limits sets it). */
+export const DAILY_POLL_LIMIT = 10;
 
 export async function getCreateStatus(nameSeed: string | null): Promise<CreateStatus> {
   const supabase = getSupabase();
-  if (!supabase) return { signedIn: true, username: "you", suggestions: [], pollsLeft: DAILY_POLL_LIMIT, specialLeft: 1 };
+  if (!supabase) return { signedIn: true, username: "you", suggestions: [], pollLimit: DAILY_POLL_LIMIT, pollsLeft: DAILY_POLL_LIMIT, specialLeft: 1 };
   const { data, error } = await supabase.rpc("create_poll_status", { name_seed: nameSeed });
   if (error) throw error;
   return {
     signedIn: data.signed_in,
     username: data.username ?? null,
     suggestions: data.suggestions ?? [],
+    pollLimit: data.poll_limit ?? DAILY_POLL_LIMIT,
     pollsLeft: data.polls_left ?? 0,
     specialLeft: data.special_left ?? 1,
   };
