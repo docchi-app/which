@@ -260,25 +260,89 @@ ${items.map((i) => `<tr><td style="font-size:15px;padding:10px 0 0">${i.icon}&nb
   return { subject: big.subject, preview, html, text, unsubscribe: off.toString() };
 }
 
-async function sendOne(row: SummaryRow, site: URL): Promise<boolean> {
-  const m = composeSummary(row, site);
+/** Sends one email with Resend. On failure, `error` is Resend's message. */
+async function send(to: string, m: ReturnType<typeof composeSummary>, kind: string): Promise<{ ok: boolean; error?: string }> {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${RESEND_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       from: FROM,
-      to: [row.email],
+      to: [to],
       subject: m.subject,
       html: m.html,
       text: m.text,
       // One-click unsubscribe in Gmail and Apple Mail.
       headers: { "List-Unsubscribe": `<${m.unsubscribe}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
-      tags: [{ name: "kind", value: "summary" }],
+      tags: [{ name: "kind", value: kind }],
     }),
     cache: "no-store",
   });
-  if (!res.ok) console.error("email:", res.status, (await res.text()).slice(0, 200));
-  return res.ok;
+  if (res.ok) return { ok: true };
+  const body = (await res.text()).slice(0, 300);
+  console.error("email:", res.status, body);
+  let error = body;
+  try {
+    error = (JSON.parse(body) as { message?: string }).message ?? body;
+  } catch {
+    // Not JSON: keep the text.
+  }
+  return { ok: false, error };
+}
+
+const sendOne = async (row: SummaryRow, site: URL) => (await send(row.email, composeSummary(row, site), "summary")).ok;
+
+/** The versions the admin's "Send me a test email" can pick, with sample data. */
+export const TEST_VERSIONS = ["props", "request", "comments", "first", "tie", "neck", "ahead", "milestone", "closed"] as const;
+export type TestVersion = (typeof TEST_VERSIONS)[number];
+
+export function sampleRow(version: TestVersion, me: { user_id: string; email: string; username: string }): SummaryRow {
+  const poll = {
+    top_poll: null,
+    top_question: "Goa or Manali?",
+    top_answers: ["🏖️ Goa", "🏔️ Manali"],
+    top_votes: 0,
+    top_before: 0,
+    top_closed: false,
+    top_counts: [0, 0],
+  };
+  const base: SummaryRow = {
+    ...me,
+    slot: "evening",
+    votes: 0,
+    comments: 0,
+    props: 0,
+    requests: 0,
+    ...poll,
+    commenters: [],
+    commenter_count: 0,
+    comment_question: null,
+    requesters: [],
+    lunch_sent: false,
+  };
+  const race = {
+    first: { votes: 1, top_votes: 1, top_before: 0, top_counts: [1, 0] },
+    tie: { votes: 2, top_votes: 2, top_before: 4, top_counts: [3, 3] },
+    neck: { votes: 3, top_votes: 3, top_before: 28, top_counts: [16, 15] },
+    ahead: { votes: 3, top_votes: 2, top_before: 7, top_counts: [7, 2] },
+    milestone: { votes: 4, top_votes: 4, top_before: 22, top_counts: [14, 12] },
+    closed: { top_closed: true, top_counts: [18, 13] },
+  };
+  switch (version) {
+    case "props":
+      return { ...base, props: 1, votes: 2, top_votes: 2, top_before: 7, top_counts: [7, 2], requests: 1, requesters: ["arjun"] };
+    case "request":
+      return { ...base, requests: 2, requesters: ["arjun", "riya"], comments: 1, commenters: ["kabir"], commenter_count: 1, comment_question: "Goa or Manali?" };
+    case "comments":
+      return { ...base, top_question: null, top_answers: [], comments: 4, commenters: ["kabir", "meera", "dev"], commenter_count: 3, comment_question: "Goa or Manali?" };
+    default:
+      return { ...base, ...race[version], comments: 1, commenters: ["kabir"], commenter_count: 1, comment_question: "Goa or Manali?" };
+  }
+}
+
+/** The admin's test: one sample email to their own address, marked [Test]. */
+export async function sendTest(version: TestVersion, me: { user_id: string; email: string; username: string }) {
+  const m = composeSummary(sampleRow(version, me), siteUrl());
+  return send(me.email, { ...m, subject: `[Test] ${m.subject}` }, "test");
 }
 
 /** For the 2-minute job: sends whatever's due (12:30–2 pm and 6:30–9 pm India time). Returns how many went out. */

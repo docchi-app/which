@@ -116,3 +116,23 @@ export async function emailSummary(off: boolean | null = null): Promise<{ on: bo
   if (error) throw error;
   return { on: data.on === true, hasEmail: data.has_email === true };
 }
+
+export type EmailTestResult = "sent" | "not_configured" | "not_admin" | "too_many" | "no_email" | "no_migration" | "send_failed" | "failed";
+
+/** Admin: sends one sample email (the chosen version) to your own address now. */
+export async function sendTestEmail(version: string): Promise<{ result: EmailTestResult; to?: string; detail?: string }> {
+  const session = (await getSupabase()?.auth.getSession())?.data.session;
+  if (!session) return { result: "failed" };
+  try {
+    const res = await fetch("/api/email/test", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ version }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { error?: string; detail?: string; to?: string };
+    if (res.ok) return { result: "sent", to: body.to };
+    return { result: (body.error as EmailTestResult) ?? "failed", detail: body.detail };
+  } catch {
+    return { result: "failed" };
+  }
+}
