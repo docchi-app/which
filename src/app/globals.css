@@ -2425,6 +2425,9 @@ button.ghost-action { cursor: pointer; }
 .settings-row > span { display: flex; flex-direction: column; }
 .settings-row-static { cursor: default; }
 .settings-row-danger { color: var(--alert); }
+.email-test .notif-text { display: flex; flex-direction: column; gap: 2px; color: var(--ink); }
+.email-test-row { display: flex; gap: 8px; align-items: center; }
+.email-test-row .field-input { flex: 1; min-width: 0; }
 
 /* ─── Admin: schedule ────────────────────────────────────────────────────── */
 

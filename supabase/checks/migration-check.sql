@@ -18,6 +18,7 @@ with want_fn(fn, hash, migration) as (values
   ('admin_set_test(username text, on_now boolean)', '522d2352b5722e09dbf5a562cdbc4c2d', '20261130000000_admin_lock.sql'),
   ('admin_snaps()', 'cb23a8c8fbda5066058a7bc9600cf44f', '20261114000000_quick_snap.sql'),
   ('admin_test_accounts()', '73254a906eb1938ea6da63ec50bd2de1', '20261130000000_admin_lock.sql'),
+  ('admin_test_email(version text)', '1b534248d13cfb57e39ba6779bd461ec', '20261204000000_email_test.sql'),
   ('admin_test_words(input text)', '4c55f9336c7c684d5f3da94d43d2a1af', '20261128000000_moderation.sql'),
   ('admin_unschedule(poll uuid)', '344e602ad9dfd15c03e15f315aa6f69a', '20261107000000_leaders_schedule.sql'),
   ('admin_view_stats(days integer)', 'f563b176f0a7fd7d1822915296d1b4df', '20261130000000_admin_lock.sql'),

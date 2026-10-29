@@ -43,6 +43,7 @@ const LAT = Number(process.env.LAT || 0);
 let testAccounts = [];
 let emailDue = [];
 let emailOn = true;
+let emailTests = 0;
 // Admin → Metrics: the shape of the real first two weeks (visitors, new, voters, votes), newest first.
 const METRIC_DAYS = [[69, 64, 15, 97], [98, 95, 6, 18], [20, 16, 7, 27], [21, 17, 3, 19], [62, 59, 10, 74], [25, 25, 13, 204]];
 const metricDays = (n = 14) => Array.from({ length: n }, (_, i) => {
@@ -170,6 +171,8 @@ http.createServer((req, res) => {
       // The lunch/evening email: one person due, once (the database claims each send).
       case 'email_summary_collect': { if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:forbidden' }); const due = emailDue; emailDue = []; log.push('EMAIL_COLLECT ' + due.length); return json(200, due); }
       case 'email_unsubscribe': { if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:forbidden' }); emailOn = false; log.push('EMAIL_OFF ' + a.person); return json(200, null); }
+      // The admin's test email: only the admin, 10 a day, their own address.
+      case 'admin_test_email': { const who = whoIs(req); if (!who) return json(401, { message: 'JWT required' }); if (who === 'notadmin') return json(400, { message: 'docchi:not_admin' }); if (++emailTests > 10) return json(400, { message: 'docchi:too_many' }); log.push('EMAIL_TEST ' + a.version); return json(200, { user_id: '00000000-0000-4000-8000-0000000000a1', email: 'mayank@example.com', username: 'mayank' }); }
       case 'my_email_summary': { if (!whoIs(req)) return json(400, { message: 'docchi:sign_in' }); if (a.off !== null && a.off !== undefined) { emailOn = !a.off; log.push('EMAIL_ON ' + emailOn); } return json(200, { on: emailOn, has_email: true }); }
       case '/__props_reset': pSeen = false; return json(200, null);
       case '/__email_due': emailDue = [{ user_id: '00000000-0000-4000-8000-0000000000e1', email: 'riya@example.com', username: 'riya.k', slot: 'evening', votes: 12, comments: 2, props: 0, requests: 1, top_poll: 'a1000000-0000-4000-8000-000000000001', top_question: 'Chai or coffee <b>today</b>?', top_votes: 9, top_before: 4, top_closed: false, top_answers: ['Chai', 'Coffee'], top_counts: [8, 5], commenters: ['kabir', 'meera'], commenter_count: 2, comment_question: 'Chai or coffee <b>today</b>?', requesters: ['arjun'], lunch_sent: false }, { user_id: '00000000-0000-4000-8000-0000000000e2', email: 'dev@example.com', username: 'dev', slot: 'lunch', votes: 5, comments: 1, props: 0, requests: 0, top_poll: 'a1000000-0000-4000-8000-000000000001', top_question: 'Rate my fit', top_votes: 4, top_before: 1, top_closed: false, top_answers: ['🔥', '🧊'], top_counts: [3, 2], commenters: ['kabir'], commenter_count: 1, comment_question: 'Rate my fit', requesters: [], lunch_sent: false }, { user_id: '00000000-0000-4000-8000-0000000000e3', email: 'zoe@example.com', username: 'zoe', slot: 'evening', votes: 0, comments: 0, props: 2, requests: 0, top_poll: null, top_question: null, top_votes: 0, top_before: 0, top_closed: false, top_answers: [], top_counts: [], commenters: [], commenter_count: 0, comment_question: null, requesters: [], lunch_sent: true }]; return json(200, null);

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { isSignedIn, continueWithGoogle, onUserChange, saveReturnTo, signOut } from "@/lib/auth";
 import { CREATE_PREVIEW_KEY } from "@/lib/create";
 import { installPlatform, type InstallPlatform } from "@/lib/install";
-import { emailSummary, getMyProfile, type Profile } from "@/lib/profile";
+import { emailSummary, getMyProfile, sendTestEmail, type EmailTestResult, type Profile } from "@/lib/profile";
 import { propsNoWait, propsState, setPropsOff } from "@/lib/props";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { BottomNav } from "./BottomNav";
@@ -100,6 +100,7 @@ export function SettingsScreen() {
               }}
             />
           </label>
+          {profile?.isAdmin && <EmailTest />}
         </section>
       )}
 
@@ -268,5 +269,69 @@ function Chevron() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M9 5l7 7-7 7" />
     </svg>
+  );
+}
+
+const EMAIL_VERSIONS: { id: string; label: string }[] = [
+  { id: "props", label: "Props" },
+  { id: "request", label: "Friend requests" },
+  { id: "comments", label: "Comments" },
+  { id: "first", label: "Votes: first vote" },
+  { id: "tie", label: "Votes: a tie" },
+  { id: "neck", label: "Votes: neck and neck" },
+  { id: "ahead", label: "Votes: one answer ahead" },
+  { id: "milestone", label: "Votes: passed 25 votes" },
+  { id: "closed", label: "Votes: poll closed" },
+];
+
+const EMAIL_TEST_TEXT: Record<Exclude<EmailTestResult, "sent">, string> = {
+  not_configured: "Email isn't set up: add RESEND_API_KEY in Vercel (and PUSH_CRON_SECRET), then redeploy.",
+  not_admin: "Only the admin can send test emails.",
+  too_many: "That's 10 test emails today. Try again tomorrow.",
+  no_email: "Your account has no email address.",
+  no_migration: "Run 20261204000000_email_test.sql in the Supabase SQL editor first.",
+  send_failed: "Resend didn't send it",
+  failed: "Couldn't send a test. Try again?",
+};
+
+/** Admin: send one sample email (any version) to your own address now, at any hour. */
+function EmailTest() {
+  const [version, setVersion] = useState("ahead");
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  async function send() {
+    setBusy(true);
+    setNote(null);
+    const r = await sendTestEmail(version);
+    if (r.result === "sent") setNote(`Sent to ${r.to}. Check your inbox (and spam).`);
+    else setNote(EMAIL_TEST_TEXT[r.result] + (r.detail ? `: ${r.detail}` : "."));
+    setBusy(false);
+  }
+
+  return (
+    <div className="settings-card email-test">
+      <p className="notif-text">
+        <strong>Send me a test email</strong>
+        <span className="notif-hint">Admins: one sample email to your own address, right now. Up to 10 a day.</span>
+      </p>
+      <div className="email-test-row">
+        <select className="field-input" aria-label="Which email" value={version} onChange={(e) => setVersion(e.target.value)}>
+          {EMAIL_VERSIONS.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.label}
+            </option>
+          ))}
+        </select>
+        <button type="button" className="mini-btn" onClick={send} disabled={busy}>
+          {busy ? "Sending…" : "Send"}
+        </button>
+      </div>
+      {note && (
+        <p className="notif-note" role="status">
+          {note}
+        </p>
+      )}
+    </div>
   );
 }

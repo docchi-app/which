@@ -617,8 +617,13 @@ has a few wordings, picked per person per day.
 Every email has a one-click **Stop these emails** link (signed per person); Settings → **Email me
 what I missed** turns it off or on. Props never say who.
 
+To check it without waiting for a window, the admin has Settings → Email → **Send me a test email**:
+pick a version (props, friend requests, comments or any of the votes ones) and it sends a sample,
+marked [Test], to the admin's own address straight away. Up to 10 a day; each shows in Admin → Admin
+log. Needs `20261204000000_email_test.sql`.
+
 1. Run `20261201000000_email_summary.sql`, `20261202000000_email_twice.sql` and
-   `20261203000000_snap_day_limit.sql` in the SQL Editor
+   `20261203000000_snap_day_limit.sql` and `20261204000000_email_test.sql` in the SQL Editor
    (then the migration check).
 2. Sign up at https://resend.com (free: 3,000 emails a month, 100 a day). **Domains → Add
    Domain** → `eithr.app`, and add the DNS records it shows where your domain is managed (wait
