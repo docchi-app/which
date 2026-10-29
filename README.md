@@ -191,8 +191,8 @@ The first slice of the build order:
   an admin looks at it.
 - **Admin (`/admin`):** only for the one admin account (`profiles.is_admin`; the database allows
   exactly one). Everyone else, signed in or not, gets the normal "page not found", decided on the
-  server before anything is sent. On a laptop the sections sit in a sidebar (Health: Errors ·
-  Safety: Reports, Snaps, Words · Numbers: Metrics · Run: Schedule, Test accounts, Admin log) with **← Back to
+  server before anything is sent. On a laptop the sections sit in a sidebar (Health: Errors · People:
+  Users, Guests · Safety: Reports, Snaps, Words · Numbers: Metrics · Run: Schedule, Test accounts, Admin log) with **← Back to
   Eithr** at the top; on a phone they're tabs, with ‹ back. The section is in the address
   (`/admin#metrics`). **Reports** lists what's waiting
   (auto-hidden polls first) with the full poll, who posted it and their report history:
@@ -212,6 +212,20 @@ The first slice of the build order:
   visitors), the latest times with their stack, **Copy for Claude** (a ready-to-paste report,
   counts only), **Open GitHub issue** (the same text in a new issue) and Mark as Open / Fixed /
   Ignore. `/admin#errors/12` opens one directly.
+  **Users** (setup step 10) lists everyone who signed up: tiles for signed up (+ this week),
+  active this week, notifications on and joined-but-never-voted (test accounts and you left out);
+  search by username or name; filters (joined this week, no vote yet, notifications off, banned,
+  test); sort (newest, last active, most votes, most friends); each row shows how they joined
+  (Google, or was a guest first and for how long), where their first visit came from (a shared
+  poll and whose, an invite, Instagram, WhatsApp, email, the old address, a search or another
+  site, or Unknown for visits before this was recorded), phone, last active, votes, polls,
+  friends and notifications (On, Off, Never asked, Blocked). Export CSV waits for the
+  authenticator code. Click someone (or `/admin#users/<id>`) for their page: email hidden until
+  **Show** (logged), facts, 8 counts, a timeline of what they've done, every poll they made with
+  Remove / Restore, and Mark as test account, Reset username (they pick a new one), Copy user ID
+  and Ban (type their username to confirm) / Unban. **Guests** shows visitors → guests who voted
+  → guests who signed up, how long that took, the guest share of votes, how many left after one
+  vote, and the guests themselves by a short code (never a name).
 - **Something went wrong:** a screen that fails to draw shows "Something went wrong" with **Try
   again** and **Go to the feed** instead of a blank page, and the error goes to Admin → Errors.
 - **Tips, one at a time:** a small dark bubble beside the thing it explains, shown once, at the
@@ -665,6 +679,15 @@ Run `20261205000000_errors.sql` in the SQL Editor (then the migration check). Fr
   needs notifications on.
 - **GitHub issues** go to `docchi-app/which`; set `NEXT_PUBLIC_GITHUB_REPO` (owner/name) to change it.
 
+### 10. Users and guests (Admin → People)
+
+Run `20261206000000_people.sql` in the SQL Editor (then the migration check). From the next visit
+each browser tells us, once, where its first visit came from, and whenever they change, its phone
+and browser type, whether Eithr is installed, and its notifications answer (`visitor_info`; never
+the full address, the exact model or an IP address). Browsers seen before this went in show
+"Unknown" for where they came from. Guests who link Google get `profiles.was_guest` and
+`signed_up_at` from now on; older accounts count as joining when they were made.
+
 ### Free tier limits to know about
 
 - **A free project pauses after about a week with no activity.** You can restore it from the
@@ -705,6 +728,7 @@ per Supabase auth user, created automatically by a database trigger.
 | Comments only for people who voted (or a closed poll, or its creator), and circle polls stay in the circle | `can_read_comments()` in `get_comments()` / `post_comment()`; the comments table isn't readable by clients |
 | Reports: signed-in only, 20 a day, one per person per poll; 3 reporters hide a poll | `report()` |
 | Only the admin sees reports and metrics, or removes / bans | One admin at most (`profiles_one_admin` unique index); `require_admin()` in every `admin_…()` function; `/admin` answers 404 on the server to anyone else; `reports`, `visits`, `mod_actions`, `admin_events` aren't readable by clients |
+| Only the admin sees people's details | `visitor_info` isn't readable by clients; `admin_users()`, `admin_user_detail()`, `admin_guests()`… need `require_admin()`; emails only through `admin_user_email()`, which writes the admin log |
 | Error reports can't be read or flooded | `app_errors`, `app_error_events`, `job_status` aren't readable by clients; `report_error()` keeps 20 an hour per person or browser (2,000 in 10 minutes in all) and cuts long values; server and job reports and `errors_tick()` need `PUSH_CRON_SECRET`; `admin_error…()` need `require_admin()` |
 | Banned accounts can't vote, post or report, and their polls are hidden | `admin_act('ban')`, checked by `cast_vote()`, `create_poll()`, `report()` |
 | Push goes only to your own devices, only for things you can see | `save_push_subscription()` ties a phone to the signed-in account; `push_scan()` uses `can_view_poll()` for circle polls; subscriptions and the outbox aren't readable by clients |

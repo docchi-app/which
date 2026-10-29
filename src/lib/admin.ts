@@ -392,3 +392,181 @@ export async function fetchErrorDetail(id: number, days: number): Promise<ErrorD
 export async function setErrorStatus(id: number, status: "open" | "fixed" | "ignored"): Promise<ErrorStatus> {
   return call<ErrorStatus>("admin_error_status", { err: id, new_status: status });
 }
+
+// ─── People (see supabase/migrations/20261206000000_people.sql) ──────────────
+
+export type UserFilter = "all" | "week" | "novote" | "push_off" | "banned" | "test";
+export type UserSort = "new" | "active" | "votes" | "friends";
+export type PushState = "on" | "off" | "never" | "blocked" | "unsupported" | "unknown";
+
+export type UserRow = {
+  id: string;
+  username: string;
+  name: string | null;
+  avatarUrl: string | null;
+  joined: string;
+  wasGuest: boolean;
+  guestSince: string | null;
+  source: string | null;
+  sourceBy: string | null;
+  site: string | null;
+  device: string | null;
+  browser: string | null;
+  inApp: string | null;
+  installed: boolean | null;
+  lastActive: string | null;
+  votes: number;
+  polls: number;
+  snaps: number;
+  friends: number;
+  push: PushState;
+  isTest: boolean;
+  isBanned: boolean;
+  isAdmin: boolean;
+};
+
+export type UserDetail = UserRow & {
+  emailHint: string | null;
+  comments: number;
+  propsGiven: number;
+  propsReceived: number;
+  daysActive: number;
+  streak: number;
+  reports: number;
+  timeline: { at: string; kind: string; text: string }[];
+  pollList: { id: string; question: string; kind: string; visibility: string; createdAt: string; closesAt: string; votes: number; hidden: boolean; deleted: boolean }[];
+};
+
+export type UsersSummary = { total: number; newWeek: number; activeWeek: number; pushOn: number; pushNever: number; noVote: number };
+
+export type GuestsSummary = {
+  opened: number;
+  voted: number;
+  signedUp: number;
+  buckets: { visit: number; day: number; days3: number; later: number };
+  medianMinutes: number | null;
+  votes: number;
+  guestVotes: number;
+  oneVote: number;
+  avgVotes: number | null;
+  medianVotes: number | null;
+};
+
+export type GuestRow = {
+  id: string;
+  code: string;
+  started: string;
+  source: string | null;
+  sourceBy: string | null;
+  site: string | null;
+  device: string | null;
+  browser: string | null;
+  inApp: string | null;
+  votes: number;
+  lastSeen: string | null;
+  signedUp: boolean;
+  username: string | null;
+};
+
+const toUser = (r: Record<string, unknown>): UserRow => ({
+  id: r.id as string,
+  username: r.username as string,
+  name: (r.name as string | null) ?? null,
+  avatarUrl: (r.avatar_url as string | null) ?? null,
+  joined: r.joined as string,
+  wasGuest: r.was_guest === true,
+  guestSince: (r.guest_since as string | null) ?? null,
+  source: (r.source as string | null) ?? null,
+  sourceBy: (r.source_by as string | null) ?? null,
+  site: (r.site as string | null) ?? null,
+  device: (r.device as string | null) ?? null,
+  browser: (r.browser as string | null) ?? null,
+  inApp: (r.in_app as string | null) ?? null,
+  installed: (r.installed as boolean | null) ?? null,
+  lastActive: (r.last_active as string | null) ?? null,
+  votes: Number(r.votes ?? 0),
+  polls: Number(r.polls ?? 0),
+  snaps: Number(r.snaps ?? 0),
+  friends: Number(r.friends ?? 0),
+  push: ((r.push as string) ?? "unknown") as PushState,
+  isTest: r.is_test === true,
+  isBanned: r.is_banned === true,
+  isAdmin: r.is_admin === true,
+});
+
+export async function fetchUsers(filter: UserFilter, search: string, sort: UserSort, max = 50, skip = 0): Promise<{ total: number; rows: UserRow[] }> {
+  const d = await call<{ total: number; rows: Record<string, unknown>[] }>("admin_users", { filter, search: search.trim() || null, sort, max_rows: max, skip });
+  return { total: Number(d.total ?? 0), rows: (d.rows ?? []).map(toUser) };
+}
+
+export async function fetchUsersSummary(): Promise<UsersSummary> {
+  const s = await call<Record<string, unknown>>("admin_users_summary");
+  return { total: Number(s.total ?? 0), newWeek: Number(s.new_week ?? 0), activeWeek: Number(s.active_week ?? 0), pushOn: Number(s.push_on ?? 0), pushNever: Number(s.push_never ?? 0), noVote: Number(s.no_vote ?? 0) };
+}
+
+export async function fetchUserDetail(id: string): Promise<UserDetail> {
+  const d = await call<Record<string, unknown>>("admin_user_detail", { person: id });
+  return {
+    ...toUser(d),
+    emailHint: (d.email_hint as string | null) ?? null,
+    comments: Number(d.comments ?? 0),
+    propsGiven: Number(d.props_given ?? 0),
+    propsReceived: Number(d.props_received ?? 0),
+    daysActive: Number(d.days_active ?? 0),
+    streak: Number(d.streak ?? 0),
+    reports: Number(d.reports ?? 0),
+    timeline: ((d.timeline as { at: string; kind: string; text: string }[]) ?? []).map((t) => ({ at: t.at, kind: t.kind, text: t.text })),
+    pollList: ((d.poll_list as Record<string, unknown>[]) ?? []).map((p) => ({
+      id: p.id as string,
+      question: p.question as string,
+      kind: p.kind as string,
+      visibility: p.visibility as string,
+      createdAt: p.created_at as string,
+      closesAt: p.closes_at as string,
+      votes: Number(p.votes ?? 0),
+      hidden: p.hidden === true,
+      deleted: p.deleted === true,
+    })),
+  };
+}
+
+/** Shows one person's email (the database writes it in the admin log). */
+export const fetchUserEmail = (id: string) => call<string | null>("admin_user_email", { person: id });
+export const resetUsername = (id: string) => call<string>("admin_reset_username", { person: id });
+
+export async function fetchGuests(days: number): Promise<GuestsSummary> {
+  const g = await call<Record<string, unknown>>("admin_guests", { days });
+  const b = (g.buckets ?? {}) as Record<string, unknown>;
+  const n = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+  return {
+    opened: Number(g.opened ?? 0),
+    voted: Number(g.voted ?? 0),
+    signedUp: Number(g.signed_up ?? 0),
+    buckets: { visit: Number(b.visit ?? 0), day: Number(b.day ?? 0), days3: Number(b.days3 ?? 0), later: Number(b.later ?? 0) },
+    medianMinutes: n(g.median_minutes),
+    votes: Number(g.votes ?? 0),
+    guestVotes: Number(g.guest_votes ?? 0),
+    oneVote: Number(g.one_vote ?? 0),
+    avgVotes: n(g.avg_votes),
+    medianVotes: n(g.median_votes),
+  };
+}
+
+export async function fetchGuestList(days: number, filter: "still" | "signed" | "all"): Promise<GuestRow[]> {
+  const rows = await call<Record<string, unknown>[]>("admin_guest_list", { days, filter });
+  return (rows ?? []).map((r) => ({
+    id: r.id as string,
+    code: r.code as string,
+    started: r.started as string,
+    source: (r.source as string | null) ?? null,
+    sourceBy: (r.source_by as string | null) ?? null,
+    site: (r.site as string | null) ?? null,
+    device: (r.device as string | null) ?? null,
+    browser: (r.browser as string | null) ?? null,
+    inApp: (r.in_app as string | null) ?? null,
+    votes: Number(r.votes ?? 0),
+    lastSeen: (r.last_seen as string | null) ?? null,
+    signedUp: r.signed_up === true,
+    username: (r.username as string | null) ?? null,
+  }));
+}

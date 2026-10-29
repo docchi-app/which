@@ -46,6 +46,17 @@ let emailOn = true;
 let emailTests = 0;
 const errorReports = [];
 let crashGetPoll = false;
+const visitorInfos = [];
+const person = (n, username, name, extra = {}) => ({ id: `e2000000-0000-4000-8000-00000000000${n}`, username, name, avatar_url: null, joined: iso(-24 * n), was_guest: false, guest_since: null, source: 'direct', source_by: null, site: null, device: 'iPhone', browser: 'Safari', in_app: null, installed: false, last_active: iso(-n), votes: 10 * n, polls: n, snaps: 0, friends: n, push: 'off', is_test: false, is_banned: false, is_admin: false, ...extra });
+const people = [
+  person(1, 'riya.k', 'Riya Kapoor', { was_guest: true, guest_since: iso(-24 - 48), joined: iso(-24), source: 'poll', source_by: 'arjun_07', installed: true, push: 'on', votes: 312, polls: 9, snaps: 4, friends: 14 }),
+  person(2, 'arjun_07', 'Arjun Mehta', { device: 'Android', browser: 'Chrome', votes: 188, polls: 14, friends: 21 }),
+  person(3, 'kabir.s', 'Kabir Shah', { was_guest: true, guest_since: iso(-96), joined: iso(-72), source: 'invite', source_by: 'arjun_07', device: 'Android', browser: 'Chrome', push: 'never', votes: 22, polls: 0 }),
+  person(4, 'neha.m', 'Neha Menon', { source: 'instagram', in_app: 'Instagram', push: 'blocked', votes: 0, polls: 0, friends: 0 }),
+  person(5, 'dev.patel', 'Dev Patel', { device: 'Mac', browser: 'Chrome', is_test: true, push: 'unknown', source: null }),
+  person(6, 'rohan__', 'Rohan Joshi', { is_banned: true, votes: 3 }),
+  person(7, 'mayank', 'Mayank', { is_admin: true, push: 'on' }),
+];
 const errorRows = [
   { id: 101, source: 'app', kind: 'TypeError', message: 'Failed to fetch', place: 'Feed (/)', status: 'new', came_back: false, first_seen: iso(-0.08), last_seen: iso(-0.001), times: 31, people: 14, spike: true },
   { id: 102, source: 'app', kind: 'NotAllowedError', message: "Camera didn't start", place: 'Snap (/snap)', status: 'open', came_back: false, first_seen: iso(-2), last_seen: iso(-0.04), times: 5, people: 3, spike: false },
@@ -123,6 +134,38 @@ http.createServer((req, res) => {
       case '/__log': return json(200, log);
       case 'admin_test_accounts': return json(200, testAccounts.map((u) => ({ username: u, avatar_url: null, joined: iso(-72), votes: 3 })));
       case 'admin_set_test': { const u = String(a.username).toLowerCase(); if (u === 'mayank') return json(400, { message: 'docchi:own_account' }); if (!/^[a-z0-9_.]+$/.test(u) || u === 'nobody') return json(400, { message: 'docchi:not_found' }); testAccounts = a.on_now ? [...new Set([...testAccounts, u])] : testAccounts.filter((x) => x !== u); events.unshift({ at: iso(0), action: a.on_now ? 'test_added' : 'test_removed', detail: '@' + u, admin: 'mayank' }); log.push(`TEST ${u} ${a.on_now}`); return json(200, null); }
+      // People: what the app records about a browser, and Admin → Users / Guests.
+      case 'record_visitor': { visitorInfos.push(a); log.push('VISITOR ' + (a.source ?? '-') + '|' + (a.source_by ?? '-') + '|' + (a.source_poll ?? '-') + '|' + (a.site ?? '-') + '|' + a.device + '|' + a.browser + '|' + (a.in_app ?? '-') + '|' + a.installed + '|' + a.notif); return json(200, null); }
+      case '/__visitors': return json(200, visitorInfos);
+      case 'admin_users': case 'admin_users_summary': case 'admin_user_detail': case 'admin_user_email': case 'admin_reset_username': case 'admin_guests': case 'admin_guest_list': {
+        const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
+        const fn = url.pathname.replace('/rest/v1/rpc/', '');
+        if (fn === 'admin_users_summary') return json(200, { total: 86, new_week: 12, active_week: 41, push_on: 29, push_never: 22, no_vote: 9 });
+        if (fn === 'admin_users') {
+          log.push('USERS ' + a.filter + '|' + (a.search ?? '') + '|' + a.sort + '|' + a.max_rows + '|' + a.skip);
+          let rows = people.filter((u) => !a.search || (u.username + ' ' + (u.name ?? '')).toLowerCase().includes(String(a.search).toLowerCase()));
+          if (a.filter === 'banned') rows = rows.filter((u) => u.is_banned);
+          if (a.filter === 'test') rows = rows.filter((u) => u.is_test || u.is_admin);
+          if (a.filter === 'novote') rows = rows.filter((u) => !u.votes);
+          if (a.sort === 'votes') rows = [...rows].sort((x, y) => y.votes - x.votes);
+          return json(200, { total: rows.length, rows: rows.slice(a.skip, a.skip + a.max_rows) });
+        }
+        const u = people.find((x) => x.id === a.person);
+        if (fn === 'admin_user_detail') { if (!u) return json(400, { message: 'docchi:not_found' }); log.push('USER_DETAIL ' + u.username);
+          return json(200, { ...u, email_hint: u.username[0] + '••••@gmail.com', comments: 27, props_given: 22, props_received: 31, days_active: 9, streak: u.username === 'riya.k' ? 6 : 0, reports: u.is_banned ? 3 : 0,
+            timeline: [{ at: iso(-2), kind: 'poll', text: 'Posted a snap “Rate my fit 🔥 or 🧊”' }, { at: iso(-26), kind: 'friend', text: 'Became friends with @kabir.s' }, { at: iso(-50), kind: 'push', text: 'Turned on notifications' }, { at: iso(-200), kind: 'signup', text: 'Signed in with Google' }, { at: iso(-250), kind: 'guest', text: 'Started as a guest' }, { at: iso(-250), kind: 'visit', text: 'First visit (a shared poll by @arjun_07)' }],
+            poll_list: [{ id: 'f1000000-0000-4000-8000-000000000001', question: 'Rate my fit 🔥 or 🧊', kind: 'snap', visibility: 'circle', created_at: iso(-2), closes_at: iso(20), votes: 18, hidden: false, deleted: false }, { id: 'f1000000-0000-4000-8000-000000000002', question: 'Chai or coffee today?', kind: 'classic', visibility: 'public', created_at: iso(-100), closes_at: iso(-20), votes: 64, hidden: true, deleted: false }, { id: 'f1000000-0000-4000-8000-000000000003', question: 'Old one I deleted', kind: 'classic', visibility: 'link', created_at: iso(-300), closes_at: iso(-200), votes: 3, hidden: false, deleted: true }] }); }
+        if (fn === 'admin_user_email') { log.push('EMAIL_VIEWED ' + (u?.username ?? '?')); return json(200, (u?.username ?? 'x').replace(/[^a-z]/g, '') + '@gmail.com'); }
+        if (fn === 'admin_reset_username') { log.push('USERNAME_RESET ' + (u?.username ?? '?')); return json(200, 'user_0123456789'); }
+        if (fn === 'admin_guests') { log.push('GUESTS ' + a.days); return json(200, { opened: 212, voted: 74, signed_up: 13, buckets: { visit: 6, day: 3, days3: 2, later: 2 }, median_minutes: 40, votes: 640, guest_votes: 198, one_vote: 30, avg_votes: 6.2, median_votes: 3 }); }
+        log.push('GUEST_LIST ' + a.days + ' ' + a.filter);
+        const g = [
+          { id: 'g1000000-0000-4000-8000-000000000001', code: 'a3f2', started: iso(-3), source: 'poll', source_by: 'riya.k', site: null, device: 'iPhone', browser: 'Safari', in_app: null, votes: 14, last_seen: iso(-2), signed_up: false, username: null },
+          { id: 'g1000000-0000-4000-8000-000000000002', code: '7c01', started: iso(-6), source: 'instagram', source_by: null, site: null, device: 'iPhone', browser: 'Safari', in_app: 'Instagram', votes: 1, last_seen: iso(-5), signed_up: false, username: null },
+          { id: people[2].id, code: '52be', started: iso(-30), source: 'invite', source_by: 'arjun_07', site: null, device: 'Android', browser: 'Chrome', in_app: null, votes: 22, last_seen: iso(-20), signed_up: true, username: 'kabir.s' },
+        ];
+        return json(200, a.filter === 'still' ? g.filter((x) => !x.signed_up) : a.filter === 'signed' ? g.filter((x) => x.signed_up) : g);
+      }
       // Errors: what the app reports, and Admin → Errors (sample data plus what was reported).
       case 'report_error': { errorReports.push(a); log.push('ERROR_REPORT ' + a.kind + '|' + a.message + '|' + a.place); return json(200, null); }
       case 'report_server_error': { if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:forbidden' }); log.push('SERVER_ERROR ' + a.source + '|' + a.place + '|' + a.message); return json(200, null); }
