@@ -12,7 +12,7 @@ export default function PrivacyPage() {
     >
       <h2>What we collect</h2>
       <ul>
-        <li><strong>From Google, when you sign in:</strong> your name, email address and profile photo. Your name and photo help suggest a username; your email is never shown to anyone. We use it for one thing: if Eithr can&apos;t send notifications to your phone, an evening email of what you missed (votes, props, friend requests), at most once a day and only when something&apos;s waiting. Turn it off in Settings or from any of those emails.</li>
+        <li><strong>From Google, when you sign in:</strong> your name, email address and profile photo. Your name and photo help suggest a username; your email is never shown to anyone. We use it for one thing: if Eithr can&apos;t send notifications to your phone, an email of what you missed (votes, comments, props, friend requests), at most twice a day (at lunch and in the evening) and only when something new is waiting. Turn it off in Settings or from any of those emails.</li>
         <li><strong>What you do on Eithr:</strong> your username, the polls you post, your votes, shares, friends, friend requests and lists, link-only polls you&apos;ve opened, blocks and reports.</li>
         <li><strong>Snap photos:</strong> shrunk on your phone (location data removed) before upload. They&apos;re deleted after the snap&apos;s 24 hours, or when it&apos;s turned down.</li>
         <li><strong>Props:</strong> when you give a friend props, we store who you picked, for which question, and when. That&apos;s needed for the daily limit and for safety.</li>
@@ -27,7 +27,7 @@ export default function PrivacyPage() {
         <li><strong>Your friends:</strong> your friends list, your friends-only polls and who picked what on them, and that you voted on a poll they also voted on (never your pick).</li>
         <li><strong>Props are anonymous:</strong> the friend you picked sees only that a friend gave them props for a question, and their own counts. Nobody, including them, is ever shown who picked them. Your counts are visible only to you, unless you share them.</li>
         <li><strong>Eithr&apos;s team:</strong> reports and the content they point to, to keep the app safe.</li>
-        <li><strong>Service providers</strong> that run Eithr for us: Supabase (database, sign-in and snap photos), Vercel (hosting), Resend (sending the evening emails) and OpenAI (an automatic safety check of snap photos, typed polls and comments; it isn&apos;t used to train their models). They process data only to provide their service.</li>
+        <li><strong>Service providers</strong> that run Eithr for us: Supabase (database, sign-in and snap photos), Vercel (hosting), Resend (sending those emails) and OpenAI (an automatic safety check of snap photos, typed polls and comments; it isn&apos;t used to train their models). They process data only to provide their service.</li>
         <li><strong>Authorities</strong>, only when Indian law requires it.</li>
       </ul>
 

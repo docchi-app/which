@@ -316,7 +316,7 @@ The first slice of the build order:
   them off in Settings (right after posting, the poll's own "Get a ping" row asks instead). The
   **first time Eithr is opened from the Home Screen** (iPhone or Android) it asks full screen,
   once, with what notifications bring: votes on your polls, props (never who), friend requests,
-  the Poll of the Day. People push can't reach get the evening email instead (setup step 8).
+  the Poll of the Day. People push can't reach get emails instead (setup step 8).
 - **Terms, Privacy and Community guidelines** at `/terms`, `/privacy`, `/guidelines`, linked from
   the sign-in sheet, the + screen and Settings. Set `NEXT_PUBLIC_CONTACT_EMAIL` to
   show a contact address on them.
@@ -601,16 +601,20 @@ The same key and secret run the AI check on typed polls and comments. Those go l
 are checked a second later; without the key (or before the moderation migration) only the word
 filter applies. Posts the app didn't send are picked up by the notifications job every 2 minutes.
 
-### 8. Evening email (for people without notifications)
+### 8. Email (for people without notifications)
 
 On iPhone, notifications only work once Eithr is on the Home Screen, so many people never get
-them. Once a day at most, between 6 and 9 pm India time, anyone with no phone set up for push,
-who hasn't opened Eithr since yesterday and has something waiting (votes or comments on their
-polls, props, friend requests), gets one short email from the notifications job. Every email has
-a one-click **Stop these emails** link (signed per person); Settings → **Email me what I missed**
-turns it off or on. Props never say who.
+them. Anyone with no phone set up for push gets up to two short emails a day from the
+notifications job: at **lunch** (12:30–2 pm India time) and in the **evening** (6:30–9 pm). Each
+covers only what came in since the previous email (votes or comments on their polls, props,
+friend requests), so nothing repeats; with nothing new, no email. It goes out whether or not
+they've opened Eithr that day. The subject leads with the strongest thing (props, then friend
+requests, then votes, then comments); votes show the poll's answers with the result hidden.
+Every email has a one-click **Stop these emails** link (signed per person); Settings → **Email me
+what I missed** turns it off or on. Props never say who.
 
-1. Run `20261201000000_email_summary.sql` in the SQL Editor (then the migration check).
+1. Run `20261201000000_email_summary.sql` and `20261202000000_email_twice.sql` in the SQL Editor
+   (then the migration check).
 2. Sign up at https://resend.com (free: 3,000 emails a month, 100 a day). **Domains → Add
    Domain** → `eithr.app`, and add the DNS records it shows where your domain is managed (wait
    for "Verified").
@@ -619,7 +623,9 @@ turns it off or on. Props never say who.
    address must be on the verified domain). Redeploy.
 
 Without `RESEND_API_KEY` nothing is sent and nothing else changes. Sends are recorded in
-`email_sends` (one per person per day; a send that fails isn't retried that day).
+`email_sends` (one per person per send: lunch and evening; a send that fails isn't retried in
+that window). Resend's free plan allows 100 emails a day, about 50 people at two a day; past that,
+move to its paid plan.
 
 ### Free tier limits to know about
 

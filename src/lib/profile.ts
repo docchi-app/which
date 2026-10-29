@@ -108,7 +108,7 @@ export const DELETE_ERRORS: Record<string, string> = {
   demo: "Demo mode: there's no account to delete.",
 };
 
-/** Settings → "Email me what I missed" (the evening summary for people without notifications). */
+/** Settings → "Email me what I missed" (the lunch and evening emails for people without notifications). */
 export async function emailSummary(off: boolean | null = null): Promise<{ on: boolean; hasEmail: boolean } | null> {
   const supabase = getSupabase();
   if (!supabase) return null;

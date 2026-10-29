@@ -29,7 +29,7 @@ export function SettingsScreen() {
   const [propsOn, setPropsOn] = useState<boolean | null>(null);
   // Admins, for testing: props picked for you arrive without the wait (null until known).
   const [noWait, setNoWait] = useState<boolean | null>(null);
-  // The evening email for when notifications can't reach you (null until known).
+  // The lunch and evening emails for when notifications can't reach you (null until known).
   const [email, setEmail] = useState<{ on: boolean; hasEmail: boolean } | null>(null);
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export function SettingsScreen() {
           <label className="settings-row">
             <span>
               <strong>Email me what I missed</strong>
-              <span className="notif-hint">One evening email, only when something&apos;s waiting and notifications can&apos;t reach you</span>
+              <span className="notif-hint">At lunch and in the evening, only when something new is waiting and notifications can&apos;t reach you</span>
             </span>
             <input
               type="checkbox"
