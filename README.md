@@ -194,7 +194,7 @@ The first slice of the build order:
   exactly one). Everyone else, signed in or not, gets the normal "page not found", decided on the
   server before anything is sent. On a laptop the sections sit in a sidebar (Today: Overview ·
   Health: Errors · People: Users, Guests · Growth: Funnel & retention, Sources, Metrics · Content:
-  Polls & snaps, Notifications · Safety: Reports, Snaps, Words · Run: Schedule, Limits, Test accounts, Admin
+  What people like, Polls & snaps, Notifications · Safety: Reports, Snaps, Words · Run: Schedule, Limits, Test accounts, Admin
   log) with **← Back to Eithr** at the top; on a phone they're tabs, with ‹ back. The section is in
   the address (`/admin#metrics`). **Overview** is what `/admin` opens: what needs you (a new error,
   reports waiting, no sign-ups for a day, the background job stopped), each with a button to fix it;
@@ -206,7 +206,14 @@ The first slice of the build order:
   → shared → added a friend, each within 7 days), come back after 1 / 7 / 30 days by the week people
   joined, and back-next-day compared (notifications on or off, invited or found it, signed in or
   guest). **Sources:** where first visits came from, who brings people in, which polls brought the
-  most, and each phone and browser's vote, sign-in and error rate. **Polls & snaps:** polls made by
+  most, and each phone and browser's vote, sign-in and error rate. **What people like:** every poll
+  is tagged with a topic (cricket, food, movies, …), a feel (debate, relatable, emotional, nostalgia,
+  …), timely or evergreen, and its language (English, Hinglish, Hindi), by the AI in the 2-minute job
+  or by you. Each poll seen by 5 or more people gets a **Spark** score out of 100 (voted ÷ saw 40,
+  shares 25, comments 20, how close the result was 15). The screen adds it up by topic, feel, topic +
+  feel (a grid: dashes are combinations not tried yet), language, time of day, timely or evergreen,
+  and who posted (Eithr, you, people), with the best polls and the newest polls' tags to check and
+  change. Fewer than 5 polls behind a number is marked Early, 5 or more Clear. **Polls & snaps:** polls made by
   kind per day, votes per poll, polls with no votes, comments, the top polls, snaps (live, sent to
   you, turned down), safety checks (AI, blocked words, reports) and props by question.
   **Notifications:** pushes sent and tapped by kind, expired and failed, emails (lunch, evening,
@@ -735,6 +742,15 @@ Run `20261209000000_lockdown.sql` in the SQL Editor, then the migration check (n
 changes for anyone using the app: it only stops signed-out callers (the public anon key, no
 sign-in) from running the 53 database functions that need a signed-in person anyway. If the
 check later names this migration again (after re-running an older migration, say), run it again.
+
+### 14. What people like (Admin → Content)
+
+Run `20261210000000_likes.sql` in the SQL Editor (then the migration check). With `OPENAI_API_KEY`
+already in Vercel (step 7), the 2-minute job starts tagging polls at once: new ones first, then
+older ones, about 600 an hour. Only the poll's question, teaser and answers go to OpenAI (never
+who posted it); the answer can only be one of the listed tags. It uses `gpt-4.1-mini` (a fraction
+of a cent per poll); to use another model, add `OPENAI_TAG_MODEL` in Vercel. Change a wrong tag in
+**Admin → Content → What people like → Check the tags**; the AI won't change it back.
 
 ### Free tier limits to know about
 
