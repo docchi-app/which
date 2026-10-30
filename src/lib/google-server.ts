@@ -1,3 +1,4 @@
+import "server-only";
 import type { NextRequest } from "next/server";
 
 /** Same Google OAuth client as the one in Supabase → Authentication → Providers → Google. */

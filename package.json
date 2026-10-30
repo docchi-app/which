@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "check:layout": "node scripts/layout-check/run.cjs"
+    "check:layout": "node scripts/layout-check/run.cjs",
+    "check:secrets": "node scripts/layout-check/secret-audit.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

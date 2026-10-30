@@ -2,6 +2,7 @@
 // (see supabase/migrations/20261201000000_email_summary.sql and 20261202000000_email_twice.sql).
 // Sent with Resend's HTTP API; every email has a one-click "Stop these emails" link, signed so
 // nobody can turn off someone else's.
+import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cronSecret, rpc } from "./push-server";
 import { siteUrl } from "./server-poll";

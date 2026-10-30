@@ -382,7 +382,8 @@ Checks: `npm run lint`, `npm run typecheck`, `npm run build`.
 ### Migration check
 
 `supabase/checks/migration-check.sql` lists every migration that hasn't fully run on a database
-(a missing function or column, or an older version of a function). Paste it into the Supabase SQL
+(a missing function or column, an older version of a function, or a function it closed to
+signed-out visitors that they can run again). Paste it into the Supabase SQL
 editor; no rows means everything is in place. It's generated from `supabase/migrations/`, so
 regenerate it after adding a migration:
 
@@ -723,6 +724,13 @@ Run `20261208000000_limits.sql` in the SQL Editor (then the migration check). Po
 stay at 1 a day inside the polls limit. Change either number in **Admin → Run → Limits** (polls 1–50,
 snaps 1–20): it works at once, and each change goes in the Admin log. The admin isn't limited.
 
+### 13. Lockdown
+
+Run `20261209000000_lockdown.sql` in the SQL Editor, then the migration check (no rows). Nothing
+changes for anyone using the app: it only stops signed-out callers (the public anon key, no
+sign-in) from running the 53 database functions that need a signed-in person anyway. If the
+check later names this migration again (after re-running an older migration, say), run it again.
+
 ### Free tier limits to know about
 
 - **A free project pauses after about a week with no activity.** You can restore it from the
@@ -824,10 +832,24 @@ weeks are kept, so last week's champ is a lookup.
   **When adding a function:** grant `execute` to exactly the roles that need it, and `revoke ...
   from public, anon, authenticated` on internal helpers (Supabase grants new functions to `anon`
   and `authenticated` by default, so revoking from `public` alone isn't enough).
+- **Signed out, only what a visitor needs** (`20261209000000_lockdown.sql`): the anon role can run
+  just the functions behind what a signed-out visitor sees and counts (feed, poll, profile,
+  leaderboard, live numbers, visits, error reports) and the server's secret-checked job functions;
+  the file lists them. Everything else needs a sign-in (guests sign in too, as `authenticated`).
 - **Secrets stay on the server:** the service_role key is never in the app; `GOOGLE_CLIENT_SECRET`,
   `VAPID_PRIVATE_KEY`, `PUSH_CRON_SECRET`, `OPENAI_API_KEY` and `RESEND_API_KEY` are server-only (mark them
   **Sensitive** in Vercel). Only the URL, the anon key, the Google client id, the VAPID public key,
-  the site URL and the contact email are `NEXT_PUBLIC_`.
+  the site URL and the contact email are `NEXT_PUBLIC_`. The server code that reads them
+  (`src/lib/push-server.ts`, `email-server.ts`, `google-server.ts`, `server-errors.ts`,
+  `text-moderation.ts`, `snap-moderation.ts`, `server-poll.ts`, `admin-gate.ts`) starts with
+  `import "server-only"`, so the build fails if a browser component ever imports it.
+- **Checking for leaks:** `npm run check:secrets` (`scripts/layout-check/secret-audit.cjs`; the
+  commands are at its top). Build and start the app against the pretend Supabase with made-up
+  "canary" values for every secret (`OPENAI_API_KEY=sk-CANARY…` and so on); it opens every screen
+  signed out, signed in and as the admin with the network log on, and fails if a secret value is in
+  any request, response, browser storage or file in `.next/static`, or if a key or token is in an
+  address (Supabase Storage's signed snap photo links, `?token=`, short-lived and for one file, are
+  the expected exception).
 - **Headers** (`next.config.ts`): a Content-Security-Policy (scripts only from this site, network only
   to this site and Supabase, images from Supabase and Google avatars, no framing), HSTS, nosniff,
   `X-Frame-Options: DENY`, a strict referrer policy, and a Permissions-Policy allowing only the
