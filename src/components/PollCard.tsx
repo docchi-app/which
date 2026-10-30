@@ -8,7 +8,7 @@ import { audienceLabel } from "@/lib/circle";
 import { castVote } from "@/lib/polls";
 import { useCountUp, useLiveCard, useNearScreen } from "@/lib/live";
 import { formatCount, percentages, timeLeft } from "@/lib/format";
-import type { Poll, VoteResult } from "@/lib/types";
+import type { Poll, Visibility, VoteResult } from "@/lib/types";
 import { recordView, useCountView } from "@/lib/views";
 import { CommentIcon, ShareIcon } from "./icons";
 import { CirclePicks, FriendsVotedRow, LockedCircle } from "./CircleBits";
@@ -19,6 +19,10 @@ import { useBackClose } from "@/lib/back";
 
 // Sheets load only when they open: a feed of cards shouldn't carry them all up front.
 const CommentsSheet = dynamic(() => import("./CommentsSheet").then((m) => m.CommentsSheet), { ssr: false });
+// What changed after "Who sees it" (votes so far stay either way).
+const whoSeesText = (v: Visibility) =>
+  v === "public" ? "Now everyone can see it." : v === "circle" ? "Now friends only. It's left the public feed." : "Now link only. It's left the feeds.";
+const WhoSeesSheet = dynamic(() => import("./WhoSeesSheet").then((m) => m.WhoSeesSheet), { ssr: false });
 const ReportSheet = dynamic(() => import("./ReportSheet").then((m) => m.ReportSheet), { ssr: false });
 const DeleteSnapSheet = dynamic(() => import("./DeleteSnapSheet").then((m) => m.DeleteSnapSheet), { ssr: false });
 
@@ -126,6 +130,14 @@ export function PollCard({
   const [reporting, setReporting] = useState(false);
   const [commenting, setCommenting] = useState(openComments);
   const [snapMenu, setSnapMenu] = useState(false);
+  // My own post: who sees it (changed after posting), and the line that confirms it.
+  const [choosingWho, setChoosingWho] = useState(false);
+  const [whoNote, setWhoNote] = useState<string | null>(null);
+  useEffect(() => {
+    if (!whoNote) return;
+    const t = setTimeout(() => setWhoNote(null), 4000);
+    return () => clearTimeout(t);
+  }, [whoNote]);
   // Back closes the ••• menu.
   const closeSnapMenu = useBackClose(snapMenu, () => setSnapMenu(false));
   const [deleting, setDeleting] = useState(false);
@@ -329,6 +341,16 @@ export function PollCard({
                     }}
                   >
                     <ShareIcon size={18} /> Share snap
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      closeSnapMenu();
+                      setChoosingWho(true);
+                    }}
+                  >
+                    👁 Who sees it
                   </button>
                   <button
                     type="button"
@@ -540,6 +562,11 @@ export function PollCard({
             <MoreIcon />
           </button>
         )}
+        {poll.isMine && !isSnap && !closed && (
+          <button type="button" className="more-btn" onClick={() => setChoosingWho(true)} aria-label="Who sees this poll" title="Who sees it">
+            <MoreIcon />
+          </button>
+        )}
       </div>
       {commenting && (
         <CommentsSheet
@@ -548,6 +575,23 @@ export function PollCard({
           signedIn={signedIn}
           onClose={() => setCommenting(false)}
           onCount={(n) => n !== poll.commentCount && onRefresh({ ...poll, commentCount: n })}
+        />
+      )}
+      {whoNote && (
+        <p className="who-toast" role="status">
+          {whoNote}
+        </p>
+      )}
+      {choosingWho && (
+        <WhoSeesSheet
+          pollId={poll.id}
+          snap={isSnap}
+          visibility={poll.visibility}
+          onClose={() => setChoosingWho(false)}
+          onSaved={(v) => {
+            onRefresh({ ...poll, visibility: v, audience: v === "circle" ? "Whole circle" : null });
+            setWhoNote(whoSeesText(v));
+          }}
         />
       )}
       {deleting && <DeleteSnapSheet pollId={poll.id} onClose={() => setDeleting(false)} onDeleted={() => onDeleted?.(poll.id)} />}

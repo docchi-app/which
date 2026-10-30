@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { deleteSnap, snapErrorText } from "@/lib/snap";
 import { useBackClose } from "@/lib/back";
 
@@ -30,7 +31,8 @@ export function DeleteSnapSheet({ pollId, onClose, onDeleted }: { pollId: string
     }
   }
 
-  return (
+  // On document.body: a poll card's swipe transform would trap a fixed layer.
+  return createPortal(
     <div className="sheet-layer">
       <div className="sheet-backdrop" aria-hidden="true" onClick={close} />
       <section role="alertdialog" aria-modal="true" aria-labelledby="del-title" className="sheet">
@@ -51,6 +53,7 @@ export function DeleteSnapSheet({ pollId, onClose, onDeleted }: { pollId: string
           Keep it
         </button>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
