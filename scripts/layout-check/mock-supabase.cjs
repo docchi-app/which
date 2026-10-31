@@ -16,6 +16,8 @@ const postsOn = (d, not) => agent.drafts.filter((x) => ['scheduled', 'posted'].i
 const draftJson = (x) => { const run = agent.runs.find((r) => r.id === x.run_id); return { ...x, votes: x.status === 'posted' ? 12 : null, spark: x.status === 'posted' ? 61 : null, run_slot: run?.slot ?? null, run_model: run?.model ?? null }; };
 const seedDraft = (o) => ({ id: require('crypto').randomUUID(), run_id: null, created_at: new Date().toISOString(), topic: null, feel: null, timely: false, lang: 'en', slot: 'manual', why: null, source: null, post_as: 'eithr', open_days: 1, poll_of_day: false, notify: false, status: 'new', poll_id: null, decided_at: null, posted_at: null, error: null, ...o });
 const fnState = {};
+const TAG_FRIENDS = ['dev_04', 'rishi_m', 'riya_k'];
+let pushKinds = null;
 const likeTags = {};
 const tagDone = new Set();
 const tagTodo = [
@@ -131,6 +133,10 @@ http.createServer((req, res) => {
     // Tests: a database function missing (migration not run: PostgREST's 404 PGRST202) or broken (500).
     // /__fn_state?name=polls_to_tag&state=missing|broken|ok
     // Tests: the content agent's next run is a refresh (/__agent_slot?slot=18); timely drafts run out (/__agent_expire).
+    // Tests: a poll whose answer asks for a tag, first in the feed (/__tag_poll).
+    if (url.pathname === '/__tag_poll') { if (!polls.some((x) => x.id === 't2000000-0000-4000-8000-000000000001')) polls.unshift(mk('t2000000-0000-4000-8000-000000000001', 'In your college group, kaun sabse pehle plans cancel karta hai?', ['Me!', 'A friend (tag them)', 'All of us 🤷'], [2, 5, 1], { creator: U20, is_system: false })); return json(200, true); }
+    // Tests: a friend's comment tagging me on a poll (/__tag_me?poll=…).
+    if (url.pathname === '/__tag_me') { const pid = url.searchParams.get('poll'); (cmts[pid] ||= []).push({ id: 'ctag' + Date.now(), text: 'Has to be @mayank 🙃', created_at: new Date().toISOString(), username: 'arjun', avatar_url: null, pick: null, pick_index: null, is_mine: false, is_creator: false, can_delete: false, tags: ['mayank'], tagged_me: true }); return json(200, true); }
     if (url.pathname === '/__agent_slot') { agent.forceSlot = url.searchParams.get('slot'); return json(200, agent.forceSlot); }
     if (url.pathname === '/__agent_expire') { let n = 0; for (const d of agent.drafts) if (d.status === 'new' && d.expires_at) { d.expires_at = new Date(Date.now() - 60000).toISOString(); n++; } return json(200, n); }
     if (url.pathname === '/__fn_state') { fnState[url.searchParams.get('name')] = url.searchParams.get('state'); return json(200, fnState); }
@@ -457,7 +463,8 @@ http.createServer((req, res) => {
       case 'record_open': return json(200, null);
       case 'track_visit': return json(200, null);
       case 'circle_badge': return json(200, { requests: requests.length, accepted_recently: 0 });
-      case 'my_activity': if (activitySeen) return json(200, { votes: 0, comments: 0, polls: [] }); return json(200, { votes: 5, comments: 1, polls: [{ poll_id: '99999999-0000-4000-8000-000000000009', question: 'Pineapple on pizza?', votes: 5, comments: 1 }] });
+      case 'my_activity': { const tags = [{ poll_id: '99999999-0000-4000-8000-000000000009', question: 'Kaun sabse pehle plans cancel karta hai?', by: 'arjun', at: new Date(Date.now() - 5 * 60000).toISOString() }];
+        if (activitySeen) return json(200, { votes: 0, comments: 0, polls: [], tags }); return json(200, { votes: 5, comments: 1, polls: [{ poll_id: '99999999-0000-4000-8000-000000000009', question: 'Pineapple on pizza?', votes: 5, comments: 1 }], tags }); }
       case 'mark_activity_seen': activitySeen = true; log.push('SEEN'); return json(200, null);
       case 'my_profile': return json(200, { is_admin: !!whoIs(req) && whoIs(req) !== 'notadmin',  username: 'mayank', username_confirmed: true, avatar_url: null, joined: iso(-500), polls_made: 2, votes_received: 40, shares: 3, votes_cast: 10 });
       case 'my_polls': {
@@ -470,7 +477,7 @@ http.createServer((req, res) => {
         return json(200, a.which === 'voted' ? polls.filter((p) => votes[p.id]).map(view) : mineList);
       }
       case 'set_poll_visibility': { visMine[a.poll] = a.visibility; const fp = polls.find((x) => x.id === a.poll); if (fp) { fp.visibility = a.visibility; fp.audience = a.visibility === 'circle' ? 'Whole circle' : null; } log.push('VIS ' + a.poll + ' ' + a.visibility); return json(200, null); }
-      case 'get_push_settings': return json(200, null);
+      case 'get_push_settings': return json(200, pushKinds);
       case 'my_circle': return json(200, { requests, members, groups: [{ id: 'g1', name: 'Family', count: 0 }], joined: [{ username: 'ravi', avatar_url: null, status: 'pending', at: iso(-2) }, ...members.map((m) => ({ ...m, status: 'member', at: m.since }))] });
       case 'suggest_friends': return json(200, [{ username: 'aman', avatar_url: null, mutual: 2, voted: 0 }, { username: 'neha', avatar_url: null, mutual: 0, voted: 3 }]);
       case 'my_invite_code': return json(200, 'abc123def456');
@@ -516,7 +523,22 @@ http.createServer((req, res) => {
       case '/__props_reset': pSeen = false; return json(200, null);
       case '/__email_due': emailDue = [{ user_id: '00000000-0000-4000-8000-0000000000e1', email: 'riya@example.com', username: 'riya.k', slot: 'evening', votes: 12, comments: 2, props: 0, requests: 1, top_poll: 'a1000000-0000-4000-8000-000000000001', top_question: 'Chai or coffee <b>today</b>?', top_votes: 9, top_before: 4, top_closed: false, top_answers: ['Chai', 'Coffee'], top_counts: [8, 5], commenters: ['kabir', 'meera'], commenter_count: 2, comment_question: 'Chai or coffee <b>today</b>?', requesters: ['arjun'], lunch_sent: false }, { user_id: '00000000-0000-4000-8000-0000000000e2', email: 'dev@example.com', username: 'dev', slot: 'lunch', votes: 5, comments: 1, props: 0, requests: 0, top_poll: 'a1000000-0000-4000-8000-000000000001', top_question: 'Rate my fit', top_votes: 4, top_before: 1, top_closed: false, top_answers: ['🔥', '🧊'], top_counts: [3, 2], commenters: ['kabir'], commenter_count: 1, comment_question: 'Rate my fit', requesters: [], lunch_sent: false }, { user_id: '00000000-0000-4000-8000-0000000000e3', email: 'zoe@example.com', username: 'zoe', slot: 'evening', votes: 0, comments: 0, props: 2, requests: 0, top_poll: null, top_question: null, top_votes: 0, top_before: 0, top_closed: false, top_answers: [], top_counts: [], commenters: [], commenter_count: 0, comment_question: null, requesters: [], lunch_sent: true }]; return json(200, null);
       case 'set_text_verdict': checked.add(a.target_id); log.push(`VERDICT ${a.target_type} ${a.verdict} ${a.reason ?? ''}`.trim()); return json(200, null);
-      case 'post_comment': (cmts[a.poll] ||= []).push({ id: 'c' + Date.now(), text: a.body, created_at: new Date().toISOString(), username: 'mayank', avatar_url: null, pick: null, pick_index: null, is_mine: true, is_creator: false, can_delete: true }); return json(200, null);
+      case 'post_comment': {
+        // Tags: friends who can see the poll (here: riya_k, rishi_m, dev_04), up to 3, in order.
+        const names = [...a.body.matchAll(/(?:^|[^a-zA-Z0-9_])@([a-zA-Z0-9_]{3,20})(?![a-zA-Z0-9_])/g)].map((m) => m[1].toLowerCase());
+        const tagged = [...new Set(names)].filter((n) => TAG_FRIENDS.includes(n)).slice(0, 3);
+        const id = 'c' + Date.now();
+        (cmts[a.poll] ||= []).push({ id, text: a.body, created_at: new Date().toISOString(), username: 'mayank', avatar_url: null, pick: null, pick_index: null, is_mine: true, is_creator: false, can_delete: true, tags: tagged, tagged_me: false });
+        log.push(`COMMENT ${a.body} | tagged ${tagged.join(',')}`);
+        return json(200, { id, tagged });
+      }
+      case 'tag_candidates': { const qq = String(a.q ?? '').toLowerCase(); log.push('TAG_CANDIDATES ' + qq); return json(200, TAG_FRIENDS.filter((n) => n.startsWith(qq)).map((n) => ({ username: n, avatar_url: null }))); }
+      case 'remove_my_tag': {
+        for (const list of Object.values(cmts)) for (const c of list) if (c.id === a.comment && c.tagged_me) { c.tagged_me = false; c.tags = (c.tags || []).filter((t) => t !== 'mayank'); log.push('UNTAG ' + a.comment); return json(200, null); }
+        return json(400, { message: 'docchi:not_found' });
+      }
+      case 'set_push_settings': pushKinds = a; log.push('PUSH_KINDS ' + Object.entries(a).map(([k, v]) => `${k}=${v}`).join(',')); return json(200, null);
+      case 'tag_notify': return a.secret === 'test-secret-test-secret-123' ? (log.push('TAG_NOTIFY'), json(200, 0)) : json(400, { message: 'docchi:forbidden' });
     }
     json(404, { message: 'not mocked' });
   });

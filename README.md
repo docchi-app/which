@@ -793,6 +793,16 @@ the same prompt and checks, and Drafts says "Written by Sarvam". The OpenAI fail
 Admin → Errors so you can fix it. Without the key nothing changes. Sarvam gets the same data as
 OpenAI: headlines, totals by topic and public poll questions; never names, emails or private polls.
 
+### 17. Tags in comments
+
+Run `20261213000000_comment_tags.sql` in the SQL Editor (then the migration check). From then on
+typing `@` in a comment shows your friends who can see that poll; pick up to 3 and each gets a push
+("@you tagged you") and a "Tagged you" line in Activity. Tags show highlighted in the comment, and
+anyone tagged can tap **Remove my tag**. Blocked people and people who can't see the poll can't be
+tagged. After a vote on a "tag them" poll ("Who is it? 👀"), the card offers **@ Tag a friend**.
+Tag pushes can be turned off in Settings → Notifications → "When a friend tags you". Before the
+migration runs, comments work as before and `@` names are plain text.
+
 ### Free tier limits to know about
 
 - **A free project pauses after about a week with no activity.** You can restore it from the
