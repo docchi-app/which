@@ -51,6 +51,9 @@ const SNAP = 'b1000000-0000-4000-8000-000000000001', MINE = 'b2000000-0000-4000-
       const o = card(p, OTHER); await o.scrollIntoViewIfNeeded(); await p.waitForTimeout(800);
       await o.locator('button.snapc-answer').first().click(); await p.waitForTimeout(1200);
       ok('vote on a snap: results below the photo', (await o.locator('.snapc-results').count()) === 1 && (await o.locator('.snapc-photo .snapc-results').count()) === 0);
+      // The votes line and "who voted" sit inside the card's padding, in line with the question.
+      const cardBox = await o.boundingBox(); const footBox = await o.locator('.result-foot').boundingBox();
+      ok('vote on a snap: the votes line is inside the card padding', cardBox && footBox && footBox.x >= cardBox.x + 12 && footBox.x + footBox.width <= cardBox.x + cardBox.width - 12, JSON.stringify({ cardBox, footBox }));
       ok('someone else\'s snap: no ••• for who sees it', (await o.locator('.snapc-more').count()) === 0);
       await shot(p, 'voted-390', o);
     }

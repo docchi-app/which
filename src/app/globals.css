@@ -3416,6 +3416,11 @@ button.ghost-action { cursor: pointer; }
 .poll-snap > .count-strip,
 .poll-snap > .created-banner,
 .poll-snap > .notif-prompt,
+.poll-snap > .result-foot,
+.poll-snap > .tag-nudge,
+.poll-snap > .spice-meter,
+.poll-snap > .settle-btn,
+.poll-snap > .brain-why,
 .poll-snap > .poll-error { margin-right: 16px; margin-left: 16px; }
 .poll-snap > .created-banner:first-child { margin-top: 12px; }
 .poll-snap > .poll-actions { padding: 0 16px 4px; }
@@ -4503,7 +4508,7 @@ button.ghost-action { cursor: pointer; }
 .brain-share { align-self: flex-start; max-width: 100%; white-space: normal; text-align: left; overflow-wrap: anywhere; }
 .brain-flag { align-self: flex-start; padding: 2px 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
 .brain-flag:disabled { text-decoration: none; cursor: default; }
-.brain-teaser { display: flex; align-items: center; gap: 12px; margin: 12px 0 0; padding: 12px 14px; border: var(--outline); border-radius: 16px; background: #f4efff; box-shadow: var(--shadow-sm); }
+.brain-teaser { display: flex; align-items: center; gap: 12px; margin: 0 18px 12px; padding: 12px 14px; border: var(--outline); border-radius: 16px; background: #f4efff; box-shadow: var(--shadow-sm); }
 .brain-teaser-icon { display: grid; flex: none; place-items: center; width: 40px; height: 40px; border: var(--outline); border-radius: 12px; background: var(--lilac); font-size: 20px; }
 .brain-teaser b { display: block; font-family: var(--font-display); font-size: 15px; }
 .brain-teaser small { display: block; color: var(--muted); font-size: 13px; line-height: 1.35; }

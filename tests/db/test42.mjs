@@ -80,9 +80,12 @@ await as(U.admin, () => q(`select public.admin_add_word('zhantu', 'word', 'mr')`
 await as(U.admin, () => q(`select public.admin_add_word('zhantu', 'root', 'mr')`));
 await as(U.admin, () => q(`select public.admin_remove_word('zhantu')`));
 await as(U.admin, () => q(`select public.admin_props_no_wait(true)`));
-const ev = await as(U.admin, () => q(`select action, detail, admin from public.admin_events_list(20)`));
+const ev = await as(U.admin, () => q(`select action, detail, admin, at from public.admin_events_list(20)`));
 const acts = ev.map((e) => e.action).reverse();
-ok('Admin log: test accounts, words (added, changed, removed), props', JSON.stringify(acts) === JSON.stringify(['test_added', 'test_removed', 'word_added', 'word_changed', 'word_removed', 'props_no_wait']), JSON.stringify(acts));
+// Newest first by time; events in the same instant (this test database keeps milliseconds, and a
+// fast machine logs two in one) may come in either order, so check the times and the set.
+const newestFirst = ev.every((e, i) => i === 0 || new Date(ev[i - 1].at) >= new Date(e.at));
+ok('Admin log: test accounts, words (added, changed, removed), props', newestFirst && JSON.stringify([...acts].sort()) === JSON.stringify(['test_added', 'test_removed', 'word_added', 'word_changed', 'word_removed', 'props_no_wait'].sort()), JSON.stringify(acts));
 ok('...with who did it', ev.every((e) => e.admin === name('admin')));
 await q(`select set_config('request.uid', '', false)`);
 ok('migrations add words without logging (no user)', (await q(`insert into public.blocked_terms (term) values ('zzqq') returning term`)).length === 1 && (await q(`select count(*)::int n from public.admin_events`))[0].n === 6);
