@@ -90,8 +90,10 @@ await q(`update public.comments set is_hidden = true where text = 'hidden one'`)
 
 // The tagging job
 let todo = await anon(() => q(`select * from public.polls_to_tag($1, 50)`, [SECRET]));
-const order = (await q(`select id from public.polls where id = any($1) order by created_at desc`, [todo.map((t) => t.id)])).map((r) => r.id);
-ok('to tag: newest first, deleted and hidden left out', JSON.stringify(order) === JSON.stringify(todo.map((t) => t.id)) && !todo.some((t) => t.id === P.deleted || t.id === P.hidden) && todo.some((t) => t.id === P.old), todo.map((t) => t.question).join(' | '));
+// Newest first: each one no newer than the one before (polls made in the same instant may come in either order).
+const made = Object.fromEntries((await q(`select id, created_at from public.polls where id = any($1)`, [todo.map((t) => t.id)])).map((r) => [r.id, new Date(r.created_at).getTime()]));
+const newestFirst = todo.every((t, i) => i === 0 || made[todo[i - 1].id] >= made[t.id]);
+ok('to tag: newest first, deleted and hidden left out', newestFirst && !todo.some((t) => t.id === P.deleted || t.id === P.hidden) && todo.some((t) => t.id === P.old), todo.map((t) => t.question).join(' | '));
 ok('to tag: answers come with the question', JSON.stringify(todo.find((t) => t.id === P.food).options) === '["A","B"]');
 ok('to tag: max_rows is kept to 1–50', (await anon(() => q(`select * from public.polls_to_tag($1, 2)`, [SECRET]))).length === 2);
 const tag = (id, topic, feel, timely = false, lang = 'en') => anon(() => q(`select public.set_poll_tags($1, $2, $3, $4, $5, $6)`, [SECRET, id, topic, feel, timely, lang]));
