@@ -194,7 +194,7 @@ The first slice of the build order:
   exactly one). Everyone else, signed in or not, gets the normal "page not found", decided on the
   server before anything is sent. On a laptop the sections sit in a sidebar (Today: Overview ·
   Health: Errors · People: Users, Guests · Growth: Funnel & retention, Sources, Metrics · Content:
-  What people like, Polls & snaps, Notifications · Safety: Reports, Snaps, Words · Run: Schedule, Limits, Test accounts, Admin
+  What people like, Trending now, Drafts, Polls & snaps, Notifications · Safety: Reports, Snaps, Words · Run: Schedule, Limits, Test accounts, Admin
   log) with **← Back to Eithr** at the top; on a phone they're tabs, with ‹ back. The section is in
   the address (`/admin#metrics`). **Overview** is what `/admin` opens: what needs you (a new error,
   reports waiting, no sign-ups for a day, the background job stopped), each with a button to fix it;
@@ -213,7 +213,14 @@ The first slice of the build order:
   shares 25, comments 20, how close the result was 15). The screen adds it up by topic, feel, topic +
   feel (a grid: dashes are combinations not tried yet), language, time of day, timely or evergreen,
   and who posted (Eithr, you, people), with the best polls and the newest polls' tags to check and
-  change. Fewer than 5 polls behind a number is marked Early, 5 or more Clear. **Polls & snaps:** polls made by
+  change. Fewer than 5 polls behind a number is marked Early, 5 or more Clear. **Drafts:** the
+  content agent's poll drafts (see step 15): approve one, all of them as suggested, change one
+  (question, answers, post as Eithr or you, time, days open, tags, Poll of the Day, push to
+  everyone) or skip it; Scheduled ones can go back to drafts until they post; Posted shows votes and
+  Spark. Settings: pause, drafts a day, most posts a day, usually post as, Hinglish share, topics it
+  won't write. **Trending now:** the headlines the agent read, each with a poll idea (Draft it) or
+  why it was left out, and the days coming up (add festivals, matches, releases, exam days).
+  **Polls & snaps:** polls made by
   kind per day, votes per poll, polls with no votes, comments, the top polls, snaps (live, sent to
   you, turned down), safety checks (AI, blocked words, reports) and props by question.
   **Notifications:** pushes sent and tapped by kind, expired and failed, emails (lunch, evening,
@@ -751,6 +758,20 @@ older ones, about 600 an hour. Only the poll's question, teaser and answers go t
 who posted it); the answer can only be one of the listed tags. It uses `gpt-4.1-mini` (a fraction
 of a cent per poll); to use another model, add `OPENAI_TAG_MODEL` in Vercel. Change a wrong tag in
 **Admin → Content → What people like → Check the tags**; the AI won't change it back.
+
+### 15. The content agent (Admin → Content → Drafts)
+
+Run `20261211000000_content_agent.sql` in the SQL Editor (then the migration check). Nothing else
+is needed: it uses the OpenAI key from step 7. Every day at 6:30 am India time (or when you tap
+**Write drafts now**) the 2-minute job reads Google Trends India and Google News headlines (top
+stories, cricket, entertainment), the days coming up and Admin → What people like, and asks OpenAI
+(`gpt-4.1`; set `OPENAI_CONTENT_MODEL` to change it) for drafts in English and Hinglish. Drafts that
+fail the AI safety check or the blocked-word list are dropped. You get a push, "✍️ 8 drafts ready"
+(needs notifications on your phone). **Nothing posts until you approve it.** At its time, an
+approved draft goes live as Eithr's poll or your own; Eithr's don't send "New on Eithr" to everyone
+unless you tick **Send a push to everyone**, so the feed doesn't turn into notifications. Drafts
+nobody approves expire after 3 days. What goes to OpenAI: headlines, today's numbers by topic and
+feel, and the questions of recent Eithr and admin polls; never anyone's name, email or private poll.
 
 ### Free tier limits to know about
 

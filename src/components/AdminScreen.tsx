@@ -28,6 +28,7 @@ import { Schedule } from "./AdminSchedule";
 import { AdminErrors } from "./AdminErrors";
 import { AdminContent, AdminFunnel, AdminNotifications, AdminOverview, AdminSources } from "./AdminGrowth";
 import { AdminGuests } from "./AdminGuests";
+import { AdminDrafts, AdminTrends } from "./AdminDrafts";
 import { AdminLikes } from "./AdminLikes";
 import { AdminLimits } from "./AdminLimits";
 import { AdminUsers } from "./AdminUsers";
@@ -44,6 +45,8 @@ type Tab =
   | "sources"
   | "metrics"
   | "likes"
+  | "trends"
+  | "drafts"
   | "content"
   | "notifications"
   | "reports"
@@ -71,6 +74,8 @@ const SECTIONS: { group: string; items: { id: Tab; label: string }[] }[] = [
     group: "Content",
     items: [
       { id: "likes", label: "What people like" },
+      { id: "trends", label: "Trending now" },
+      { id: "drafts", label: "Drafts" },
       { id: "content", label: "Polls & snaps" },
       { id: "notifications", label: "Notifications" },
     ],
@@ -222,6 +227,8 @@ export function AdminScreen() {
         {tab === "funnel" && <AdminFunnel />}
         {tab === "sources" && <AdminSources />}
         {tab === "likes" && <AdminLikes />}
+        {tab === "trends" && <AdminTrends />}
+        {tab === "drafts" && <AdminDrafts />}
         {tab === "content" && <AdminContent />}
         {tab === "notifications" && <AdminNotifications />}
         {tab === "errors" && <AdminErrors key={errorId ?? "list"} initialId={errorId} onChange={loadBadge} />}

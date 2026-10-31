@@ -189,7 +189,8 @@ export function composeSummary(row: SummaryRow, site: URL) {
     comments: {
       subject: commentQuote ? vary("s", [`${commenters} commented on ${commentQuote}`, `New comments on ${commentQuote}`]) : `${commenters} commented on your poll`,
       title: row.commenter_count > 1 ? `💬 ${row.commenter_count} people commented` : `💬 ${commenters} commented`,
-      sub: commentQuote ? `on ${commentQuote}. Join the conversation.` : "on your poll. Join the conversation.",
+      // With several people the title gives the count, so the names go here (some days' subject has none).
+      sub: `${row.commenter_count > 1 ? `${commenters} on` : "on"} ${commentQuote ?? "your poll"}. Join the conversation.`,
       cta: "Read the comments →",
       path: row.top_poll ? poll : "/activity",
       bg: "#e6f8f1",

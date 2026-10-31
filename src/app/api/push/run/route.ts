@@ -1,6 +1,8 @@
 import { cronSecret, pushConfigured, rpc, sendAll, tagUrl, type PushPayload } from "@/lib/push-server";
 import { sweepTexts } from "@/lib/text-moderation";
 import { sweepTags } from "@/lib/poll-tags";
+import { postDueDrafts, runAgentIfDue } from "@/lib/content-agent";
+import { after } from "next/server";
 import { sendSummaries } from "@/lib/email-server";
 import { reportServerError } from "@/lib/server-errors";
 
@@ -58,6 +60,14 @@ export async function POST(request: Request) {
     console.error("email summaries:", e instanceof Error ? e.message : e);
     await reportServerError("Background job · email", e, "job");
   }
+  // Approved drafts whose time has come go live (Admin → Drafts).
+  try {
+    const posted = await postDueDrafts();
+    if (posted) total.posted = posted;
+  } catch (e) {
+    console.error("drafts:", e instanceof Error ? e.message : e);
+    await reportServerError("Background job · post drafts", e, "job");
+  }
   // Tags for Admin → What people like (up to 20 polls, newest first), when there's time left.
   if (Date.now() - started < 30_000) {
     try {
@@ -97,5 +107,15 @@ export async function POST(request: Request) {
     // Before the growth migration ran: nothing to do.
     console.error("push tally:", e instanceof Error ? e.message : e);
   }
+  // The content agent (6:30 am India time, or "Write drafts now"), after this answer is sent:
+  // it waits on OpenAI, so it shouldn't hold up the rest of the run.
+  after(async () => {
+    try {
+      await runAgentIfDue();
+    } catch (e) {
+      console.error("content agent:", e instanceof Error ? e.message : e);
+      await reportServerError("Background job · content agent", e, "job");
+    }
+  });
   return Response.json(total);
 }

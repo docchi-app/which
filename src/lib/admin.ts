@@ -876,3 +876,181 @@ export async function fetchLikes(days: number): Promise<Likes> {
 export async function setPollTags(poll: string, tags: PollTags): Promise<void> {
   await call("admin_set_poll_tags", { poll, topic: tags.topic, feel: tags.feel, timely: tags.timely ?? false, lang: tags.lang });
 }
+
+// ─── The content agent: Drafts and Trending now ───────────────────────────
+
+export type DraftStatus = "new" | "scheduled" | "posted" | "skipped" | "expired" | "failed";
+export type Draft = PollTags & {
+  id: string;
+  question: string;
+  answers: string[];
+  slot: "timely" | "emotional" | "best" | "experiment" | "trend" | "manual";
+  why: string | null;
+  source: string | null;
+  postAs: "eithr" | "you";
+  publishAt: string;
+  openDays: 1 | 3 | 7;
+  pollOfDay: boolean;
+  notify: boolean;
+  status: DraftStatus;
+  pollId: string | null;
+  postedAt: string | null;
+  error: string | null;
+  votes: number | null;
+  spark: number | null;
+};
+export type AgentSettings = { paused: boolean; draftsPerDay: number; postsPerDay: number; postAs: "eithr" | "you"; hinglish: number; topicsOff: string[] };
+export type AgentRun = { startedAt: string; finishedAt: string | null; status: "running" | "done" | "failed"; drafts: number; trends: number; error: string | null; manual: boolean };
+export type DraftsData = {
+  fresh: Draft[];
+  scheduled: Draft[];
+  posted: Draft[];
+  settings: AgentSettings;
+  lastRun: AgentRun | null;
+  requestedAt: string | null;
+  todayPosts: number;
+  tomorrowPosts: number;
+  adminUsername: string | null;
+};
+export type Trend = PollTags & {
+  id: number;
+  source: string;
+  title: string;
+  url: string | null;
+  ideaQuestion: string | null;
+  ideaAnswers: string[];
+  skipReason: string | null;
+  drafted: boolean;
+};
+export type CalendarDay = { id: number; day: string; label: string; addedBy: "seed" | "admin" };
+export type TrendsData = { readAt: string | null; items: Trend[]; calendar: CalendarDay[] };
+
+const draftOf = (r: Record<string, unknown>): Draft => ({
+  ...tagsOf(r),
+  id: r.id as string,
+  question: String(r.question ?? ""),
+  answers: list<string>(r.answers),
+  slot: (r.slot as Draft["slot"]) ?? "manual",
+  why: (r.why as string | null) ?? null,
+  source: (r.source as string | null) ?? null,
+  postAs: r.post_as === "you" ? "you" : "eithr",
+  publishAt: String(r.publish_at),
+  openDays: ([1, 3, 7].includes(Number(r.open_days)) ? Number(r.open_days) : 1) as Draft["openDays"],
+  pollOfDay: Boolean(r.poll_of_day),
+  notify: Boolean(r.notify),
+  status: (r.status as DraftStatus) ?? "new",
+  pollId: (r.poll_id as string | null) ?? null,
+  postedAt: (r.posted_at as string | null) ?? null,
+  error: (r.error as string | null) ?? null,
+  votes: num(r.votes),
+  spark: num(r.spark),
+});
+const settingsOf = (s: Record<string, unknown> | null | undefined): AgentSettings => ({
+  paused: Boolean(s?.paused),
+  draftsPerDay: Number(s?.drafts_per_day ?? 8),
+  postsPerDay: Number(s?.posts_per_day ?? 4),
+  postAs: s?.post_as === "you" ? "you" : "eithr",
+  hinglish: Number(s?.hinglish ?? 50),
+  topicsOff: list<string>(s?.topics_off),
+});
+
+export async function fetchDrafts(): Promise<DraftsData> {
+  const c = await call<Record<string, unknown>>("admin_drafts");
+  const run = c.last_run as Record<string, unknown> | null;
+  return {
+    fresh: list<Record<string, unknown>>(c.new).map(draftOf),
+    scheduled: list<Record<string, unknown>>(c.scheduled).map(draftOf),
+    posted: list<Record<string, unknown>>(c.posted).map(draftOf),
+    settings: settingsOf(c.settings as Record<string, unknown>),
+    lastRun: run
+      ? {
+          startedAt: String(run.started_at),
+          finishedAt: (run.finished_at as string | null) ?? null,
+          status: (run.status as AgentRun["status"]) ?? "done",
+          drafts: Number(run.drafts ?? 0),
+          trends: Number(run.trends ?? 0),
+          error: (run.error as string | null) ?? null,
+          manual: Boolean(run.manual),
+        }
+      : null,
+    requestedAt: (c.requested_at as string | null) ?? null,
+    todayPosts: Number(c.today_posts ?? 0),
+    tomorrowPosts: Number(c.tomorrow_posts ?? 0),
+    adminUsername: (c.admin_username as string | null) ?? null,
+  };
+}
+
+export type DraftInput = PollTags & {
+  question: string;
+  answers: string[];
+  postAs: "eithr" | "you";
+  publishAt: string;
+  openDays: 1 | 3 | 7;
+  pollOfDay: boolean;
+  notify: boolean;
+};
+
+export async function saveDraft(id: string, d: DraftInput): Promise<Draft> {
+  const r = await call<Record<string, unknown>>("admin_draft_save", {
+    draft: id,
+    question: d.question,
+    answers: d.answers,
+    topic: d.topic,
+    feel: d.feel,
+    timely: d.timely ?? false,
+    lang: d.lang,
+    post_as: d.postAs,
+    publish_at: d.publishAt,
+    open_days: d.openDays,
+    poll_of_day: d.pollOfDay,
+    notify: d.notify,
+  });
+  return draftOf(r);
+}
+
+export async function approveDrafts(ids: string[]): Promise<{ approved: number; problems: { id: string; error: string }[] }> {
+  const r = await call<{ approved: number; problems: { id: string; error: string }[] }>("admin_drafts_approve", { ids });
+  return { approved: Number(r.approved ?? 0), problems: list(r.problems) };
+}
+export const skipDrafts = (ids: string[]) => call<number>("admin_drafts_skip", { ids });
+export const unscheduleDraft = (id: string) => call<null>("admin_draft_unschedule", { draft: id });
+export const requestAgentRun = () => call<string>("admin_agent_request");
+
+export async function saveAgentSettings(s: AgentSettings): Promise<AgentSettings> {
+  const r = await call<Record<string, unknown>>("admin_agent_settings", {
+    paused: s.paused,
+    drafts_per_day: s.draftsPerDay,
+    posts_per_day: s.postsPerDay,
+    post_as: s.postAs,
+    hinglish: s.hinglish,
+    topics_off: s.topicsOff,
+  });
+  return settingsOf(r);
+}
+
+export async function fetchTrends(): Promise<TrendsData> {
+  const c = await call<Record<string, unknown>>("admin_trends");
+  return {
+    readAt: (c.read_at as string | null) ?? null,
+    items: list<Record<string, unknown>>(c.items).map((r) => ({
+      ...tagsOf(r),
+      id: Number(r.id),
+      source: String(r.source ?? ""),
+      title: String(r.title ?? ""),
+      url: (r.url as string | null) ?? null,
+      ideaQuestion: (r.idea_question as string | null) ?? null,
+      ideaAnswers: list<string>(r.idea_answers),
+      skipReason: (r.skip_reason as string | null) ?? null,
+      drafted: Boolean(r.drafted),
+    })),
+    calendar: list<Record<string, unknown>>(c.calendar).map((r) => ({
+      id: Number(r.id),
+      day: String(r.day),
+      label: String(r.label ?? ""),
+      addedBy: r.added_by === "seed" ? "seed" : "admin",
+    })),
+  };
+}
+export const draftFromTrend = (id: number) => call<string>("admin_draft_from_trend", { trend: id });
+export const addCalendarDay = (day: string, label: string) => call<number | null>("admin_calendar_add", { on_day: day, label_text: label });
+export const removeCalendarDay = (id: number) => call<null>("admin_calendar_remove", { entry: id });
