@@ -7,6 +7,7 @@ import { SignInRequired } from "@/lib/auth";
 import { audienceLabel } from "@/lib/circle";
 import { castVote } from "@/lib/polls";
 import { asksForTag } from "@/lib/comments";
+import { brainLine, brainReveal, brainWhyTitle, flagBrain, type BrainReveal } from "@/lib/brain";
 import { useCountUp, useLiveCard, useNearScreen } from "@/lib/live";
 import { formatCount, percentages, timeLeft } from "@/lib/format";
 import type { Poll, Visibility, VoteResult } from "@/lib/types";
@@ -155,6 +156,7 @@ export function PollCard({
   const isTake = poll.kind === "hot_take";
   const isMystery = poll.kind === "mystery";
   const isSnap = poll.kind === "snap";
+  const isBrain = poll.kind === "brain";
   const colors = isTake ? TAKE_COLORS : ANSWER_COLORS;
 
   // Views: this person counts once the card has been half on screen for a second (or
@@ -170,6 +172,22 @@ export function PollCard({
   useLiveCard(cardRef, poll.id, !closed && !poll.locked);
   // Friends who voted and a snap's photo load once the card is about a screen away.
   const near = useNearScreen(cardRef);
+
+  // A Brain break's right answer and why, once you've answered (a guest sends the pick they made).
+  const [reveal, setReveal] = useState<BrainReveal | null>(null);
+  const [flagged, setFlagged] = useState<"no" | "sending" | "yes">("no");
+  useEffect(() => {
+    if (!isBrain || !showResults) return;
+    let live = true;
+    brainReveal(poll.id, signedIn === false ? poll.myOptionId : null).then((r) => {
+      if (!live) return;
+      setReveal(r);
+      if (r?.flagged) setFlagged("yes");
+    });
+    return () => {
+      live = false;
+    };
+  }, [isBrain, showResults, poll.id, poll.myOptionId, signedIn]);
 
   // Other people's votes landing: "+3" pops on the card for a moment.
   const [landed, setLanded] = useState(0);
@@ -253,8 +271,15 @@ export function PollCard({
     );
   }
 
+  const brainRight = isBrain && reveal ? reveal.right ?? mineId === reveal.optionId : null;
+  // The answer most people fell for, for "Send to someone who'll say …".
+  const trap = isBrain && reveal ? poll.options.map((o, i) => ({ o, p: pcts[i] })).filter((x) => x.o.id !== reveal.optionId).sort((a, b) => b.p - a.p)[0]?.o.text : undefined;
   const withYou = !showResults
     ? "Locking in your pick…"
+    : isBrain
+      ? reveal && brainRight !== null
+        ? brainLine(brainRight, reveal.rightPct)
+        : "Checking the answer…"
     : shown.voteCount === 1
       ? "First vote. You set the trend!"
       : isTake
@@ -291,8 +316,10 @@ export function PollCard({
       {/* A snap shows who posted it on its photo. */}
       {!isSnap && (
         <div className="poll-meta">
-          <span className={`chip ${poll.kind === "classic" || poll.featuredToday ? "chip-sun" : "chip-white"}`}>
-            {isTake ? (
+          <span className={`chip ${isBrain ? "chip-brain" : poll.kind === "classic" || poll.featuredToday ? "chip-sun" : "chip-white"}`}>
+            {isBrain ? (
+              <span aria-hidden="true">🧠</span>
+            ) : isTake ? (
               <ChiliIcon />
             ) : isMystery ? (
               <span aria-hidden="true">?</span>
@@ -395,9 +422,12 @@ export function PollCard({
           </h1>
         </div>
       ) : (
-        <h1 id={`q-${poll.id}`} className="poll-question">
-          {poll.question}
-        </h1>
+        <>
+          {isBrain && !showResults && !lockingId && <p className="brain-hook">Dimaag lagao 👀 · 1 sec, socho mat</p>}
+          <h1 id={`q-${poll.id}`} className="poll-question">
+            {poll.question}
+          </h1>
+        </>
       )}
 
       {!showResults && !lockingId ? (
@@ -434,7 +464,7 @@ export function PollCard({
           )}
           <p className="poll-foot-note">
             {beforeVoteLabel}
-            {hotLabel} · {isTake ? "vote to see how spicy it is" : "vote to see the results"}
+            {hotLabel} · {isTake ? "vote to see how spicy it is" : isBrain ? "the answer shows after you vote" : "vote to see the results"}
           </p>
           {isCircle && !poll.isMine && (
             <p className="circle-note">@{poll.creator}&apos;s friends can see your pick.</p>
@@ -455,8 +485,9 @@ export function PollCard({
             <ul className="results" aria-label="Results">
               {poll.options.map((o, i) => {
                 const mine = o.id === mineId;
+                const right = isBrain && reveal?.optionId === o.id;
                 return (
-                  <li key={o.id} className={`result${mine ? " result-mine" : ""}`}>
+                  <li key={o.id} className={`result${mine ? " result-mine" : ""}${right ? " result-right" : ""}${isBrain && reveal && mine && !right ? " result-wrong" : ""}`}>
                     {showResults && (
                       <span
                         className="result-bar"
@@ -471,7 +502,12 @@ export function PollCard({
                     )}
                     <span className="result-row">
                       <span className="result-text">
-                        {mine && showResults && <span className="result-check" aria-hidden="true">✓</span>}
+                        {!isBrain && mine && showResults && <span className="result-check" aria-hidden="true">✓</span>}
+                        {right && (
+                          <span className="result-check result-check-right" aria-label="Right answer">
+                            ✓
+                          </span>
+                        )}
                         {o.text}
                         {mine && <span className="chip chip-small">{guestVote && !closed ? "Your pick · not counted yet" : "Your pick"}</span>}
                       </span>
@@ -488,7 +524,7 @@ export function PollCard({
           )}
           {(voted || lockingId) && (
             <div className={`with-you${justVoted ? " pop" : ""}${showResults ? "" : " locking"}`} role="status">
-              {showResults && <span aria-hidden="true">🎉 </span>}
+              {showResults && !isBrain && <span aria-hidden="true">🎉 </span>}
               {withYou}
               {burst &&
                 CONFETTI.map((c, n) => (
@@ -509,6 +545,36 @@ export function PollCard({
                     }
                   />
                 ))}
+            </div>
+          )}
+          {isBrain && reveal && (
+            <div className="brain-why">
+              <b>{brainWhyTitle(reveal.sort)}</b>
+              <p>{reveal.why}</p>
+              {voted && brainRight !== null && (
+                <button type="button" className="btn btn-white press brain-share" onClick={onShare}>
+                  <ShareIcon size={18} />
+                  {brainRight && trap ? `Send to someone who'll say ${trap} 😏` : "Trap a friend with this 🪤"}
+                </button>
+              )}
+              {signedIn && voted && (
+                <button
+                  type="button"
+                  className="brain-flag"
+                  disabled={flagged !== "no"}
+                  onClick={async () => {
+                    setFlagged("sending");
+                    try {
+                      await flagBrain(poll.id);
+                      setFlagged("yes");
+                    } catch {
+                      setFlagged("no");
+                    }
+                  }}
+                >
+                  {flagged === "yes" ? "Thanks, we'll double-check it ✓" : "Wrong answer? Tell us"}
+                </button>
+              )}
             </div>
           )}
           {spice && spice.split >= 70 && voted && (
