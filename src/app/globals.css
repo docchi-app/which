@@ -1358,6 +1358,32 @@ button.ghost-action { cursor: pointer; }
 .sp-pill { display: flex; align-items: center; border-style: solid; border-color: #1b1530; }
 .sp-letter { display: flex; flex: none; align-items: center; justify-content: center; border-style: solid; border-color: #1b1530; background: #fff; }
 .sp-cta { display: flex; flex: none; border-radius: 999px; }
+/* WhatsApp groups: quick vote links (default) or just the link. */
+.share-style {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+.share-style-opt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  text-align: left;
+  padding: 9px 10px;
+  border: var(--outline);
+  border-radius: var(--radius-control);
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.share-style-opt b { font-size: 13.5px; font-weight: 800; }
+.share-style-opt span { font-size: 12px; color: var(--muted); line-height: 1.3; }
+.share-style-opt[aria-checked="true"] { background: var(--tint-mint, #e6f8f1); border-width: 2.5px; box-shadow: var(--shadow-sm); }
+.share-style-opt:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+
 .share-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -3421,6 +3447,9 @@ button.ghost-action { cursor: pointer; }
 .poll-snap > .spice-meter,
 .poll-snap > .settle-btn,
 .poll-snap > .brain-why,
+.poll-snap > .chat-verdict,
+.poll-snap > .quick-pick,
+.poll-snap > .friend-picks,
 .poll-snap > .poll-error { margin-right: 16px; margin-left: 16px; }
 .poll-snap > .created-banner:first-child { margin-top: 12px; }
 .poll-snap > .poll-actions { padding: 0 16px 4px; }
@@ -4557,3 +4586,50 @@ button.ghost-action { cursor: pointer; }
 .signedout-keep { display: flex; flex-wrap: wrap; gap: 6px; }
 .signedout-keep span { padding: 1px 10px; border: 2px solid var(--ink); border-radius: 99px; background: var(--white); font-size: 13px; font-weight: 800; }
 .snap-cancel { align-self: flex-start; }
+
+/* Group links: this chat's verdict and the quick vote line. */
+.chat-verdict { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 2px dashed var(--ink); border-radius: 16px; background: #f4efff; font-size: 14px; }
+.chat-verdict-wait { display: block; font-weight: 700; }
+.chat-verdict-title { font-family: var(--font-display); font-size: 16px; }
+.chat-verdict ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.chat-verdict li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(48px, 40%) auto; align-items: center; gap: 8px; font-weight: 700; }
+.chat-verdict-text { min-width: 0; overflow-wrap: anywhere; }
+.chat-verdict-mine .chat-verdict-text::after { content: " ✓"; }
+.chat-verdict-track { height: 12px; border: 2px solid var(--ink); border-radius: 99px; background: var(--white); overflow: hidden; }
+.chat-verdict-track span { display: block; height: 100%; min-width: 0; }
+.chat-verdict-n { font-family: var(--font-display); font-weight: 800; font-variant-numeric: tabular-nums; min-width: 1.5ch; text-align: right; }
+.chat-verdict-foot { margin: 0; font-size: 12.5px; color: var(--muted); }
+.chat-verdict-share { align-self: stretch; justify-content: center; }
+.quick-pick { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; margin: 0; padding: 8px 12px; border: 2px solid var(--ink); border-radius: 14px; background: #e6f8f1; font-weight: 700; font-size: 14px; }
+.quick-pick > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.quick-pick-change { border: none; background: none; padding: 4px 0; font: inherit; font-weight: 800; text-decoration: underline; color: var(--ink); cursor: pointer; }
+.quick-pick-change:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+.quick-pick-note { font-size: 12.5px; color: var(--muted); font-weight: 500; }
+
+/* Friends' picks: faces on answers, the line under results, the ask, and "You and a friend". */
+.row-faces { display: inline-flex; align-items: center; flex: none; margin-left: auto; padding-left: 6px; }
+.row-faces .person-avatar { margin-left: -6px; border-width: 1.5px; }
+.row-faces .person-avatar:first-child { margin-left: 0; }
+.row-faces-more { font-size: 11px; font-weight: 800; margin-left: 3px; }
+.row-faces + .result-pct { margin-left: 6px; }
+.friend-picks { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.friend-picks-line { margin: 0; padding: 8px 10px; border: 2px dashed var(--ink); border-radius: 14px; background: #f4efff; font-size: 13.5px; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; align-self: stretch; }
+.friend-picks-hide { border: none; background: none; padding: 4px 0; font: inherit; font-size: 12.5px; color: var(--muted); text-decoration: underline; cursor: pointer; }
+.friend-picks-hide:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+.picks-rules { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; line-height: 1.4; }
+.picks-yes { background: var(--mint); color: var(--ink); box-shadow: var(--shadow-md); }
+.picks-fair { margin: 0; font-size: 13px; color: var(--muted); text-align: center; }
+.match-card { display: flex; flex-direction: column; gap: 8px; margin: 0 16px 14px; padding: 14px; background: var(--white); border: var(--outline-bold); border-radius: 22px; box-shadow: var(--shadow); }
+.match-title { font-family: var(--font-display); font-size: 17px; }
+.match-num { font-family: var(--font-display); font-weight: 800; font-size: 40px; line-height: 1; }
+.match-meter { display: block; height: 12px; border: 2px solid var(--ink); border-radius: 99px; background: var(--cream); overflow: hidden; }
+.match-meter i { display: block; height: 100%; background: var(--mint); }
+.match-note { margin: 0; font-size: 13.5px; color: var(--muted); overflow-wrap: anywhere; }
+.match-note b { color: var(--ink); }
+.match-topics { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.match-topics li { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-top: 1.5px solid var(--line); padding-top: 6px; min-width: 0; }
+.match-person { display: inline-flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink); text-decoration: none; font-weight: 700; overflow-wrap: anywhere; }
+.match-topics b { flex: none; text-align: right; }
+.hidden-picks { list-style: none; margin: 0; padding: 0 16px 8px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.hidden-picks li { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.hidden-picks li > span { min-width: 0; overflow-wrap: anywhere; }

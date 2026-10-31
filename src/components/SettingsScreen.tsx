@@ -13,6 +13,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { BottomNav } from "./BottomNav";
 import { DeleteAccountSheet } from "./DeleteAccountSheet";
 import { InstallSheet } from "./InstallSheet";
+import { PicksSettings } from "./FriendPicks";
 import { NotificationSettings } from "./Notifications";
 import { leaveScreen } from "@/lib/back";
 
@@ -80,6 +81,8 @@ export function SettingsScreen() {
       </header>
 
       {signedIn && <NotificationSettings />}
+
+      {signedIn && <PicksSettings />}
 
       {signedIn && email?.hasEmail && (
         <section className="settings-group" aria-labelledby="email-title">

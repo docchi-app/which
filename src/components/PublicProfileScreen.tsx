@@ -23,6 +23,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import type { Poll } from "@/lib/types";
 import { Avatar } from "./Avatar";
 import { BestRankBadge } from "./BestRankBadge";
+import { MatchCard } from "./FriendPicks";
 import { BottomNav } from "./BottomNav";
 import { ProfilePoll } from "./ProfileScreen";
 import { ReportSheet } from "./ReportSheet";
@@ -162,6 +163,8 @@ export function PublicProfileScreen({ username }: { username: string }) {
           <dd>{person ? compactCount(person.circleSize) : "–"}</dd>
         </div>
       </dl>
+
+      {person && status === "friends" && <MatchCard name={person.username} />}
 
       {person && (
         <section className="circle-cta">

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cardInput, pollUrl, recordShare, shareText, warmShareCard, type ShareChannel } from "@/lib/share";
+import { canUseGroupLinks, linkUrl, makeShareLink, markLinkShared, quickVoteText, type LinkStyle } from "@/lib/groups";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import type { Poll } from "@/lib/types";
 import { ShareIcon } from "./icons";
 import { SharePreview } from "./SharePreview";
@@ -22,6 +24,25 @@ export function ShareSheet({ poll, onClose }: Props) {
   // Link only: the link is the only way in, so the sheet says so.
   const linkOnly = poll.isMine && poll.visibility === "link";
   const text = shareText(poll);
+  // WhatsApp groups: one link per answer (a tap votes) or just the link. Each share gets a link of
+  // its own, so that chat sees its own split. Made as the sheet opens, so the tap opens WhatsApp at once.
+  const [groups] = useState(() => isSupabaseConfigured && canUseGroupLinks(poll));
+  const [style, setStyle] = useState<LinkStyle>("quick");
+  const [codes, setCodes] = useState<Partial<Record<LinkStyle, string | null>>>({});
+  const asked = useRef<Set<LinkStyle>>(new Set());
+
+  useEffect(() => {
+    if (!groups || asked.current.has(style)) return;
+    asked.current.add(style);
+    makeShareLink(poll.id, style).then((code) => setCodes((c) => ({ ...c, [style]: code })));
+  }, [groups, style, poll.id]);
+
+  function whatsapp() {
+    const code = groups ? codes[style] : null;
+    if (code) markLinkShared(code);
+    const message = !code ? `${text} ${pollUrl(poll.id, "whatsapp")}` : style === "quick" ? quickVoteText(poll, code) : `${text} ${linkUrl(code)}`;
+    open("whatsapp", `https://wa.me/?text=${encodeURIComponent(message)}`);
+  }
 
   useEffect(() => {
     // Have the link preview ready before a friend's WhatsApp asks for it.
@@ -86,13 +107,21 @@ export function ShareSheet({ poll, onClose }: Props) {
         {/* The same card WhatsApp and X will show, drawn here so it's instant. */}
         <SharePreview card={cardInput(poll)} />
 
+        {groups && (
+          <div className="share-style" role="radiogroup" aria-label="What to send on WhatsApp">
+            <button type="button" role="radio" aria-checked={style === "quick"} className="share-style-opt" onClick={() => setStyle("quick")}>
+              <b>⚡ Quick vote links</b>
+              <span>A link for each answer. One tap votes.</span>
+            </button>
+            <button type="button" role="radio" aria-checked={style === "link"} className="share-style-opt" onClick={() => setStyle("link")}>
+              <b>🔗 Just the link</b>
+              <span>One link with a preview.</span>
+            </button>
+          </div>
+        )}
+
         <div className="share-grid">
-          <button
-            ref={firstRef}
-            type="button"
-            className="share-btn share-btn-whatsapp press"
-            onClick={() => open("whatsapp", `https://wa.me/?text=${encodeURIComponent(`${text} ${pollUrl(poll.id, "whatsapp")}`)}`)}
-          >
+          <button ref={firstRef} type="button" className="share-btn share-btn-whatsapp press" onClick={whatsapp}>
             <WhatsAppIcon />
             WhatsApp
           </button>

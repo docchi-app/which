@@ -85,7 +85,7 @@ run_browser() {
   NODE_OPTIONS="-r $ROOT/tests/fakes/fake-resend.cjs -r $ROOT/tests/fakes/fake-openai.cjs" NEXT_PUBLIC_VAPID_PUBLIC_KEY="$PUB" \
     NEXT_PUBLIC_SUPABASE_URL=http://localhost:54339 NEXT_PUBLIC_SUPABASE_ANON_KEY=anon start_app || return
   suite browser/net-audit env PRIV="$PRIV" node tests/browser/net-audit.cjs
-  for t in asks mod emailtest errors people growth fix likes drafts migrate fresh tags-limit approve tags brain states; do suite "browser/$t" node "tests/browser/$t-test.cjs"; done
+  for t in asks mod emailtest errors people growth fix likes drafts migrate fresh tags-limit approve tags brain states groups; do suite "browser/$t" node "tests/browser/$t-test.cjs"; done
   suite secret-audit npm run -s check:secrets
   stop_app
   unset OPENAI_API_KEY RESEND_API_KEY GOOGLE_CLIENT_SECRET SARVAM_API_KEY VAPID_PRIVATE_KEY PUSH_CRON_SECRET

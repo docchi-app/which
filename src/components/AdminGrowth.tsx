@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import {
   fetchContent,
   fetchFunnel,
+  fetchLinkStyles,
   fetchNotifStats,
   fetchOverview,
   fetchSources,
   type ContentStats,
   type DaySnapshot,
   type Funnel,
+  type LinkStyleRow,
   type NotifStats,
   type Overview,
   type Sources,
@@ -473,9 +475,51 @@ const SOURCE_LABEL: Record<string, string> = {
 };
 const seenBy = (visibility: string) => (visibility === "circle" ? "friends only" : visibility === "link" ? "link only" : "everyone");
 
+/** WhatsApp group links: which kind brings more votes per share (keep the winner). */
+function LinkStyles({ rows }: { rows: LinkStyleRow[] }) {
+  const by = (k: "quick" | "link") => rows.find((r) => r.style === k) ?? { style: k, links: 0, votes: 0, votedLinks: 0 };
+  const per = (r: LinkStyleRow) => (r.links ? (r.votes / r.links).toFixed(1) : "–");
+  return (
+    <section className="ppl-card" aria-labelledby="gr-links">
+      <h2 id="gr-links" className="err-label ppl-pad gr-h">
+        WhatsApp group links
+      </h2>
+      <div className="gr-scroll">
+        <table className="gr-table">
+          <thead>
+            <tr>
+              <th scope="col">Kind</th>
+              <th scope="col">Shared</th>
+              <th scope="col">Got a vote</th>
+              <th scope="col">Votes</th>
+              <th scope="col">Per share</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(["quick", "link"] as const).map((k) => {
+              const r = by(k);
+              return (
+                <tr key={k}>
+                  <th scope="row">{k === "quick" ? "Quick vote links" : "Just the link"}</th>
+                  <td>{r.links}</td>
+                  <td>{r.votedLinks}</td>
+                  <td>{r.votes}</td>
+                  <td>{per(r)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="ppl-note ppl-pad">Votes from people other than the one who shared. Keep whichever gets more per share.</p>
+    </section>
+  );
+}
+
 export function AdminSources() {
   const [days, setDays] = useState(7);
   const { data: s, failed } = useLoad<Sources>(fetchSources, days);
+  const { data: styles } = useLoad<LinkStyleRow[]>(fetchLinkStyles, days);
   if (failed) return <Failed />;
   const top = s ? Math.max(1, ...s.sources.map((x) => x.n)) : 1;
   return (
@@ -524,6 +568,7 @@ export function AdminSources() {
               )}
             </section>
           </div>
+          {styles && <LinkStyles rows={styles} />}
           <div className="ppl-two">
             <section className="ppl-card ppl-stack" aria-labelledby="gr-polls">
               <h2 id="gr-polls" className="err-label ppl-pad gr-h">

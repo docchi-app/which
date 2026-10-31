@@ -693,6 +693,19 @@ export async function fetchFunnel(days: number): Promise<Funnel> {
   };
 }
 
+export type LinkStyleRow = { style: "quick" | "link"; links: number; votes: number; votedLinks: number };
+
+/** Group links shared to WhatsApp: quick vote links vs just the link. */
+export async function fetchLinkStyles(days: number): Promise<LinkStyleRow[]> {
+  const rows = await call<Record<string, unknown>[]>("admin_link_styles", { days });
+  return list<Record<string, unknown>>(rows).map((r) => ({
+    style: r.style === "link" ? "link" : "quick",
+    links: Number(r.links ?? 0),
+    votes: Number(r.votes ?? 0),
+    votedLinks: Number(r.voted_links ?? 0),
+  }));
+}
+
 export async function fetchSources(days: number): Promise<Sources> {
   const s = await call<Record<string, unknown>>("admin_sources", { days });
   return {

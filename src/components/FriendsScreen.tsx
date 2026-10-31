@@ -9,6 +9,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import Link from "next/link";
 import { BottomNav } from "./BottomNav";
 import { FriendsPanel } from "./FriendsPanel";
+import { MatchesList } from "./FriendPicks";
 import { SignInNote } from "./SignInSheet";
 
 /** /friends: invite, find people, requests and your friends. */
@@ -91,6 +92,7 @@ export function FriendsScreen() {
               <span aria-hidden="true">→</span>
             </Link>
           )}
+          <MatchesList />
           <FriendsPanel username={username} />
         </>
       ) : null}

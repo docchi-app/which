@@ -107,6 +107,11 @@ const events = [{ at: new Date(Date.now() - 3600e3).toISOString(), action: 'word
 // The signed-in user's id, from the request's JWT.
 const whoIs = (req) => { try { return JSON.parse(Buffer.from(String(req.headers.authorization || '').replace(/^Bearer\s+/i, '').split('.')[1], 'base64url').toString()).sub; } catch { return null; } };
 let propsNoWait = false;
+// Group links (code → { poll, style, shared, tagged, mine, others: votes per answer from the rest of the chat }).
+const links = {};
+// Friends' picks: my setting (null = not asked) and the picks I've hidden.
+let picksShare = null;
+const hiddenPickSet = new Set();
 let adminMorning = false;
 let limits = { polls: 10, snaps: 3 }, limitChanges = [];
 http.createServer((req, res) => {
@@ -148,6 +153,10 @@ http.createServer((req, res) => {
     if (url.pathname === '/__no_brain_settings') { for (const k of ['brain_per_week', 'brain_hour', 'brain_sorts_off']) delete agent.settings[k]; return json(200, true); }
     if (url.pathname === '/__agent_slot') { agent.forceSlot = url.searchParams.get('slot'); return json(200, agent.forceSlot); }
     if (url.pathname === '/__agent_expire') { let n = 0; for (const d of agent.drafts) if (d.status === 'new' && d.expires_at) { d.expires_at = new Date(Date.now() - 60000).toISOString(); n++; } return json(200, n); }
+    // Tests: a group link made by someone else, with votes from the chat: /__link?poll=…&code=…&others=2,1
+    if (url.pathname === '/__link') { const code = url.searchParams.get('code'); links[code] = { poll: url.searchParams.get('poll'), style: 'quick', shared: true, tagged: false, mine: false, others: (url.searchParams.get('others') || '').split(',').filter(Boolean).map(Number) }; return json(200, links[code]); }
+    if (url.pathname === '/__links') return json(200, links);
+    if (url.pathname === '/__picks') { picksShare = url.searchParams.get('share') === null ? null : url.searchParams.get('share') === 'true'; return json(200, picksShare); }
     if (url.pathname === '/__fn_state') { fnState[url.searchParams.get('name')] = url.searchParams.get('state'); return json(200, fnState); }
     { const fnName = url.pathname.replace('/rest/v1/rpc/', '');
       if (fnState[fnName] === 'missing') { log.push('MISSING ' + fnName); return json(404, { code: 'PGRST202', details: 'Searched for the function public.' + fnName, hint: null, message: `Could not find the function public.${fnName}(max_rows, secret) in the schema cache` }); }
@@ -489,6 +498,26 @@ http.createServer((req, res) => {
       case '/__crash_get_poll': crashGetPoll = url.searchParams.get('off') === null; return json(200, null);
       case '/__error_reports': return json(200, errorReports);
       case 'boom_500': return json(500, { message: 'boom' });
+      case 'make_share_link': { const p = polls.find((x) => x.id === a.poll); if (!whoIs(req)) return json(401, { message: 'JWT required' }); if (!p || p.visibility === 'circle') return json(400, { message: 'docchi:no_poll' }); const code = (Date.now().toString(16) + Math.random().toString(16).slice(2, 8)).slice(-10); links[code] = { poll: a.poll, style: a.style, shared: false, tagged: false, mine: true, others: [] }; log.push('LINK ' + a.style + ' ' + code); return json(200, code); }
+      case 'mark_link_shared': if (links[a.code]) links[a.code].shared = true; log.push('LINK_SHARED ' + a.code); return json(200, null);
+      case 'link_poll': return json(200, links[a.code]?.poll ?? null);
+      case 'link_vote': case 'link_verdict': {
+        const l = links[a.code]; if (!l) return json(200, null);
+        if (!whoIs(req)) return json(401, { message: 'JWT required' });
+        if (url.pathname.endsWith('link_vote') && votes[l.poll] && !l.tagged) { l.tagged = votes[l.poll]; log.push('LINK_VOTE ' + a.code); }
+        const p = polls.find((x) => x.id === l.poll); const voted = !!votes[l.poll];
+        const per = p.options.map((o, i) => (l.others[i] || 0) + (l.tagged === o.id ? 1 : 0));
+        return json(200, { poll_id: l.poll, asker: l.mine ? 'mayank' : 'priya', mine: l.mine, total: per.reduce((x, y) => x + y, 0), voted, options: voted || l.mine ? p.options.map((o, i) => ({ id: o.id, votes: per[i] })) : null });
+      }
+      case 'undo_vote': { const p = polls.find((x) => x.id === a.poll); const o = votes[a.poll]; if (!o) return json(200, null); delete votes[a.poll]; p.vote_count--; p.options.find((x) => x.id === o)._v--; for (const l of Object.values(links)) if (l.poll === a.poll && l.tagged) l.tagged = false; log.push('UNDO ' + a.poll); return json(200, null); }
+      case 'admin_link_styles': return json(200, [{ style: 'link', links: 4, votes: 6, voted_links: 2 }, { style: 'quick', links: 9, votes: 31, voted_links: 7 }]);
+      case 'my_picks_setting': return json(200, picksShare);
+      case 'set_picks_to_friends': picksShare = !!a.share; log.push('PICKS ' + picksShare); return json(200, null);
+      case 'friend_picks': { const p = polls.find((x) => x.id === a.poll); if (!picksShare || !votes[a.poll] || !p || a.poll !== polls[0].id) return json(200, []); return json(200, [{ username: U20, avatar_url: null, option_id: p.options[0].id }, { username: 'zoya', avatar_url: null, option_id: p.options[1].id }, { username: 'aman', avatar_url: null, option_id: p.options[1].id }]); }
+      case 'my_hidden_picks': return json(200, [...hiddenPickSet].map((id) => ({ poll_id: id, question: polls.find((x) => x.id === id)?.question ?? 'A poll' })));
+      case 'hide_my_pick': if (a.hidden) hiddenPickSet.add(a.poll); else hiddenPickSet.delete(a.poll); log.push('HIDE ' + a.poll + ' ' + a.hidden); return json(200, null);
+      case 'friend_match': return json(200, picksShare ? { shared: 14, agree: 10, topics: [{ topic: 'food', shared: 6, agree: 5 }, { topic: 'cricket', shared: 4, agree: 2 }], split: { poll_id: polls[1].id, question: polls[1].question } } : null);
+      case 'my_matches': return json(200, picksShare ? [{ username: 'priya', avatar_url: null, shared: 14, agree: 10 }, { username: 'zoya', avatar_url: null, shared: 11, agree: 3 }] : []);
       case 'cast_vote': { votes[a.target_poll] = a.target_option; const p = polls.find((x) => x.id === a.target_poll); p.vote_count++; p.options.find((o) => o.id === a.target_option)._v++; const v = view(p); return json(200, [{ my_option_id: v.my_option_id, vote_count: v.vote_count, question: p.question, options: v.options }]); }
       case 'record_views': return json(200, null);
       case 'brain_reveal': {

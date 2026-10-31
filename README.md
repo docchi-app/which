@@ -836,6 +836,28 @@ friendlier voice (a hook, 1–2 emojis, punchy answers).
   out" once, and a vote asks for Google (keeping the pick) instead of quietly starting a guest.
   "Sign out" and deleting the account forget it.
 
+### 20. WhatsApp groups and friends' picks
+
+Run `20261215000000_groups_friend_picks.sql` in the SQL Editor (then the migration check).
+
+- **WhatsApp groups:** the share sheet offers **⚡ Quick vote links** (the default) or **🔗 Just the
+  link** for WhatsApp. Quick sends one link per answer (`/v/<code>1`, `/v/<code>2`…): one tap opens
+  the poll and votes that answer, with "✓ You picked … · Change (10s)" for a mis-tap (taken back on
+  the server within 15 seconds; never on a Brain break). Just the link sends `/v/<code>` with the
+  preview. Every share gets its own link (`share_links`), so the people in that chat see **This chat's
+  verdict** (counts only, never names, the split once they've voted) and can send it back to the chat.
+  The person who shared it gets "Your group is voting · Manali leads 3–2" at 1, 3, 5, 10, 25, 50 and
+  100 votes (their votes notifications setting applies). Opening a link never votes (WhatsApp opens
+  links to draw the preview); the vote is cast by the page. Friends-only polls keep the plain link.
+  Admin → Growth → Sources → **WhatsApp group links** shows which kind gets more votes per share.
+- **Friends' picks:** after voting where friends voted, people are asked once, "Show your picks to
+  friends?" (off until they say yes; fair both ways: private means you don't see theirs). Then each
+  answer shows the faces of friends who picked it, with a line like "You and @priya picked this. 2
+  friends went the other way." and **Hide my pick on this one**. Only accepted friends, only after
+  you've voted, never guests or Brain breaks. A friend's profile shows **You and @priya: 72%** (after
+  10 polls together, by topic, and the biggest split); the Friends tab lists **Your friends, by
+  match**. Settings → Friends switches it off and lists hidden picks.
+
 ### Free tier limits to know about
 
 - **A free project pauses after about a week with no activity.** You can restore it from the
@@ -865,6 +887,8 @@ per Supabase auth user, created automatically by a database trigger.
 | Friends-only polls: only friends (or the chosen lists) see, vote on and see picks; on other polls friends see only that you voted | `can_view_poll()`, used by `get_feed()`, `poll_cards()`, `cast_vote()`, `circle_picks()`; `friends_voted()` returns names, never picks |
 | No reading polls around the rules | direct `select` on `polls` / `poll_options` is revoked; everything goes through the functions |
 | Shares count once per person per poll | `shares` primary key + `record_share()`; signed-out shares aren't counted |
+| A WhatsApp group sees its own split, never names | `share_links` (one per share, 100 a day each); `votes.link_code` remembers the first link a vote came through (`link_vote()`); `link_verdict()` shows counts, the split only once you've voted; `undo_vote()` only within 15 seconds and never on a Brain break |
+| Friends see picks only if both say yes | `profiles.picks_to_friends` (null = not asked); `friend_picks()` needs you to share yours, to have voted, and the friend to share theirs; `votes.pick_hidden` hides one; `friend_match()` / `my_matches()` compare only polls neither hid |
 | Word filter | `blocked_matches()` / `has_blocked_term()`, used by polls, snaps, comments, usernames and friend lists. The text is cleaned first (`mod_clean()`: lower case, accents and Devanagari nukta out, leetspeak like sh1t / a$$, symbols inside words, spaced-out and stretched letters), then matched against `blocked_terms` (~250: English, Hinglish, Hindi and Marathi in both scripts, mc/bc/bsdk…) as a whole word, the start of a word, or anywhere; 'allow' words are never blocked. Managed in Admin → Words |
 | AI check on typed polls and comments | Live at once, then `/api/moderate/check` runs OpenAI's free moderation on the author's own unchecked posts (`my_unchecked_texts()`); the push job sweeps anything missed (`texts_to_check()`). `set_text_verdict()` (needs `PUSH_CRON_SECRET`): clearly bad (or strong violence aimed at someone: violence ≥ 0.7 with a threat ≥ 0.2 or violent wrongdoing ≥ 0.3) → hidden like 3 reports and in the Admin queue; unsure → in the queue |
 | Counters stay correct | `cast_vote()` saves the vote and bumps both counters in one transaction |

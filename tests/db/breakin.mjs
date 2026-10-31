@@ -117,4 +117,18 @@ await q(`insert into auth.users(id, email, is_anonymous) values ($1, null, true)
 await expectBlocked('guest creates poll', G, `select create_poll('Guest poll?', array['a','b'], 1)`, [], undefined);
 await expectBlocked('guest comments', G, `select post_comment($1,'hi')`, [PP]);
 await expectBlocked('guest sends friend request', G, `select request_circle($1)`, [name('owner')]);
+
+console.log('\n== Group links and friends\' picks');
+await expectBlocked('signed-out makes a group link', null, `select make_share_link($1) v`, [PP]);
+await expectBlocked('signed-out reads a chat\'s verdict', null, `select link_verdict('0000000000') v`);
+await expectBlocked('signed-out tags a vote to a link', null, `select link_vote('0000000000') v`);
+await expectBlocked('signed-out takes back a vote', null, `select undo_vote($1) v`, [PP]);
+await expectBlocked('stranger reads share_links directly', U.stranger, `select * from share_links`);
+await expectBlocked('guest sees friends\' picks', G, `select * from friend_picks($1)`, [PP]);
+await expectBlocked('guest turns on picks', G, `select set_picks_to_friends(true)`);
+await expectBlocked('stranger sees the owner\'s picks', U.stranger, `select * from friend_picks($1)`, [PP]);
+await expectBlocked('stranger compares picks with the owner', U.stranger, `select friend_match($1) v`, [name('owner')]);
+await expectBlocked('signed-out compares picks', null, `select friend_match($1) v`, [name('owner')]);
+await expectBlocked('stranger calls the internal pick helpers', U.stranger, `select * from shared_picks($1,$2)`, [U.owner, U.friend]);
+await expectBlocked('stranger reads the link styles (admin)', U.stranger, `select * from admin_link_styles(30)`);
 console.log(`\nRESULT: ${pass} passed, ${fail} failed`);

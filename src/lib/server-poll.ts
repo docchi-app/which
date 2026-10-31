@@ -64,6 +64,26 @@ export async function getSharedPoll(id: string): Promise<SharedPoll | null> {
   }
 }
 
+/** Which poll a group link (/v/<code>) opens; null if the link or its poll is gone. Cached for a minute. */
+export async function getLinkPoll(code: string): Promise<string | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key || !/^[0-9a-f]{10}$/.test(code)) return null;
+  try {
+    const res = await fetch(`${url}/rest/v1/rpc/link_poll`, {
+      method: "POST",
+      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return null;
+    const id = (await res.json()) as string | null;
+    return typeof id === "string" && UUID.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Absolute base URL for links and preview images. */
 export function siteUrl(): URL {
   const explicit = process.env.NEXT_PUBLIC_SITE_URL;

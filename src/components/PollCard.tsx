@@ -20,6 +20,9 @@ import { SnapPoll } from "./SnapCard";
 import { NotificationPrompt } from "./Notifications";
 import { useFitActions, ViewsAction } from "./ViewsAction";
 import { useBackClose } from "@/lib/back";
+import { linkVerdict, linkVote, type Verdict } from "@/lib/groups";
+import { ChatVerdict, QuickPickLine } from "./GroupBits";
+import { FriendPicksLine, PicksAskSheet, RowFaces, useFriendPicks } from "./FriendPicks";
 
 // Sheets load only when they open: a feed of cards shouldn't carry them all up front.
 const CommentsSheet = dynamic(() => import("./CommentsSheet").then((m) => m.CommentsSheet), { ssr: false });
@@ -75,6 +78,8 @@ type Props = {
   onDeleted?: (pollId: string) => void;
   /** Open the comments straight away (a "new comments" notification). */
   openComments?: boolean;
+  /** Opened from a group link: its code, and the answer a quick vote link votes (1–4). */
+  via?: { code: string; pick: number | null };
 };
 
 /** Eithr's own polls carry a tick. */
@@ -118,6 +123,7 @@ export function PollCard({
   onReported,
   onDeleted,
   openComments = false,
+  via,
 }: Props) {
   // The pick being saved. The card switches to results the moment you tap;
   // the bars fill in when the server answers.
@@ -179,6 +185,8 @@ export function PollCard({
   useLiveCard(cardRef, poll.id, !closed && !poll.locked);
   // Friends who voted and a snap's photo load once the card is about a screen away.
   const near = useNearScreen(cardRef);
+  // What friends picked (public and link polls, once you've voted; never Brain breaks or snaps).
+  const friendsPicks = useFriendPicks(poll, !!signedIn && voted && near && poll.visibility !== "circle" && !isBrain && !isSnap && !poll.locked, justVoted);
 
   // A Brain break's right answer and why, once you've answered (a guest sends the pick they made).
   const [reveal, setReveal] = useState<BrainReveal | null>(null);
@@ -243,6 +251,50 @@ export function PollCard({
     // Only for this poll; onVoted and showFinal are stable enough for an event listener.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poll.id, voted]);
+
+  // Group links: this chat's verdict, and the answer a quick vote link picked for you.
+  const [verdict, setVerdict] = useState<Verdict | null>(null);
+  const [autoPicked, setAutoPicked] = useState<string | null>(null);
+  const autoTried = useRef(false);
+  useEffect(() => {
+    if (!via || signedIn === null) return;
+    let live = true;
+    const show = (v: Verdict | null) => live && setVerdict(v);
+    // Once voted, my vote joins this chat's count (link_vote); then the split refreshes now and then.
+    (voted ? linkVote(via.code) : linkVerdict(via.code)).then(show, () => {});
+    const t = voted ? window.setInterval(() => linkVerdict(via.code).then(show, () => {}), 20000) : 0;
+    return () => {
+      live = false;
+      window.clearInterval(t);
+    };
+  }, [via, voted, signedIn]);
+  useEffect(() => {
+    // A quick vote link: vote that answer once the page is up (opening the link alone never votes).
+    if (!via?.pick || autoTried.current || voted || closed || signedIn === null || waiting) return;
+    const o = poll.options[via.pick - 1];
+    if (!o) return;
+    autoTried.current = true;
+    // Reloading the page shouldn't vote again.
+    try {
+      window.history.replaceState(window.history.state, "", `/v/${via.code}`);
+    } catch {}
+    // Not cancelled if this effect runs again: it's meant to happen exactly once.
+    window.setTimeout(() => {
+      setAutoPicked(o.id);
+      void vote(o.id);
+    }, 0);
+    // vote() is this card's own handler; this runs once per card.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [via, voted, closed, signedIn, waiting]);
+
+  /** Took back a quick vote (a mis-tap): the answers show again. */
+  async function undone() {
+    setAutoPicked(null);
+    setJustVoted(false);
+    setBurst(false);
+    const fresh = await fetchPoll(poll.id).catch(() => null);
+    if (fresh) onRefresh(fresh);
+  }
 
   /** The poll closed before the vote landed: show how it ended. */
   async function showFinal() {
@@ -558,6 +610,7 @@ export function PollCard({
           {isCircle && !poll.isMine && (
             <p className="circle-note">@{poll.creator}&apos;s friends can see your pick.</p>
           )}
+          {via && verdict && !voted && <ChatVerdict poll={poll} verdict={verdict} code={via.code} />}
         </>
       ) : (
         <>
@@ -600,6 +653,7 @@ export function PollCard({
                         {o.text}
                         {mine && <span className="chip chip-small">{guestVote && !closed ? "Your pick · not counted yet" : "Your pick"}</span>}
                       </span>
+                      {showResults && <RowFaces picks={friendsPicks.picks} optionId={o.id} />}
                       {showResults && (
                         <span className="result-pct" style={{ animationDelay: `${0.5 + i * 0.08}s` }}>
                           {pcts[i]}%
@@ -636,6 +690,11 @@ export function PollCard({
                 ))}
             </div>
           )}
+          {via && voted && autoPicked && autoPicked === poll.myOptionId && (
+            <QuickPickLine poll={poll} optionId={autoPicked} canChange={!isBrain && !closed} onUndone={undone} />
+          )}
+          {via && verdict && voted && <ChatVerdict poll={poll} verdict={verdict} code={via.code} />}
+          {voted && <FriendPicksLine poll={poll} state={friendsPicks} />}
           {isBrain && reveal && (
             <div className="brain-why">
               <b>{brainWhyTitle(reveal.sort)}</b>
@@ -812,6 +871,7 @@ export function PollCard({
           }}
         />
       )}
+      {friendsPicks.ask && <PicksAskSheet onDone={friendsPicks.answered} onClose={friendsPicks.dismissAsk} />}
       {deleting && <DeleteSnapSheet pollId={poll.id} onClose={() => setDeleting(false)} onDeleted={() => onDeleted?.(poll.id)} />}
       {reporting && (
         <ReportSheet

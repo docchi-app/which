@@ -147,8 +147,11 @@ function mergeLive(list: Poll[], rows: LiveCounts[]): Poll[] {
   return changed ? next : list;
 }
 
-/** `initialPollId` opens the feed on that poll (a shared /p/<id> link). */
-export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
+/**
+ * `initialPollId` opens the feed on that poll (a shared /p/<id> link). `via`: it came from a group
+ * link (/v/<code>), and `pick` is the answer a quick vote link votes (1–4).
+ */
+export function Feed({ initialPollId, via }: { initialPollId?: string; via?: { code: string; pick: number | null } } = {}) {
   // Coming back from another screen: carry on where you were, no reload.
   const [saved] = useState(() => savedFeed(initialPollId));
   const tabsRef = useRef<Partial<Record<FeedTab, TabState>>>(saved?.tabs ?? {});
@@ -917,6 +920,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
                         onReported={removePoll}
                         onDeleted={removePoll}
                         openComments={poll.id === commentsFor}
+                        via={via && poll.id === initialPollId && poll.id === sharedId ? via : undefined}
                       />
                     )}
                   </div>

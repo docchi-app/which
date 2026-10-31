@@ -174,6 +174,13 @@ export function rememberGuestPick(vote: PendingVote) {
   }
 }
 
+/** A guest took a vote back (a mis-tap from a quick vote link). */
+export function forgetGuestPick(pollId: string) {
+  try {
+    localStorage.setItem(GUEST_PICKS_KEY, JSON.stringify(guestPicks().filter((p) => p.pollId !== pollId)));
+  } catch {}
+}
+
 export function forgetGuestPicks() {
   try {
     localStorage.removeItem(GUEST_PICKS_KEY);
