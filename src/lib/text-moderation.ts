@@ -83,6 +83,10 @@ export async function rpc<T>(fn: string, args: Record<string, unknown>, token?: 
   return (text ? JSON.parse(text) : null) as T;
 }
 
+/** True for "this database function doesn't exist yet": a deploy that came before its migration
+ * was run (PostgREST PGRST202). Jobs skip quietly instead of reporting it every 2 minutes. */
+export const notMigrated = (e: unknown) => /PGRST202|Could not find the function/.test(e instanceof Error ? e.message : String(e));
+
 export type TextItem = { target_type: "poll" | "comment"; target_id: string; body: string };
 
 /** Checks each item and records the verdict. Returns how many were checked. */

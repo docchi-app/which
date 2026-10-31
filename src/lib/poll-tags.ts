@@ -5,7 +5,7 @@
 // text can't make it write anything else. Model: OPENAI_TAG_MODEL, or gpt-4.1-mini.
 
 import "server-only";
-import { rpc } from "./text-moderation";
+import { notMigrated, rpc } from "./text-moderation";
 import { reportServerError } from "./server-errors";
 
 const env = (name: string) => process.env[name]?.trim() || undefined;
@@ -98,7 +98,11 @@ export async function tagPoll(p: Todo): Promise<Tags | null> {
 /** For the 2-minute job: tags up to 20 polls. Returns how many were tagged. */
 export async function sweepTags(): Promise<number> {
   if (!tagsConfigured) return 0;
-  const todo = await rpc<Todo[]>("polls_to_tag", { secret, max_rows: 20 });
+  // Before 20261210000000_likes.sql has run there's nothing to ask: skip quietly.
+  const todo = await rpc<Todo[]>("polls_to_tag", { secret, max_rows: 20 }).catch((e) => {
+    if (notMigrated(e)) return [];
+    throw e;
+  });
   if (!todo?.length) return 0;
   let done = 0;
   let firstError: unknown = null;

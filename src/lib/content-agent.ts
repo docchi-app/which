@@ -10,7 +10,7 @@
 // Model: OPENAI_CONTENT_MODEL, or gpt-4.1.
 
 import "server-only";
-import { rpc, scoreText, textVerdict } from "./text-moderation";
+import { notMigrated, rpc, scoreText, textVerdict } from "./text-moderation";
 import { sendAll, type PushPayload, type PushTarget } from "./push-server";
 import { reportServerError } from "./server-errors";
 import { FEELS, LANGS, TOPICS } from "./poll-tags";
@@ -319,6 +319,3 @@ export async function postDueDrafts(): Promise<number> {
     throw e;
   });
 }
-
-// Before 20261211000000_content_agent.sql has run, the functions aren't there (PostgREST PGRST202).
-const notMigrated = (e: unknown) => /PGRST202|Could not find the function/.test(e instanceof Error ? e.message : String(e));
