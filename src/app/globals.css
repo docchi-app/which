@@ -2927,6 +2927,9 @@ button.ghost-action { cursor: pointer; }
   .gr-table th:first-child { padding-left: 12px; white-space: normal; }
   .gr-table td:last-child, .gr-table th:last-child { padding-right: 12px; }
   .gr-table thead th { font-size: 10px; letter-spacing: 0; white-space: normal; }
+  /* Long phone and browser names wrap anywhere, so the numbers always fit on a 320px phone,
+     whatever its fonts. */
+  .gr-table tbody th { overflow-wrap: anywhere; }
   .gr-ret { border-spacing: 3px; }
   .gr-ret tbody th { padding-right: 2px; white-space: normal; }
   .gr-ret tbody th small { display: block; }
@@ -4517,3 +4520,11 @@ button.ghost-action { cursor: pointer; }
 .dr-bo li { display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
 .dr-bo a { color: var(--ink); font-weight: 700; }
 .dr-bo small { color: var(--muted); }
+
+/* Admin tables on the narrowest phones (320–360px): a little less padding and type. */
+@media (max-width: 360px) {
+  .gr-table { font-size: 12px; }
+  .gr-table th, .gr-table td { padding: 7px 3px; }
+  .gr-table th:first-child { padding-left: 10px; }
+  .gr-table td:last-child, .gr-table th:last-child { padding-right: 10px; }
+}

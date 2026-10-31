@@ -1,0 +1,42 @@
+const { ROOT, TMP, SHOTS } = require('../env.cjs');
+// Settings → "Props without the wait": admins only; reads and sets admin_props_no_wait.
+const { chromium } = require('playwright');
+require(ROOT + '/scripts/layout-check/mock-supabase.cjs');
+const B = 'http://localhost:3145', M = 'http://localhost:54339';
+const now = Math.floor(Date.now() / 1000), b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+let pass = 0, fail = 0;
+const ok = (label, cond, extra = '') => { cond ? pass++ : fail++; console.log(cond ? 'PASS' : 'FAIL', label, extra); };
+(async () => {
+  const b = await chromium.launch(); const errors = [];
+  const mk = async (w, admin) => {
+    const ctx = await b.newContext({ viewport: { width: w, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const jwt = `${b64({ alg: 'HS256' })}.${b64({ sub: 'u1', role: 'authenticated', is_anonymous: false, exp: now + 3600 })}.sig`;
+    const user = { id: 'u1', aud: 'authenticated', role: 'authenticated', is_anonymous: false, app_metadata: {}, user_metadata: {}, created_at: new Date(Date.now() - 30 * 864e5).toISOString() };
+    await ctx.addCookies([{ name: 'sb-localhost-auth-token', value: 'base64-' + Buffer.from(JSON.stringify({ access_token: jwt, token_type: 'bearer', expires_in: 3600, expires_at: now + 3600, refresh_token: 'r', user })).toString('base64url'), url: B }]);
+    if (!admin) await ctx.route('**/rest/v1/rpc/my_profile', async (r) => { const res = await r.fetch(); const j = await res.json(); j.is_admin = false; r.fulfill({ response: res, json: j }); });
+    const p = await ctx.newPage(); p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(B + '/settings'); await p.waitForTimeout(2000);
+    return p;
+  };
+  const sw = (p) => p.getByRole('switch', { name: /Props without the wait/ });
+  let p = await mk(390, true);
+  ok('admin: the switch is there, off', (await sw(p).count()) === 1 && !(await sw(p).isChecked()));
+  await sw(p).click(); await p.waitForTimeout(600);
+  const log = await (await fetch(M + '/__log')).json();
+  ok('turned on: saved', (await sw(p).isChecked()) && log.includes('PROPS_NOWAIT true'));
+  await p.reload(); await p.waitForTimeout(2000);
+  ok('after reload: still on', await sw(p).isChecked());
+  await sw(p).click(); await p.waitForTimeout(600);
+  ok('turned off: saved', !(await sw(p).isChecked()) && (await (await fetch(M + '/__log')).json()).includes('PROPS_NOWAIT false'));
+  ok('nothing sideways (390)', await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await p.locator('text=Props without the wait').scrollIntoViewIfNeeded(); await p.screenshot({ path: TMP + '/nowait-390.png' });
+  await p.context().close();
+  p = await mk(320, true);
+  ok('320 px: nothing sideways', await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await p.context().close();
+  p = await mk(390, false);
+  ok('not an admin: no switch', (await sw(p).count()) === 0 && (await p.getByRole('switch', { name: /Include me in Props/ }).count()) === 1);
+  await p.context().close();
+  ok('no page errors', !errors.length, errors.join(' | '));
+  console.log(`\n${pass} pass, ${fail} fail`); await b.close(); process.exit(0);
+})();

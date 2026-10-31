@@ -1,0 +1,66 @@
+# Every Monday morning (India time), and on demand: the outside view of the live site, a full
+# dependency check, and a secret scan of the last week's commits. If anything fails it opens (or
+# comments on) one "Weekly security check failed" issue. Read-only apart from that issue.
+name: Weekly security check
+
+on:
+  schedule:
+    - cron: "17 1 * * 1" # Monday 06:47 India time
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Live site (headers, private files, admin and API routes, browser files, Observatory)
+        id: live
+        continue-on-error: true
+        run: node scripts/security/live-check.mjs https://eithr.app | tee live.txt
+      - name: Dependencies (everything that ships)
+        id: deps
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=moderate | tee deps.txt
+      - name: Secrets added in the last 8 days
+        id: history
+        continue-on-error: true
+        run: node scripts/security/history-scan.mjs 8 | tee history.txt
+      - name: Report
+        if: steps.live.outcome == 'failure' || steps.deps.outcome == 'failure' || steps.history.outcome == 'failure'
+        run: |
+          {
+            echo "The weekly security check found something. Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            echo "- Live site: ${{ steps.live.outcome }}"; grep -E '^FAIL' live.txt | sed 's/^/  - /' || true
+            echo "- Dependencies: ${{ steps.deps.outcome }}"
+            echo "- Secrets in recent commits: ${{ steps.history.outcome }}"; grep -E '^FAIL' history.txt | sed 's/^/  - /' || true
+          } > report.md
+          cat report.md
+          exit 1
+  open-issue:
+    needs: security
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Weekly security check failed';
+            const body = `The weekly security check failed: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\nOpen the run for details (which check, and what it found).`;
+            const open = await github.rest.issues.listForRepo({ ...context.repo, state: 'open', labels: 'security', per_page: 50 });
+            const existing = open.data.find((i) => i.title === title);
+            if (existing) await github.rest.issues.createComment({ ...context.repo, issue_number: existing.number, body });
+            else await github.rest.issues.create({ ...context.repo, title, body, labels: ['security'] });
