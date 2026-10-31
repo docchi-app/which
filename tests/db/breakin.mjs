@@ -122,7 +122,7 @@ console.log('\n== Group links and friends\' picks');
 await expectBlocked('signed-out makes a group link', null, `select make_share_link($1) v`, [PP]);
 await expectBlocked('signed-out reads a chat\'s verdict', null, `select link_verdict('0000000000') v`);
 await expectBlocked('signed-out tags a vote to a link', null, `select link_vote('0000000000') v`);
-await expectBlocked('signed-out takes back a vote', null, `select undo_vote($1) v`, [PP]);
+await expectBlocked('signed-out takes back a vote', null, `select undo_vote($1, '0000000000') v`, [PP]);
 await expectBlocked('stranger reads share_links directly', U.stranger, `select * from share_links`);
 await expectBlocked('guest sees friends\' picks', G, `select * from friend_picks($1)`, [PP]);
 await expectBlocked('guest turns on picks', G, `select set_picks_to_friends(true)`);

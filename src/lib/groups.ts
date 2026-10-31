@@ -70,9 +70,9 @@ export async function linkVerdict(code: string): Promise<Verdict | null> {
   return toVerdict(data as RawVerdict | null);
 }
 
-/** Takes back my vote (within 15 seconds of casting it), so I can pick again. */
-export async function undoVote(pollId: string): Promise<void> {
-  const { error } = (await getSupabase()?.rpc("undo_vote", { poll: pollId })) ?? {};
+/** Takes back a vote a quick vote link made (within 15 seconds), so I can pick again. Group links only. */
+export async function undoVote(pollId: string, code: string): Promise<void> {
+  const { error } = (await getSupabase()?.rpc("undo_vote", { poll: pollId, code })) ?? {};
   if (error) throw error;
 }
 

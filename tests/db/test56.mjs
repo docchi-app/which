@@ -160,7 +160,10 @@ ok('admin_link_styles: admin only; counts shared quick vs link', await (async ()
 const U1 = await mk('Undo me?');
 const LU = await As('owner', `select public.make_share_link($1) r`, [U1]);
 await vote('f2', U1, 0); await As('f2', `select public.link_vote($1) r`, [LU]);
-await as(U.f2, () => q(`select public.undo_vote($1)`, [U1]));
+ok('undo without the poll\'s group link: refused (undo is for quick vote links only)', await code(() => as(U.f2, () => q(`select public.undo_vote($1, $2)`, [U1, L]))) === 'not_from_link'
+  && await code(() => as(U.f2, () => q(`select public.undo_vote($1, '0000000000')`, [U1]))) === 'not_from_link'
+  && (await q(`select count(*)::int n from public.votes where poll_id = $1`, [U1]))[0].n === 1);
+await as(U.f2, () => q(`select public.undo_vote($1, $2)`, [U1, LU]));
 ok('undo_vote: vote gone, counts back to 0, link count back', (await q(`select count(*)::int n from public.votes where poll_id = $1`, [U1]))[0].n === 0
   && (await q(`select vote_count n from public.polls where id = $1`, [U1]))[0].n === 0
   && (await q(`select sum(vote_count)::int n from public.poll_options where poll_id = $1`, [U1]))[0].n === 0
@@ -168,13 +171,14 @@ ok('undo_vote: vote gone, counts back to 0, link count back', (await q(`select c
 await vote('f2', U1, 1);
 ok('then pick again', (await q(`select option_id from public.votes where poll_id = $1`, [U1]))[0].option_id === await opt(U1, 1));
 await q(`update public.votes set created_at = now() - interval '20 seconds' where poll_id = $1`, [U1]);
-ok('undo after 15 seconds: too_late, vote stays', await code(() => as(U.f2, () => q(`select public.undo_vote($1)`, [U1]))) === 'too_late'
+ok('undo after 15 seconds: too_late, vote stays', await code(() => as(U.f2, () => q(`select public.undo_vote($1, $2)`, [U1, LU]))) === 'too_late'
   && (await q(`select count(*)::int n from public.votes where poll_id = $1`, [U1]))[0].n === 1);
-ok('undo someone else\'s vote: impossible (only your own is touched)', await (async () => { await as(U.friend, () => q(`select public.undo_vote($1)`, [U1])); return (await q(`select count(*)::int n from public.votes where poll_id = $1`, [U1]))[0].n === 1; })());
+ok('undo someone else\'s vote: impossible (only your own is touched)', await (async () => { await as(U.friend, () => q(`select public.undo_vote($1, $2)`, [U1, LU])); return (await q(`select count(*)::int n from public.votes where poll_id = $1`, [U1]))[0].n === 1; })());
 const BU = await mk('Brain undo?', { kind: 'brain' });
+const LB = await As('owner', `select public.make_share_link($1) r`, [BU]);
 await vote('f2', BU, 0);
-ok('undo on a Brain break: too_late (the answer is already shown)', await code(() => as(U.f2, () => q(`select public.undo_vote($1)`, [BU]))) === 'too_late');
-ok('undo_vote: signed in only', !(await priv('anon', 'undo_vote(uuid)')) && !(await priv('anon', 'mark_link_shared(text)')));
+ok('undo on a Brain break: too_late (the answer is already shown)', await code(() => as(U.f2, () => q(`select public.undo_vote($1, $2)`, [BU, LB]))) === 'too_late');
+ok('undo_vote: signed in only', !(await priv('anon', 'undo_vote(uuid,text)')) && !(await priv('anon', 'mark_link_shared(text)')));
 
 // ── 2. Friends' picks ──
 const friends = async (a, b) => { await q(`insert into public.circle_members (owner_id, member_id, status, accepted_at) values ($1, $2, 'accepted', now()), ($2, $1, 'accepted', now()) on conflict do nothing`, [a, b]); };

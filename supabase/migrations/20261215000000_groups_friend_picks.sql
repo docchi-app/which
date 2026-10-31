@@ -214,9 +214,11 @@ $$;
 revoke execute on function public.link_vote(text) from public, anon;
 grant execute on function public.link_vote(text) to authenticated;
 
--- A mis-tap from a quick vote link: take my vote back within 15 seconds and pick again.
--- Not on a Brain break (the answer shows straight after voting).
-create or replace function public.undo_vote(poll uuid)
+-- A mis-tap from a quick vote link: take my vote back within 15 seconds and pick again. Only a
+-- vote made from a group link of this poll (`code`), never anywhere else in the app, and not on a
+-- Brain break (the answer shows straight after voting).
+drop function if exists public.undo_vote(uuid);
+create or replace function public.undo_vote(poll uuid, code text)
 returns void
 language plpgsql
 security definer
@@ -234,6 +236,10 @@ begin
   if v.option_id is null then
     return;
   end if;
+  if not exists (select 1 from public.share_links s where s.code = lower(undo_vote.code) and s.poll_id = poll)
+     or (v.link_code is not null and v.link_code <> lower(undo_vote.code)) then
+    raise exception 'docchi:not_from_link' using errcode = '42501';
+  end if;
   if v.created_at < now() - interval '15 seconds'
      or exists (select 1 from public.polls p where p.id = poll and (p.kind = 'brain' or p.closes_at <= now())) then
     raise exception 'docchi:too_late' using errcode = '22023';
@@ -249,8 +255,8 @@ begin
   end if;
 end;
 $$;
-revoke execute on function public.undo_vote(uuid) from public, anon;
-grant execute on function public.undo_vote(uuid) to authenticated;
+revoke execute on function public.undo_vote(uuid, text) from public, anon;
+grant execute on function public.undo_vote(uuid, text) to authenticated;
 
 -- Admin: which kind of group link brings more votes. Links shared in the last `days` days,
 -- test accounts left out.

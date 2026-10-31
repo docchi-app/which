@@ -691,7 +691,7 @@ export function PollCard({
             </div>
           )}
           {via && voted && autoPicked && autoPicked === poll.myOptionId && (
-            <QuickPickLine poll={poll} optionId={autoPicked} canChange={!isBrain && !closed} onUndone={undone} />
+            <QuickPickLine poll={poll} optionId={autoPicked} code={via.code} canChange={!isBrain && !closed} onUndone={undone} />
           )}
           {via && verdict && voted && <ChatVerdict poll={poll} verdict={verdict} code={via.code} />}
           {voted && <FriendPicksLine poll={poll} state={friendsPicks} />}

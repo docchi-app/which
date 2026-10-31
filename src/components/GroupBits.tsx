@@ -48,7 +48,7 @@ export function ChatVerdict({ poll, verdict, code }: { poll: Poll; verdict: Verd
 }
 
 /** A quick vote link voted for you: "✓ You picked Manali · Change (8s)". */
-export function QuickPickLine({ poll, optionId, canChange, onUndone }: { poll: Poll; optionId: string; canChange: boolean; onUndone: () => void }) {
+export function QuickPickLine({ poll, optionId, code, canChange, onUndone }: { poll: Poll; optionId: string; code: string; canChange: boolean; onUndone: () => void }) {
   const [left, setLeft] = useState(canChange ? 10 : 0);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -62,7 +62,7 @@ export function QuickPickLine({ poll, optionId, canChange, onUndone }: { poll: P
   async function change() {
     setBusy(true);
     try {
-      await undoVote(poll.id);
+      await undoVote(poll.id, code);
       forgetGuestPick(poll.id);
       onUndone();
     } catch {

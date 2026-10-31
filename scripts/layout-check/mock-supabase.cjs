@@ -509,7 +509,7 @@ http.createServer((req, res) => {
         const per = p.options.map((o, i) => (l.others[i] || 0) + (l.tagged === o.id ? 1 : 0));
         return json(200, { poll_id: l.poll, asker: l.mine ? 'mayank' : 'priya', mine: l.mine, total: per.reduce((x, y) => x + y, 0), voted, options: voted || l.mine ? p.options.map((o, i) => ({ id: o.id, votes: per[i] })) : null });
       }
-      case 'undo_vote': { const p = polls.find((x) => x.id === a.poll); const o = votes[a.poll]; if (!o) return json(200, null); delete votes[a.poll]; p.vote_count--; p.options.find((x) => x.id === o)._v--; for (const l of Object.values(links)) if (l.poll === a.poll && l.tagged) l.tagged = false; log.push('UNDO ' + a.poll); return json(200, null); }
+      case 'undo_vote': { if (!links[a.code] || links[a.code].poll !== a.poll) return json(403, { message: 'docchi:not_from_link' }); const p = polls.find((x) => x.id === a.poll); const o = votes[a.poll]; if (!o) return json(200, null); delete votes[a.poll]; p.vote_count--; p.options.find((x) => x.id === o)._v--; for (const l of Object.values(links)) if (l.poll === a.poll && l.tagged) l.tagged = false; log.push('UNDO ' + a.poll); return json(200, null); }
       case 'admin_link_styles': return json(200, [{ style: 'link', links: 4, votes: 6, voted_links: 2 }, { style: 'quick', links: 9, votes: 31, voted_links: 7 }]);
       case 'my_picks_setting': return json(200, picksShare);
       case 'set_picks_to_friends': picksShare = !!a.share; log.push('PICKS ' + picksShare); return json(200, null);
