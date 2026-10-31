@@ -5,15 +5,15 @@
 const http = require('http');
 // The content agent (Admin → Drafts, Trending now): drafts, settings, runs, trends, calendar.
 const agent = {
-  settings: { paused: false, drafts_per_day: 8, posts_per_day: 4, post_as: 'eithr', hinglish: 50, topics_off: [] },
-  requested: null, runs: [], drafts: [], trends: [], nextTrend: 1, calendar: [
+  settings: { paused: false, drafts_per_day: 8, posts_per_day: 4, post_as: 'eithr', hinglish: 50, topics_off: [], refresh_1pm: true, refresh_6pm: true, refresh_drafts: 3, timely_hours: 12 },
+  forceSlot: null, requested: null, runs: [], drafts: [], trends: [], nextTrend: 1, calendar: [
     { id: 1, day: new Date(Date.now() + 330 * 60000 + 8 * 864e5).toISOString().slice(0, 10), label: 'Diwali', added_by: 'seed' },
     { id: 2, day: new Date(Date.now() + 330 * 60000 + 14 * 864e5).toISOString().slice(0, 10), label: "Children's Day", added_by: 'seed' },
   ], nextCal: 3,
 };
 const istDay = (iso) => new Date(new Date(iso).getTime() + 330 * 60000).toISOString().slice(0, 10);
 const postsOn = (d, not) => agent.drafts.filter((x) => ['scheduled', 'posted'].includes(x.status) && istDay(x.publish_at) === d && x.id !== not).length;
-const draftJson = (x) => ({ ...x, votes: x.status === 'posted' ? 12 : null, spark: x.status === 'posted' ? 61 : null });
+const draftJson = (x) => { const run = agent.runs.find((r) => r.id === x.run_id); return { ...x, votes: x.status === 'posted' ? 12 : null, spark: x.status === 'posted' ? 61 : null, run_slot: run?.slot ?? null, run_model: run?.model ?? null }; };
 const seedDraft = (o) => ({ id: require('crypto').randomUUID(), run_id: null, created_at: new Date().toISOString(), topic: null, feel: null, timely: false, lang: 'en', slot: 'manual', why: null, source: null, post_as: 'eithr', open_days: 1, poll_of_day: false, notify: false, status: 'new', poll_id: null, decided_at: null, posted_at: null, error: null, ...o });
 const fnState = {};
 const likeTags = {};
@@ -130,6 +130,9 @@ http.createServer((req, res) => {
     if (url.pathname === '/__bump') { const p = polls.find((x) => x.id === url.searchParams.get('id')); const n = Number(url.searchParams.get('n') || 1); if (p) { p.vote_count += n; p.options[0]._v += n; p.recent_votes = (p.recent_votes || 0) + n; p.view_count = (p.view_count || 0) + n * 2; } return json(200, !!p); }
     // Tests: a database function missing (migration not run: PostgREST's 404 PGRST202) or broken (500).
     // /__fn_state?name=polls_to_tag&state=missing|broken|ok
+    // Tests: the content agent's next run is a refresh (/__agent_slot?slot=18); timely drafts run out (/__agent_expire).
+    if (url.pathname === '/__agent_slot') { agent.forceSlot = url.searchParams.get('slot'); return json(200, agent.forceSlot); }
+    if (url.pathname === '/__agent_expire') { let n = 0; for (const d of agent.drafts) if (d.status === 'new' && d.expires_at) { d.expires_at = new Date(Date.now() - 60000).toISOString(); n++; } return json(200, n); }
     if (url.pathname === '/__fn_state') { fnState[url.searchParams.get('name')] = url.searchParams.get('state'); return json(200, fnState); }
     { const fnName = url.pathname.replace('/rest/v1/rpc/', '');
       if (fnState[fnName] === 'missing') { log.push('MISSING ' + fnName); return json(404, { code: 'PGRST202', details: 'Searched for the function public.' + fnName, hint: null, message: `Could not find the function public.${fnName}(max_rows, secret) in the schema cache` }); }
@@ -229,10 +232,15 @@ http.createServer((req, res) => {
       case 'agent_start': {
         if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:bad_secret' });
         const last = agent.runs[agent.runs.length - 1];
-        if (!agent.requested || (last && last.started_at >= agent.requested) || agent.runs.some((r) => r.status === 'running')) { log.push('AGENT_START none'); return json(200, null); }
-        const run = { id: agent.runs.length + 1, started_at: new Date().toISOString(), status: 'running', drafts: 0, trends: 0, error: null, manual: true, finished_at: null };
-        agent.runs.push(run); log.push('AGENT_START ' + run.id);
-        return json(200, { run_id: run.id, now: new Date().toISOString(), today: istDay(new Date().toISOString()), settings: agent.settings, scored: 38,
+        // Tests: /__agent_slot?slot=13|18 makes the next run that refresh.
+        const slot = agent.forceSlot ?? (agent.requested && !(last && last.started_at >= agent.requested) ? 'manual' : null);
+        if (!slot || agent.runs.some((r) => r.status === 'running')) { log.push('AGENT_START none'); return json(200, null); }
+        agent.forceSlot = null;
+        const run = { id: agent.runs.length + 1, started_at: new Date().toISOString(), status: 'running', drafts: 0, trends: 0, error: null, manual: slot === 'manual', slot, model: null, finished_at: null };
+        agent.runs.push(run); log.push('AGENT_START ' + run.id + ' ' + slot);
+        const refresh = slot === '13' || slot === '18';
+        return json(200, { run_id: run.id, kind: refresh ? 'refresh' : 'full', slot, drafts_wanted: refresh ? agent.settings.refresh_drafts : agent.settings.drafts_per_day,
+          seen_today: [...new Set(agent.trends.map((t) => [...t.title.toLowerCase()].slice(0, 60).join('')))], now: new Date().toISOString(), today: istDay(new Date().toISOString()), settings: agent.settings, scored: 38,
           topics: [{ key: 'food', n: 9, spark: 82 }, { key: 'cricket', n: 7, spark: 71 }], feels: [{ key: 'relatable', n: 8, spark: 80 }], combos: [{ topic: 'food', feel: 'relatable', n: 6, spark: 88 }],
           langs: [{ key: 'hinglish', n: 14, spark: 71 }], best: ['Maggi at 2 am or chai at 6 am?'], recent: ['Tea or coffee to start the day?'], calendar: agent.calendar.map(({ day, label }) => ({ day, label })), open_slots: [] });
       }
@@ -240,18 +248,21 @@ http.createServer((req, res) => {
         if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:bad_secret' });
         const run = agent.runs.find((r) => r.id === a.run_id && r.status === 'running');
         if (!run) return json(400, { message: 'docchi:not_found' });
-        if (a.error) { Object.assign(run, { status: 'failed', error: a.error, finished_at: new Date().toISOString() }); log.push('AGENT_SAVE failed ' + a.error); return json(200, { alert: null }); }
-        for (const t of a.trends ?? []) agent.trends.push({ id: agent.nextTrend++, run_id: run.id, source: t.source, title: t.title, url: /^https:\/\//.test(t.url ?? '') ? t.url : null, idea_question: t.skip_reason ? null : (t.idea_question ?? null), idea_answers: t.skip_reason ? null : (t.idea_answers ?? null), topic: t.topic ?? null, feel: t.feel ?? null, timely: t.timely ?? true, lang: t.lang ?? null, skip_reason: t.skip_reason ?? null, drafted: false });
+        if (a.error) { Object.assign(run, { status: 'failed', error: a.error, model: a.model ?? null, finished_at: new Date().toISOString() }); log.push('AGENT_SAVE failed ' + a.error); return json(200, { alert: null }); }
+        for (const t of a.trends ?? []) agent.trends.push({ id: agent.nextTrend++, run_id: run.id, source: t.source, title: t.title, url: /^https:\/\//.test(t.url ?? '') ? t.url : null, idea_question: t.skip_reason ? null : (t.idea_question ?? null), idea_answers: t.skip_reason ? null : (t.idea_answers ?? null), topic: t.topic ?? null, feel: t.feel ?? null, timely: t.timely ?? true, lang: t.lang ?? null, skip_reason: t.skip_reason ?? null, drafted: false, published_at: t.published_at ?? null, region: t.region ?? null, gloss: t.gloss ?? null });
         let n = 0;
-        for (const d of a.drafts ?? []) { if (!d.question || d.question.length > 140 || (d.answers ?? []).length < 2) continue; agent.drafts.push(seedDraft({ ...d, run_id: run.id })); n++; }
-        Object.assign(run, { status: 'done', drafts: n, trends: (a.trends ?? []).length, finished_at: new Date().toISOString() });
-        log.push(`AGENT_SAVE ${n} drafts ${(a.trends ?? []).length} trends`);
-        for (const d of a.drafts ?? []) log.push(`DRAFT ${d.slot}|${d.post_as}|${d.lang}|${d.topic}|${d.question}|${d.answers.join('/')}|${d.publish_at}|${d.source ?? ''}`);
-        return json(200, { drafts: n, trends: (a.trends ?? []).length, alert: n ? { title: `✍️ ${n} drafts ready`, body: 'Top pick', url: '/admin#drafts', tag: 'agent-drafts' } : null, targets: [] });
+        for (const d of a.drafts ?? []) { if (!d.question || d.question.length > 140 || (d.answers ?? []).length < 2) continue; agent.drafts.push(seedDraft({ ...d, run_id: run.id, expires_at: d.timely ? new Date(Date.now() + agent.settings.timely_hours * 3600e3).toISOString() : null, source_at: d.source_at ?? null })); n++; }
+        Object.assign(run, { status: 'done', drafts: n, trends: (a.trends ?? []).length, model: a.model ?? null, finished_at: new Date().toISOString() });
+        log.push(`AGENT_SAVE ${n} drafts ${(a.trends ?? []).length} trends ${a.model ?? '-'}`);
+        for (const d of a.drafts ?? []) log.push(`DRAFT ${d.slot}|${d.post_as}|${d.lang}|${d.topic}|${d.question}|${d.answers.join('/')}|${d.publish_at}|${d.source ?? ''}|${d.source_at ?? ''}`);
+        for (const t of a.trends ?? []) log.push(`TREND ${t.source}|${t.title}|${t.published_at ?? ''}|${t.region ?? ''}|${t.gloss ?? ''}`);
+        const refresh = run.slot === '13' || run.slot === '18';
+        return json(200, { drafts: n, trends: (a.trends ?? []).length, alert: n ? { title: refresh ? `🆕 ${n} fresh ${n === 1 ? 'draft' : 'drafts'}` : `✍️ ${n} drafts ready`, body: 'Top pick', url: '/admin#drafts', tag: 'agent-drafts' } : null, targets: [] });
       }
       case 'post_due_drafts': {
         if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:bad_secret' });
         let n = 0;
+        for (const d of agent.drafts) if (d.status === 'new' && d.expires_at && d.expires_at < new Date().toISOString()) { d.status = 'expired'; log.push('EXPIRED ' + d.question); }
         for (const d of agent.drafts) if (d.status === 'scheduled' && d.publish_at <= new Date().toISOString()) { d.status = 'posted'; d.poll_id = 'f1000000-0000-4000-8000-000000000001'; d.posted_at = new Date().toISOString(); n++; log.push('POSTED ' + d.question); }
         return json(200, n);
       }
@@ -263,7 +274,8 @@ http.createServer((req, res) => {
         const today = istDay(new Date().toISOString()), tomorrow = istDay(new Date(Date.now() + 864e5).toISOString());
         const last = agent.runs[agent.runs.length - 1];
         return json(200, { new: by(['new']), scheduled: by(['scheduled']), posted: by(['posted', 'failed']), settings: agent.settings, last_run: last ?? null,
-          requested_at: agent.requested, today_posts: postsOn(today), tomorrow_posts: postsOn(tomorrow), admin_username: 'boss' });
+          requested_at: agent.requested, today_posts: postsOn(today), tomorrow_posts: postsOn(tomorrow), admin_username: 'boss',
+          expired_today: agent.drafts.filter((x) => x.status === 'expired' && x.expires_at).map((x) => ({ question: x.question, expires_at: x.expires_at })) });
       }
       case 'admin_draft_save': {
         const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
@@ -305,8 +317,9 @@ http.createServer((req, res) => {
       }
       case 'admin_agent_settings': {
         const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
-        for (const k of ['paused', 'drafts_per_day', 'posts_per_day', 'post_as', 'hinglish', 'topics_off']) if (a[k] !== undefined && a[k] !== null) agent.settings[k] = a[k];
+        for (const k of ['paused', 'drafts_per_day', 'posts_per_day', 'post_as', 'hinglish', 'topics_off', 'refresh_1pm', 'refresh_6pm', 'refresh_drafts', 'timely_hours']) if (a[k] !== undefined && a[k] !== null) agent.settings[k] = a[k];
         log.push(`AGENT_SETTINGS ${agent.settings.paused}|${agent.settings.drafts_per_day}|${agent.settings.posts_per_day}|${agent.settings.post_as}|${agent.settings.hinglish}|${agent.settings.topics_off.join(',')}`);
+        log.push(`AGENT_REFRESH ${agent.settings.refresh_1pm}|${agent.settings.refresh_6pm}|${agent.settings.refresh_drafts}|${agent.settings.timely_hours}`);
         return json(200, agent.settings);
       }
       case 'admin_agent_request': {
@@ -317,7 +330,12 @@ http.createServer((req, res) => {
         const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
         const run = [...agent.runs].reverse().find((r) => r.status === 'done' && r.trends > 0);
         log.push('ADMIN_TRENDS');
-        return json(200, { read_at: run?.started_at ?? null, items: run ? agent.trends.filter((t) => t.run_id === run.id).sort((x, y) => Number(!!x.skip_reason) - Number(!!y.skip_reason) || x.id - y.id) : [],
+        // Every run of the day (here: every run), newest run first.
+        const ofRun = (t) => agent.runs.find((r) => r.id === t.run_id);
+        const firstSeen = new Map();
+        for (const t of agent.trends.filter((x) => ofRun(x)?.status === 'done')) { const k = [...t.title.toLowerCase()].slice(0, 60).join(''); if (!firstSeen.has(k)) firstSeen.set(k, t); }
+        return json(200, { read_at: run?.started_at ?? null, items: run ? [...firstSeen.values()].map((t) => ({ ...t, run_slot: ofRun(t).slot, read_at: ofRun(t).started_at }))
+          .sort((x, y) => Number(!!x.skip_reason) - Number(!!y.skip_reason) || y.run_id - x.run_id || x.id - y.id) : [],
           calendar: [...agent.calendar].sort((x, y) => x.day.localeCompare(y.day)) });
       }
       case 'admin_draft_from_trend': {

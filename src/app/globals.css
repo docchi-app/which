@@ -2772,6 +2772,15 @@ button.ghost-action { cursor: pointer; }
 .dr-idea { font-size: 13.5px; overflow-wrap: anywhere; }
 .dr-as { display: inline-block; padding: 0 7px; border: 1.5px solid var(--ink); border-radius: 99px; background: #ece7f3; color: var(--ink); font-size: 11.5px; font-weight: 800; }
 .dr-as-e { background: var(--sun); }
+.dr-srcline { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; min-width: 0; }
+.dr-age, .dr-exp, .dr-new { display: inline-block; padding: 0 7px; border: 1.5px solid var(--ink); border-radius: 99px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+.dr-age { border-color: var(--line); background: var(--cream); color: var(--muted); }
+.dr-model { border-color: var(--ink); background: #ece7f3; color: var(--ink); }
+.dr-exp { background: #ffe3da; color: var(--ink); }
+.dr-new { background: var(--sun); color: var(--ink); }
+.dr-gloss { color: var(--muted); font-size: 12.5px; font-style: italic; overflow-wrap: anywhere; }
+.dr-group { padding: 4px 2px 0; color: var(--muted); font-size: 11.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; list-style: none; }
+.dr-gone { margin: 0; padding: 8px 12px; border: 1.5px dashed var(--line); border-radius: 12px; background: var(--cream); color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
 .dr-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
 .dr-acts .ppl-mini { min-height: 38px; padding: 4px 14px; font-size: 13px; }
 .dr-edit-btn { justify-self: start; }

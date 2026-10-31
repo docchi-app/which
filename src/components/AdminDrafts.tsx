@@ -18,6 +18,7 @@ import {
   type Draft,
   type DraftInput,
   type DraftsData,
+  type RunSlot,
   type TrendsData,
 } from "@/lib/admin";
 import { Loading } from "./AdminGrowth";
@@ -31,7 +32,7 @@ const SLOT_LABEL: Record<Draft["slot"], string> = {
   emotional: "Emotional or relatable",
   best: "Best combo",
   experiment: "Experiment",
-  trend: "From Trending now",
+  trend: "From a headline",
   manual: "Draft",
 };
 const PROBLEM: Record<string, string> = {
@@ -42,6 +43,15 @@ const PROBLEM: Record<string, string> = {
   past_day: "that day has passed",
 };
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+const RUN_LABEL: Record<RunSlot, string> = { morning: "Morning set", "13": "1 pm refresh", "18": "6 pm refresh", manual: "Written" };
+const bySarvam = (model: string | null) => Boolean(model?.toLowerCase().startsWith("sarvam"));
+/** "40m ago", "3h ago", "2d ago". */
+export function age(iso: string, now = Date.now()) {
+  const m = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60000));
+  if (m < 60) return `${Math.max(1, m)}m ago`;
+  if (m < 48 * 60) return `${Math.round(m / 60)}h ago`;
+  return `${Math.round(m / 1440)}d ago`;
+}
 
 // Times are shown and entered in India time.
 const IST = 330 * 60000;
@@ -278,7 +288,14 @@ function DraftCard({
           {d.openDays > 1 ? ` · ${d.openDays} days` : ""}
         </small>
         {d.why && <small className="dr-why">{d.why}</small>}
-        {d.source && <small className="dr-src">{d.source}</small>}
+        {(d.source || (d.expiresAt && d.status === "new") || bySarvam(d.runModel)) && (
+          <span className="dr-srcline">
+            {d.source && <small className="dr-src">{d.source}</small>}
+            {d.sourceAt && <span className="dr-age">{age(d.sourceAt)}</span>}
+            {d.expiresAt && d.status === "new" && <span className="dr-exp">Expires {when(d.expiresAt)}</span>}
+            {bySarvam(d.runModel) && <span className="dr-age dr-model">Written by Sarvam</span>}
+          </span>
+        )}
       </div>
       {editing ? <DraftEditor draft={d} adminUsername={adminUsername} onDone={onDone} /> : <div className="dr-acts">{children}</div>}
       {!editing && d.status !== "posted" && d.status !== "failed" && (
@@ -287,6 +304,22 @@ function DraftCard({
         </button>
       )}
     </li>
+  );
+}
+
+/** A heading where a new group of drafts starts: "Fresh · 6 pm", "Fresh · 1 pm", "Earlier". */
+function DraftGroup({ d, prev, grouped, children }: { d: Draft; prev: Draft | null; grouped: boolean; children: React.ReactNode }) {
+  const group = (x: Draft) => (x.runSlot === "18" ? "Fresh · 6 pm" : x.runSlot === "13" ? "Fresh · 1 pm" : "Earlier");
+  const heading = grouped && (!prev || group(prev) !== group(d)) ? group(d) : null;
+  // Only worth a heading when there's a fresh group at all.
+  if (!heading || (heading === "Earlier" && !prev)) return <>{children}</>;
+  return (
+    <>
+      <li className="dr-group" aria-hidden="true">
+        {heading}
+      </li>
+      {children}
+    </>
   );
 }
 
@@ -355,6 +388,35 @@ function Settings({ s, onSaved }: { s: AgentSettings; onSaved: (s: AgentSettings
           </select>
         </label>
       </div>
+      <div className="dr-row dr-row-4">
+        <label className="dr-check" htmlFor="dr-r13">
+          <input id="dr-r13" type="checkbox" checked={v.refresh1pm} onChange={(e) => setV({ ...v, refresh1pm: e.target.checked })} />
+          Refresh at 1 pm
+        </label>
+        <label className="dr-check" htmlFor="dr-r18">
+          <input id="dr-r18" type="checkbox" checked={v.refresh6pm} onChange={(e) => setV({ ...v, refresh6pm: e.target.checked })} />
+          Refresh at 6 pm
+        </label>
+        <label htmlFor="dr-rn">
+          Drafts a refresh
+          <select id="dr-rn" className="field-input" value={v.refreshDrafts} onChange={(e) => setV({ ...v, refreshDrafts: Number(e.target.value) })}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <option key={n}>{n}</option>
+            ))}
+          </select>
+        </label>
+        <label htmlFor="dr-th">
+          Timely drafts last
+          <select id="dr-th" className="field-input" value={v.timelyHours} onChange={(e) => setV({ ...v, timelyHours: Number(e.target.value) })}>
+            {[4, 6, 8, 12, 24, 48].map((n) => (
+              <option key={n} value={n}>
+                {n} hours
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <p className="ppl-note">Refreshes write only about headlines that are new since earlier that day; nothing new, no drafts and no push. A timely draft not approved in time expires.</p>
       <fieldset className="dr-topics">
         <legend>Topics it won&apos;t write (politics, religion, deaths, accidents and crime are always off)</legend>
         {Object.entries(TOPIC_LABEL).map(([k, label]) => {
@@ -398,7 +460,10 @@ export function AdminDrafts() {
 
   if (failed) return <Failed />;
   if (!data) return <Loading />;
-  const list = view === "new" ? data.fresh : view === "scheduled" ? data.scheduled : data.posted;
+  // New drafts: the latest refresh first (6 pm, then 1 pm), then the rest, each by time.
+  const rank = (d: Draft) => (d.runSlot === "18" ? 0 : d.runSlot === "13" ? 1 : 2);
+  const fresh = [...data.fresh].sort((a, b) => rank(a) - rank(b) || a.publishAt.localeCompare(b.publishAt));
+  const list = view === "new" ? fresh : view === "scheduled" ? data.scheduled : data.posted;
   const approve = async (ids: string[]) => {
     setBusy(true);
     setNote(null);
@@ -437,9 +502,10 @@ export function AdminDrafts() {
                   ? "Writing drafts now…"
                   : run.status === "failed"
                     ? `Last run didn't finish (${when(run.startedAt)})`
-                    : `Last written ${when(run.startedAt)} · ${plural(run.drafts, "draft")}`}
+                    : `${run.slot ? RUN_LABEL[run.slot] : "Last written"} ${when(run.startedAt)} · ${run.slot === "13" || run.slot === "18" ? plural(run.drafts, "fresh draft") : plural(run.drafts, "draft")}`}
           </b>
           <small>
+            {run?.status === "done" && bySarvam(run.model) ? "Written by Sarvam because OpenAI failed (check Admin → Errors). " : ""}
             {run?.status === "failed" && run.error ? `${run.error}. ` : ""}
             {requested ? `Asked at ${when(requested)}: new drafts within a few minutes.` : `Today ${data.todayPosts}/${data.settings.postsPerDay} posts planned · tomorrow ${data.tomorrowPosts}.`}
           </small>
@@ -480,6 +546,13 @@ export function AdminDrafts() {
         </p>
       )}
 
+      {view === "new" && data.expiredToday.length > 0 && (
+        <p className="dr-gone">
+          {plural(data.expiredToday.length, "timely draft")} expired today, not approved in time: &ldquo;{data.expiredToday[0].question}&rdquo;
+          {data.expiredToday.length > 1 ? ` and ${data.expiredToday.length - 1} more` : ""}.
+        </p>
+      )}
+
       {view === "new" && data.fresh.length > 1 && (
         <button type="button" className="btn btn-coral dr-all press" disabled={busy} onClick={() => approve(data.fresh.map((d) => d.id))}>
           Approve all {data.fresh.length} as suggested
@@ -488,7 +561,8 @@ export function AdminDrafts() {
 
       {list.length ? (
         <ul className="dr-list">
-          {list.map((d) => (
+          {list.map((d, i) => (
+            <DraftGroup key={d.id} d={d} prev={i > 0 ? list[i - 1] : null} grouped={view === "new"}>
             <DraftCard
               key={d.id}
               d={d}
@@ -532,6 +606,7 @@ export function AdminDrafts() {
               )}
               {d.status === "failed" && <span className="dr-failed">Didn&apos;t post: {PROBLEM[d.error ?? ""] ?? d.error}</span>}
             </DraftCard>
+            </DraftGroup>
           ))}
         </ul>
       ) : (
@@ -563,8 +638,8 @@ export function AdminTrends() {
     <div className="ppl gr dr">
       <p className="ppl-note">
         {data.readAt
-          ? `Read ${when(data.readAt)} from Google Trends India, news, cricket and entertainment headlines.`
-          : "Nothing read yet: the agent reads the trends when it writes drafts (6:30 am, or Write drafts now in Drafts)."}
+          ? `Last read ${when(data.readAt)} from Google Trends India and news, cricket, sports, entertainment and tech headlines. Read again at 1 pm and 6 pm: new ones are marked.`
+          : "Nothing read yet: the agent reads the trends when it writes drafts (6:30 am, 1 pm, 6 pm, or Write drafts now in Drafts)."}
       </p>
       {note && (
         <p className="lk-note lk-ok" role="status">
@@ -581,7 +656,14 @@ export function AdminTrends() {
               {ideas.map((t) => (
                 <li key={t.id} className="dr-card">
                   <div className="dr-body">
-                    <small className="dr-src">{t.source}</small>
+                    <span className="dr-srcline">
+                      <small className="dr-src">
+                        {t.source}
+                        {t.region ? ` · ${t.region}` : ""}
+                      </small>
+                      {(t.runSlot === "13" || t.runSlot === "18") && <span className="dr-new">New · {t.runSlot === "13" ? "1 pm" : "6 pm"}</span>}
+                      {t.publishedAt && <span className="dr-age">{age(t.publishedAt)}</span>}
+                    </span>
                     {t.url ? (
                       <a className="dr-title" href={t.url} target="_blank" rel="noopener noreferrer">
                         {t.title}
@@ -589,6 +671,7 @@ export function AdminTrends() {
                     ) : (
                       <span className="dr-title">{t.title}</span>
                     )}
+                    {t.gloss && <small className="dr-gloss">{t.gloss}</small>}
                     {t.ideaQuestion ? (
                       <>
                         <span className="dr-idea">

@@ -5,7 +5,8 @@
 // first; see "Security" in the README.
 //
 //   OPENAI_API_KEY=sk-CANARYOPENAI0123456789 RESEND_API_KEY=re_CANARYRESEND0123456789 \
-//   GOOGLE_CLIENT_SECRET=GOCSPX-CANARYGOOGLE012345 PUSH_CRON_SECRET=test-secret-test-secret-123 \
+//   GOOGLE_CLIENT_SECRET=GOCSPX-CANARYGOOGLE012345 SARVAM_API_KEY=sk_CANARYSARVAM0123456789 \
+//   PUSH_CRON_SECRET=test-secret-test-secret-123 \
 //   VAPID_PRIVATE_KEY=<a test key> NEXT_PUBLIC_VAPID_PUBLIC_KEY=<its public key> \
 //   NEXT_PUBLIC_SUPABASE_URL=http://localhost:54339 NEXT_PUBLIC_SUPABASE_ANON_KEY=anon  npm run build, then npx next start -p 3145
 //   VAPID_PRIVATE_KEY=<the same test key> npm run check:secrets      (in another terminal)
@@ -27,6 +28,7 @@ const SECRETS = {
   openai: "CANARYOPENAI",
   resend: "CANARYRESEND",
   google: "CANARYGOOGLE",
+  sarvam: "CANARYSARVAM",
   vapid_private: process.env.VAPID_PRIVATE_KEY,
   cron: CRON,
   service_role: "service_role",
@@ -39,7 +41,7 @@ const b64 = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const POLL = "a1000000-0000-4000-8000-000000000001";
 const SIGNED_OUT = ["/", `/p/${POLL}`, "/u/riya.k", "/leaders", "/profile", "/settings", "/create", "/privacy", "/terms", "/guidelines", "/?utm_source=email&utm_campaign=summary-lunch", "/admin"];
 const SIGNED_IN = ["/", `/p/${POLL}`, "/u/riya.k", "/leaders", "/profile", "/settings", "/create", "/friends", "/activity", "/props", "/?n=12&utm_source=push"];
-const ADMIN = ["overview", "errors", "users", "guests", "funnel", "sources", "metrics", "content", "notifications", "reports", "snaps", "words", "schedule", "limits", "tests", "log"];
+const ADMIN = ["overview", "errors", "users", "guests", "funnel", "sources", "metrics", "likes", "trends", "drafts", "content", "notifications", "reports", "snaps", "words", "schedule", "limits", "tests", "log"];
 
 let pass = 0;
 let fail = 0;

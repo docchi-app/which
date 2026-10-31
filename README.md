@@ -216,10 +216,14 @@ The first slice of the build order:
   change. Fewer than 5 polls behind a number is marked Early, 5 or more Clear. **Drafts:** the
   content agent's poll drafts (see step 15): approve one, all of them as suggested, change one
   (question, answers, post as Eithr or you, time, days open, tags, Poll of the Day, push to
-  everyone) or skip it; Scheduled ones can go back to drafts until they post; Posted shows votes and
-  Spark. Settings: pause, drafts a day, most posts a day, usually post as, Hinglish share, topics it
-  won't write. **Trending now:** the headlines the agent read, each with a poll idea (Draft it) or
-  why it was left out, and the days coming up (add festivals, matches, releases, exam days).
+  everyone) or skip it; the latest refresh's drafts come first ("Fresh · 6 pm"), each with its
+  headline's age and, if timely, when it expires; Scheduled ones can go back to drafts until they
+  post; Posted shows votes and Spark. Settings: pause, drafts a day, most posts a day, usually post
+  as, Hinglish share, topics it won't write, the 1 pm and 6 pm refreshes, drafts a refresh, and how
+  long timely drafts last. **Trending now:** the headlines read today (each story once; refresh ones
+  marked New), with their age, the state and an English gloss for trends in other languages, and a
+  poll idea (Draft it) or why it was left out; and the days coming up (add festivals, matches,
+  releases, exam days).
   **Polls & snaps:** polls made by
   kind per day, votes per poll, polls with no votes, comments, the top polls, snaps (live, sent to
   you, turned down), safety checks (AI, blocked words, reports) and props by question.
@@ -772,6 +776,22 @@ approved draft goes live as Eithr's poll or your own; Eithr's don't send "New on
 unless you tick **Send a push to everyone**, so the feed doesn't turn into notifications. Drafts
 nobody approves expire after 3 days. What goes to OpenAI: headlines, today's numbers by topic and
 feel, and the questions of recent Eithr and admin polls; never anyone's name, email or private poll.
+
+### 16. Fresh drafts and the Sarvam fallback
+
+Run `20261212000000_fresh_drafts.sql` in the SQL Editor (then the migration check). From then on the
+agent also runs at **1 pm and 6 pm** India time: it reads the headlines again and writes up to 3
+timely drafts, only about stories that weren't there earlier that day (nothing new: no drafts, no
+push). A timely draft not approved within **12 hours** expires. Both are in Admin → Drafts → What
+the agent writes. It now also reads Google News sports and tech, keeps only 5 top stories (mostly
+politics) and leaves out scorecard pages.
+
+**Sarvam fallback:** add `SARVAM_API_KEY` in Vercel (Settings → Environment Variables, Production,
+marked Sensitive; it's server-only, never `NEXT_PUBLIC_`). If OpenAI fails (no credit, down or
+slow), the agent asks Sarvam (`sarvam-105b-conversations`; `SARVAM_CONTENT_MODEL` to change) with
+the same prompt and checks, and Drafts says "Written by Sarvam". The OpenAI failure still shows in
+Admin → Errors so you can fix it. Without the key nothing changes. Sarvam gets the same data as
+OpenAI: headlines, totals by topic and public poll questions; never names, emails or private polls.
 
 ### Free tier limits to know about
 

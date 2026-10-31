@@ -898,9 +898,38 @@ export type Draft = PollTags & {
   error: string | null;
   votes: number | null;
   spark: number | null;
+  /** A timely draft not approved by then expires. */
+  expiresAt: string | null;
+  /** When its headline was published. */
+  sourceAt: string | null;
+  /** The run that wrote it: the morning set, the 1 pm or 6 pm refresh, or Write drafts now. */
+  runSlot: RunSlot | null;
+  runModel: string | null;
 };
-export type AgentSettings = { paused: boolean; draftsPerDay: number; postsPerDay: number; postAs: "eithr" | "you"; hinglish: number; topicsOff: string[] };
-export type AgentRun = { startedAt: string; finishedAt: string | null; status: "running" | "done" | "failed"; drafts: number; trends: number; error: string | null; manual: boolean };
+export type RunSlot = "morning" | "13" | "18" | "manual";
+export type AgentSettings = {
+  paused: boolean;
+  draftsPerDay: number;
+  postsPerDay: number;
+  postAs: "eithr" | "you";
+  hinglish: number;
+  topicsOff: string[];
+  refresh1pm: boolean;
+  refresh6pm: boolean;
+  refreshDrafts: number;
+  timelyHours: number;
+};
+export type AgentRun = {
+  startedAt: string;
+  finishedAt: string | null;
+  status: "running" | "done" | "failed";
+  drafts: number;
+  trends: number;
+  error: string | null;
+  manual: boolean;
+  slot: RunSlot | null;
+  model: string | null;
+};
 export type DraftsData = {
   fresh: Draft[];
   scheduled: Draft[];
@@ -911,6 +940,7 @@ export type DraftsData = {
   todayPosts: number;
   tomorrowPosts: number;
   adminUsername: string | null;
+  expiredToday: { question: string; expiresAt: string }[];
 };
 export type Trend = PollTags & {
   id: number;
@@ -921,6 +951,11 @@ export type Trend = PollTags & {
   ideaAnswers: string[];
   skipReason: string | null;
   drafted: boolean;
+  publishedAt: string | null;
+  region: string | null;
+  gloss: string | null;
+  runSlot: RunSlot | null;
+  readAt: string | null;
 };
 export type CalendarDay = { id: number; day: string; label: string; addedBy: "seed" | "admin" };
 export type TrendsData = { readAt: string | null; items: Trend[]; calendar: CalendarDay[] };
@@ -944,6 +979,10 @@ const draftOf = (r: Record<string, unknown>): Draft => ({
   error: (r.error as string | null) ?? null,
   votes: num(r.votes),
   spark: num(r.spark),
+  expiresAt: (r.expires_at as string | null) ?? null,
+  sourceAt: (r.source_at as string | null) ?? null,
+  runSlot: (r.run_slot as RunSlot | null) ?? null,
+  runModel: (r.run_model as string | null) ?? null,
 });
 const settingsOf = (s: Record<string, unknown> | null | undefined): AgentSettings => ({
   paused: Boolean(s?.paused),
@@ -952,6 +991,10 @@ const settingsOf = (s: Record<string, unknown> | null | undefined): AgentSetting
   postAs: s?.post_as === "you" ? "you" : "eithr",
   hinglish: Number(s?.hinglish ?? 50),
   topicsOff: list<string>(s?.topics_off),
+  refresh1pm: s?.refresh_1pm !== false,
+  refresh6pm: s?.refresh_6pm !== false,
+  refreshDrafts: Number(s?.refresh_drafts ?? 3),
+  timelyHours: Number(s?.timely_hours ?? 12),
 });
 
 export async function fetchDrafts(): Promise<DraftsData> {
@@ -971,12 +1014,15 @@ export async function fetchDrafts(): Promise<DraftsData> {
           trends: Number(run.trends ?? 0),
           error: (run.error as string | null) ?? null,
           manual: Boolean(run.manual),
+          slot: (run.slot as RunSlot | null) ?? null,
+          model: (run.model as string | null) ?? null,
         }
       : null,
     requestedAt: (c.requested_at as string | null) ?? null,
     todayPosts: Number(c.today_posts ?? 0),
     tomorrowPosts: Number(c.tomorrow_posts ?? 0),
     adminUsername: (c.admin_username as string | null) ?? null,
+    expiredToday: list<Record<string, unknown>>(c.expired_today).map((x) => ({ question: String(x.question ?? ""), expiresAt: String(x.expires_at) })),
   };
 }
 
@@ -1024,6 +1070,10 @@ export async function saveAgentSettings(s: AgentSettings): Promise<AgentSettings
     post_as: s.postAs,
     hinglish: s.hinglish,
     topics_off: s.topicsOff,
+    refresh_1pm: s.refresh1pm,
+    refresh_6pm: s.refresh6pm,
+    refresh_drafts: s.refreshDrafts,
+    timely_hours: s.timelyHours,
   });
   return settingsOf(r);
 }
@@ -1042,6 +1092,11 @@ export async function fetchTrends(): Promise<TrendsData> {
       ideaAnswers: list<string>(r.idea_answers),
       skipReason: (r.skip_reason as string | null) ?? null,
       drafted: Boolean(r.drafted),
+      publishedAt: (r.published_at as string | null) ?? null,
+      region: (r.region as string | null) ?? null,
+      gloss: (r.gloss as string | null) ?? null,
+      runSlot: (r.run_slot as RunSlot | null) ?? null,
+      readAt: (r.read_at as string | null) ?? null,
     })),
     calendar: list<Record<string, unknown>>(c.calendar).map((r) => ({
       id: Number(r.id),
