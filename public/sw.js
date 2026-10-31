@@ -122,8 +122,16 @@ self.addEventListener("notificationclick", (event) => {
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       const open = windows.find((w) => new URL(w.url).origin === self.location.origin);
       if (open) {
-        await open.focus();
-        return open.navigate(url);
+        // navigate() only works on a window this worker controls (an app opened before it took
+        // over can't be moved): then open the address in a new window, or the tap goes nowhere
+        // and isn't counted.
+        try {
+          await open.focus();
+          const moved = await open.navigate(url);
+          if (moved) return moved;
+        } catch {
+          // fall through
+        }
       }
       return self.clients.openWindow(url);
     })(),

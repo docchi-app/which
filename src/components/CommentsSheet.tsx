@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { continueWithGoogle, saveReturnTo } from "@/lib/auth";
-import { deleteComment, fetchThread, postComment, type Thread } from "@/lib/comments";
+import { deleteComment, fetchThread, insertTag, postComment, removeMyTag, tagCandidates, tagParts, tagQuery, type Thread } from "@/lib/comments";
 import { useLiveInterval } from "@/lib/useLiveInterval";
 import { Avatar } from "./Avatar";
 import { ReportSheet } from "./ReportSheet";
@@ -22,6 +22,8 @@ type Props = {
   onClose: () => void;
   /** The number of live comments changed. */
   onCount: (n: number) => void;
+  /** Text to start the write box with ("@" opens the friend picker). */
+  startWith?: string;
 };
 
 function ago(iso: string) {
@@ -32,11 +34,16 @@ function ago(iso: string) {
 }
 
 /** A poll's comments: the conversation, the write box, delete and report. */
-export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount }: Props) {
+export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount, startWith = "" }: Props) {
   // Back closes it too (and the phone's back button doesn't leave the screen).
   const close = useBackClose(true, onClose);
   const [thread, setThread] = useState<Thread | null>(null);
-  const [text, setText] = useState("");
+  const [text, setText] = useState(startWith);
+  // The @ picker: what's typed after @ (null: closed), and the friends that match.
+  const [tagQ, setTagQ] = useState<string | null>(startWith.endsWith("@") ? "" : null);
+  const [friends, setFriends] = useState<{ username: string; avatarUrl: string | null }[]>([]);
+  const [tagged, setTagged] = useState<string[]>([]);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +76,57 @@ export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount }: Pr
 
   useLiveInterval(load, REFRESH_MS, Boolean(thread?.canRead));
 
+  // Friends for the @ picker, as you type (a moment after the last key).
+  const canPost = thread?.canRead === true && thread.canPost;
+  useEffect(() => {
+    if (tagQ === null || !canPost) return;
+    let live = true;
+    const t = window.setTimeout(() => {
+      tagCandidates(pollId, tagQ).then((f) => live && setFriends(f));
+    }, 150);
+    return () => {
+      live = false;
+      window.clearTimeout(t);
+    };
+  }, [tagQ, pollId, canPost]);
+  // Opened with "@": the cursor goes after it.
+  useEffect(() => {
+    if (!canPost || !startWith) return;
+    const el = inputRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [canPost, startWith]);
+
+  function typed(value: string, caret: number) {
+    setText(value);
+    const q = tagQuery(value, caret);
+    setTagQ(q);
+    if (q === null) setFriends([]);
+  }
+
+  function pickFriend(username: string) {
+    const el = inputRef.current;
+    const caret = el?.selectionStart ?? text.length;
+    const next = insertTag(text, caret, username);
+    setText(next.text);
+    setTagQ(null);
+    setFriends([]);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(next.caret, next.caret);
+    });
+  }
+
+  async function untag(id: string) {
+    try {
+      await removeMyTag(id);
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+
   // Keep the newest comment in view unless the reader has scrolled up.
   useEffect(() => {
     const el = listRef.current;
@@ -83,9 +141,12 @@ export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount }: Pr
     // Shown in the list at once, marked as sending, until the server has it.
     setPending(t);
     setText("");
+    setTagQ(null);
+    setFriends([]);
+    setTagged([]);
     stick.current = true;
     try {
-      await postComment(pollId, t);
+      setTagged(await postComment(pollId, t));
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -186,11 +247,26 @@ export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount }: Pr
                       )}
                       <span className="comment-time">{ago(c.createdAt)}</span>
                     </div>
-                    <p className="comment-text">{c.text}</p>
+                    <p className="comment-text">
+                      {tagParts(c.text, c.tags).map((part, i) =>
+                        part.tag ? (
+                          <Link key={i} href={`/u/${part.tag}`} className="comment-tag">
+                            {part.text}
+                          </Link>
+                        ) : (
+                          <span key={i}>{part.text}</span>
+                        ),
+                      )}
+                    </p>
                     <div className="comment-actions">
                       {c.canDelete && (
                         <button type="button" className="comment-action" onClick={() => remove(c.id)}>
                           Delete
+                        </button>
+                      )}
+                      {c.taggedMe && (
+                        <button type="button" className="comment-action" onClick={() => untag(c.id)}>
+                          Remove my tag
                         </button>
                       )}
                       {!c.isMine && (
@@ -216,6 +292,36 @@ export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount }: Pr
               )}
             </ol>
 
+            {tagged.length > 0 && (
+              <p className="comment-tagged" role="status">
+                ✓ {tagged.map((u) => `@${u}`).join(", ")} {tagged.length === 1 ? "gets" : "get"} a push about your comment.
+              </p>
+            )}
+            {thread.canPost && tagQ !== null && friends.length > 0 && (
+              <ul className="tag-pick" role="listbox" aria-label="Tag a friend">
+                <li className="tag-pick-head" aria-hidden="true">
+                  Friends who can see this poll
+                </li>
+                {friends.map((f) => (
+                  <li key={f.username}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected="false"
+                      className="tag-pick-row press"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => pickFriend(f.username)}
+                    >
+                      <Avatar name={f.username} url={f.avatarUrl} size={26} />
+                      <b>@{f.username}</b>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {thread.canPost && tagQ !== null && friends.length === 0 && tagQ.length > 0 && (
+              <p className="tag-pick-none">No friend called @{tagQ} can see this poll.</p>
+            )}
             {thread.canPost ? (
               <form
                 className="comment-form"
@@ -225,14 +331,21 @@ export function CommentsSheet({ pollId, colors, signedIn, onClose, onCount }: Pr
                 }}
               >
                 <textarea
+                  ref={inputRef}
                   className="comment-input"
                   rows={1}
                   maxLength={MAX}
-                  placeholder="Say something nice…"
+                  placeholder="Say something nice… @ to tag a friend"
                   aria-label="Write a comment"
                   value={text}
-                  onChange={(e) => setText(e.target.value)}
+                  onChange={(e) => typed(e.target.value, e.target.selectionStart ?? e.target.value.length)}
                   onKeyDown={(e) => {
+                    if (e.key === "Escape" && tagQ !== null) {
+                      e.stopPropagation();
+                      setTagQ(null);
+                      setFriends([]);
+                      return;
+                    }
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       send();

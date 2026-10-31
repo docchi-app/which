@@ -1,7 +1,7 @@
 import { installPlatform } from "./install";
 import { getSupabase } from "./supabase";
 
-export type PushKinds = { votes: boolean; comments: boolean; circle: boolean; results: boolean; daily: boolean; props: boolean };
+export type PushKinds = { votes: boolean; comments: boolean; circle: boolean; results: boolean; daily: boolean; props: boolean; tags: boolean };
 
 /**
  * ready: can turn on · install: iPhone/iPad in Safari (add to Home Screen first)
@@ -150,11 +150,20 @@ export async function getPushKinds(): Promise<PushKinds> {
   if (error) throw error;
   // Older databases (before the Props migration) don't send "props".
   const kinds = (data as Partial<PushKinds> | null) ?? {};
-  return { votes: true, comments: true, circle: true, results: true, daily: true, props: true, ...kinds };
+  return { votes: true, comments: true, circle: true, results: true, daily: true, props: true, tags: true, ...kinds };
 }
 
 export async function setPushKinds(kinds: PushKinds): Promise<void> {
-  const { error } = (await getSupabase()?.rpc("set_push_settings", kinds)) ?? { error: null };
+  const supabase = getSupabase();
+  const { error } = (await supabase?.rpc("set_push_settings", kinds)) ?? { error: null };
+  // Before 20261213000000_comment_tags.sql the database has no "tags" switch: save the rest.
+  if (error && /PGRST202|Could not find the function/.test(error.message ?? "") && supabase) {
+    const { tags: _tags, ...rest } = kinds;
+    void _tags;
+    const again = await supabase.rpc("set_push_settings", rest);
+    if (again.error) throw again.error;
+    return;
+  }
   if (error) throw error;
 }
 

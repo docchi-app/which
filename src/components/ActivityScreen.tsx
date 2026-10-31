@@ -167,6 +167,23 @@ export function ActivityScreen() {
             </section>
           )}
 
+          {activity && activity.tags.length > 0 && (
+            <section className="circle-section">
+              <h2 className="circle-title">Tagged you</h2>
+              <ul className="activity-list">
+                {activity.tags.map((t) => (
+                  <li key={`${t.pollId}-${t.at}`}>
+                    <Link href={`/p/${t.pollId}?comments=1`} className="activity-row press">
+                      <span className="activity-q">
+                        <b>@{t.by}</b> tagged you in a comment on &ldquo;{t.question}&rdquo;
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {activity && activity.list.length > 0 && (
             <section className="circle-section">
               <h2 className="circle-title">On your polls</h2>

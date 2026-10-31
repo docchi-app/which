@@ -164,14 +164,16 @@ function DraftEditor({ draft, adminUsername, onDone }: { draft: Draft; adminUser
       </div>
       <fieldset className="dr-seg">
         <legend>Post as</legend>
-        <button type="button" className="press" aria-pressed={eithr} onClick={() => setD({ ...d, postAs: "eithr" })}>
-          <b>Eithr</b>
-          <small>Badge, not on your profile</small>
-        </button>
-        <button type="button" className="press" aria-pressed={!eithr} disabled={!adminUsername} onClick={() => setD({ ...d, postAs: "you" })}>
-          <b>{adminUsername ? `You (@${adminUsername})` : "You"}</b>
-          <small>{adminUsername ? "Your name and profile" : "Pick a username first"}</small>
-        </button>
+        <div className="dr-seg-opts">
+          <button type="button" className="press" aria-pressed={eithr} onClick={() => setD({ ...d, postAs: "eithr" })}>
+            <b>Eithr</b>
+            <small>Badge, not on your profile</small>
+          </button>
+          <button type="button" className="press" aria-pressed={!eithr} disabled={!adminUsername} onClick={() => setD({ ...d, postAs: "you" })}>
+            <b>{adminUsername ? `You (@${adminUsername})` : "You"}</b>
+            <small>{adminUsername ? "Your name and profile" : "Pick a username first"}</small>
+          </button>
+        </div>
       </fieldset>
       <div className="dr-row">
         <label htmlFor={`${id}-at`}>
@@ -457,20 +459,37 @@ export function AdminDrafts() {
   const [note, setNote] = useState<{ text: string; bad?: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [asked, setAsked] = useState<string | null>(null);
+  // Approved here: they stay in New, marked approved (with Undo), until the screen is opened again.
+  const [approvedNow, setApprovedNow] = useState<string[]>([]);
+  // Why a draft wasn't approved, shown on its own card.
+  const [notApproved, setNotApproved] = useState<Record<string, string>>({});
 
   if (failed) return <Failed />;
   if (!data) return <Loading />;
   // New drafts: the latest refresh first (6 pm, then 1 pm), then the rest, each by time.
   const rank = (d: Draft) => (d.runSlot === "18" ? 0 : d.runSlot === "13" ? 1 : 2);
-  const fresh = [...data.fresh].sort((a, b) => rank(a) - rank(b) || a.publishAt.localeCompare(b.publishAt));
+  const justApproved = [...data.scheduled, ...data.posted].filter((d) => approvedNow.includes(d.id));
+  const fresh = [...data.fresh, ...justApproved].sort((a, b) => rank(a) - rank(b) || a.publishAt.localeCompare(b.publishAt));
   const list = view === "new" ? fresh : view === "scheduled" ? data.scheduled : data.posted;
   const approve = async (ids: string[]) => {
     setBusy(true);
     setNote(null);
     try {
       const r = await approveDrafts(ids);
-      const why = r.problems.map((p) => `“${data.fresh.find((d) => d.id === p.id)?.question ?? "A draft"}” wasn't: ${PROBLEM[p.error] ?? p.error}.`);
-      setNote({ text: [r.approved ? `${plural(r.approved, "draft")} approved.` : "", ...why].filter(Boolean).join(" "), bad: r.problems.length > 0 });
+      const refused = new Set(r.problems.map((p) => p.id));
+      setApprovedNow((a) => [...a, ...ids.filter((id) => !refused.has(id))]);
+      setNotApproved((m) => {
+        const next = { ...m };
+        for (const id of ids) delete next[id];
+        for (const p of r.problems) next[p.id] = PROBLEM[p.error] ?? p.error;
+        return next;
+      });
+      setNote({
+        text: [r.approved ? `${plural(r.approved, "draft")} approved.` : "", r.problems.length ? `${plural(r.problems.length, "draft")} not approved: see why on the card.` : ""]
+          .filter(Boolean)
+          .join(" "),
+        bad: r.problems.length > 0,
+      });
     } catch {
       setNote({ text: "Couldn't approve. Try again.", bad: true });
     }
@@ -580,6 +599,11 @@ export function AdminDrafts() {
                 }
               }}
             >
+              {d.status === "new" && notApproved[d.id] && (
+                <span className="dr-failed" role="status">
+                  Not approved: {notApproved[d.id]}.
+                </span>
+              )}
               {d.status === "new" && (
                 <>
                   <button type="button" className="ppl-mini press" disabled={busy} onClick={() => skip([d.id])} aria-label={`Skip: ${d.question}`}>
@@ -590,12 +614,32 @@ export function AdminDrafts() {
                   </button>
                 </>
               )}
-              {d.status === "scheduled" && (
+              {view === "new" && approvedNow.includes(d.id) && d.status !== "new" && (
+                <>
+                  <span className="dr-ok" role="status">
+                    ✓ Approved · {d.status === "posted" ? "Poll of the Day made" : `goes out ${when(d.publishAt)}`}
+                  </span>
+                  {d.status === "scheduled" && (
+                    <button
+                      type="button"
+                      className="ppl-mini press"
+                      onClick={async () => {
+                        await back(d.id);
+                        setApprovedNow((a) => a.filter((x) => x !== d.id));
+                      }}
+                      aria-label={`Undo: ${d.question}`}
+                    >
+                      Undo
+                    </button>
+                  )}
+                </>
+              )}
+              {view !== "new" && d.status === "scheduled" && (
                 <button type="button" className="ppl-mini press" onClick={() => back(d.id)} aria-label={`Back to drafts: ${d.question}`}>
                   Back to drafts
                 </button>
               )}
-              {d.status === "posted" && d.pollId && (
+              {view === "posted" && d.status === "posted" && d.pollId && (
                 <span className="dr-result">
                   {d.votes !== null && <span>{plural(d.votes, "vote")}</span>}
                   {d.spark !== null && <span>Spark {d.spark}</span>}
