@@ -2795,14 +2795,21 @@ button.ghost-action { cursor: pointer; }
 .dr-answer { display: flex; gap: 6px; align-items: center; }
 .dr-answer .field-input { flex: 1; min-width: 0; }
 .dr-add { justify-self: start; }
-.dr-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0; padding: 0; border: 2px solid var(--ink); border-radius: 16px; overflow: hidden; background: var(--white); }
+.dr-seg { min-width: 0; margin: 0; padding: 0; border: 0; }
 .dr-seg legend { margin-bottom: 4px; padding: 0; color: var(--muted); font-size: 11.5px; font-weight: 800; }
-.dr-seg button { display: flex; flex-direction: column; gap: 1px; align-items: flex-start; min-height: 52px; padding: 8px 10px; border: 0; background: var(--white); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.dr-seg-opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 2px solid var(--ink); border-radius: 16px; overflow: hidden; background: var(--white); }
+.dr-seg button { display: flex; flex-direction: column; gap: 1px; align-items: flex-start; min-width: 0; min-height: 52px; padding: 8px 10px; border: 0; border-radius: 0; background: var(--white); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
 .dr-seg button + button { border-left: 2px solid var(--ink); }
 .dr-seg button[aria-pressed="true"] { background: var(--sun); }
 .dr-seg button:disabled { cursor: default; opacity: 0.55; }
 .dr-seg b { font-size: 14px; overflow-wrap: anywhere; }
 .dr-seg small { color: var(--muted); font-size: 11.5px; }
+.dr-acts .dr-failed { flex-basis: 100%; order: 3; font-size: 12.5px; }
+@media (min-width: 768px) {
+  .dr-acts { max-width: 340px; }
+  .dr-acts .dr-failed { text-align: right; }
+}
+.dr-ok { padding: 3px 10px; border: 1.5px solid var(--ink); border-radius: 99px; background: #e6f8f1; color: var(--ink); font-size: 13px; font-weight: 800; }
 .dr-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: end; }
 .dr-row-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .dr label.dr-check { display: flex; flex-direction: row; gap: 8px; align-items: flex-start; min-height: 40px; color: var(--ink); font-size: 14px; font-weight: 700; }
