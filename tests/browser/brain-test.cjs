@@ -140,6 +140,8 @@ const flat = (s) => s.replace(/\s+/g, ' ');
   p = await mk({ sub: 'u2' });
   await p.goto(B + '/profile'); await p.waitForTimeout(2500);
   let pt = flat(await p.locator('.brain-teaser').innerText().catch(() => ''));
+  const tb = await p.locator('.brain-teaser').boundingBox(), pb = await p.locator('.props-about').boundingBox();
+  ok('profile: the teaser lines up with the card below and leaves a gap', tb && pb && Math.abs(tb.x - pb.x) < 1 && Math.abs(tb.width - pb.width) < 1 && pb.y - (tb.y + tb.height) >= 8, JSON.stringify({ tb, pb }));
   ok('profile: "Brain streak: coming soon" with my right answers', /Brain streak: coming soon/.test(pt) && /You got 4 Brain breaks right/.test(pt), pt);
   ok('profile 390: fits', await fits(p));
   await shot(p, '390-profile');
