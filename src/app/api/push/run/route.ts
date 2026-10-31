@@ -27,6 +27,18 @@ export async function POST(request: Request) {
     console.error("text sweep:", e instanceof Error ? e.message : e);
     await reportServerError("Background job · AI text check", e, "job");
   }
+  // Pushes for friends tagged in comments (once the comment has passed the AI check).
+  try {
+    const tags = await rpc<number>("tag_notify", { secret: cronSecret });
+    if (tags) total.tags = tags;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    // Before 20261213000000_comment_tags.sql: nothing to do.
+    if (!/PGRST202|Could not find the function/.test(message)) {
+      console.error("tag pushes:", message);
+      await reportServerError("Background job · tag pushes", e, "job");
+    }
+  }
   // A few batches per run, leaving time to finish before the limit.
   for (let batch = 0; batch < 10 && Date.now() - started < 40_000; batch++) {
     let rows: Row[];

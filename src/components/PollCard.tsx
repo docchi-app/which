@@ -6,6 +6,7 @@ import Link from "next/link";
 import { SignInRequired } from "@/lib/auth";
 import { audienceLabel } from "@/lib/circle";
 import { castVote } from "@/lib/polls";
+import { asksForTag } from "@/lib/comments";
 import { useCountUp, useLiveCard, useNearScreen } from "@/lib/live";
 import { formatCount, percentages, timeLeft } from "@/lib/format";
 import type { Poll, Visibility, VoteResult } from "@/lib/types";
@@ -129,6 +130,10 @@ export function PollCard({
   const [error, setError] = useState<string | null>(null);
   const [reporting, setReporting] = useState(false);
   const [commenting, setCommenting] = useState(openComments);
+  // Comments opened from the "Who is it?" nudge start with "@" (the friend picker).
+  const [commentStart, setCommentStart] = useState("");
+  // Just voted an answer that asks to tag someone: "Who is it? 👀".
+  const [tagNudge, setTagNudge] = useState(false);
   const [snapMenu, setSnapMenu] = useState(false);
   // My own post: who sees it (changed after posting), and the line that confirms it.
   const [choosingWho, setChoosingWho] = useState(false);
@@ -195,6 +200,8 @@ export function PollCard({
       setJustVoted(true);
       setBurst(true);
       onVoted(poll.id, result);
+      const answer = poll.options.find((o) => o.id === optionId)?.text ?? "";
+      if (signedIn && asksForTag(answer)) setTagNudge(true);
     } catch (e) {
       if (e instanceof SignInRequired) onNeedSignIn(poll.id, optionId);
       else {
@@ -541,13 +548,39 @@ export function PollCard({
         </p>
       )}
 
+      {tagNudge && (
+        <div className="tag-nudge" role="status">
+          <b>Who is it? 👀</b>
+          <span>Tag them in a comment, they&apos;ll see it.</span>
+          <span className="tag-nudge-go">
+            <button type="button" className="ppl-mini press" onClick={() => setTagNudge(false)}>
+              Not now
+            </button>
+            <button
+              type="button"
+              className="ppl-mini tag-nudge-tag press"
+              onClick={() => {
+                setTagNudge(false);
+                setCommentStart("@");
+                setCommenting(true);
+              }}
+            >
+              @ Tag a friend
+            </button>
+          </span>
+        </div>
+      )}
+
       <div ref={actionsRef} className="poll-actions">
         <button
           type="button"
           className="ghost-action"
           aria-label={poll.commentCount ? `${poll.commentCount} ${poll.commentCount === 1 ? "comment" : "comments"}` : "Comments"}
           data-tip="comments"
-          onClick={() => setCommenting(true)}
+          onClick={() => {
+            setCommentStart("");
+            setCommenting(true);
+          }}
         >
           <CommentIcon />
           {poll.commentCount > 0 && poll.commentCount}
@@ -573,6 +606,7 @@ export function PollCard({
           pollId={poll.id}
           colors={colors}
           signedIn={signedIn}
+          startWith={commentStart}
           onClose={() => setCommenting(false)}
           onCount={(n) => n !== poll.commentCount && onRefresh({ ...poll, commentCount: n })}
         />
