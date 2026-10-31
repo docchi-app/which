@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useBackClose } from "@/lib/back";
 import { setPollVisibility } from "@/lib/polls";
 import type { Visibility } from "@/lib/types";
+import { failureText } from "@/lib/failure";
 
 const CHOICES: { id: Visibility; label: string; hint: string }[] = [
   { id: "public", label: "Everyone", hint: "In the public feed, and anyone with the link" },
@@ -51,8 +52,8 @@ export function WhoSeesSheet({
       await setPollVisibility(pollId, pick);
       close();
       onSaved(pick);
-    } catch {
-      setError("Couldn't change it. Check your connection and try again.");
+    } catch (e) {
+      setError(failureText(e));
       setBusy(false);
     }
   }

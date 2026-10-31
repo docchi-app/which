@@ -1,5 +1,6 @@
 import { askTextCheck } from "./moderation";
 import { getSupabase } from "./supabase";
+import { failureText } from "./failure";
 
 export type Comment = {
   id: string;
@@ -46,11 +47,11 @@ const ERRORS: Record<string, string> = {
   closed: "This poll has closed.",
   comment_length: "Keep it to 200 characters.",
   blocked_words: "Let's keep it friendly. Try different words?",
-  slow_down: "You're on a roll! Give it a minute before the next one.",
+  slow_down: "That's a lot of comments in a row 😅 You can comment again in a few minutes.",
   not_found: "That comment's gone already.",
 };
 
-const fail = (message: string) => new Error(ERRORS[/docchi:(\w+)/.exec(message)?.[1] ?? ""] ?? "Couldn't do that. Try again?");
+const fail = (message: string) => new Error(ERRORS[/docchi:(\w+)/.exec(message)?.[1] ?? ""] ?? failureText(new Error(message)));
 
 export async function fetchThread(pollId: string): Promise<Thread> {
   const supabase = getSupabase();

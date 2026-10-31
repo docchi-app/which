@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { continueWithGoogle, guestPicks, onUserChange, saveReturnTo, isSignedIn } from "@/lib/auth";
+import { continueWithGoogle, guestPicks, onUserChange, rememberAccount, saveReturnTo, isSignedIn } from "@/lib/auth";
 import { checkUsername, type UsernameProblem } from "@/lib/create";
 import { formatCount, percentages, timeLeft } from "@/lib/format";
 import { deletePoll, fetchMyPolls, setPollVisibility } from "@/lib/polls";
@@ -23,6 +23,7 @@ import { fetchStreak, type Streak } from "@/lib/streak";
 import { myBrainScore } from "@/lib/brain";
 import { SignInNote } from "./SignInSheet";
 import { useBackClose } from "@/lib/back";
+import { failureText } from "@/lib/failure";
 
 type Tab = "mine" | "voted";
 
@@ -30,7 +31,7 @@ const NAME_PROBLEMS: Record<string, string> = {
   format: "3 to 20 letters, numbers or _",
   reserved: "That one's reserved.",
   blocked: "Let's pick something friendlier.",
-  taken: "Taken! These are free:",
+  taken: "That one's taken. Try one of these:",
   too_soon: "You can change your username once a week.",
 };
 
@@ -74,6 +75,7 @@ export function ProfileScreen() {
     getMyProfile()
       .then((p) => {
         setProfile(p);
+        if (p) rememberAccount({ polls: p.pollsMade });
         remember("profile", p);
       })
       .catch((e) => {
@@ -88,12 +90,14 @@ export function ProfileScreen() {
     getMyCircle()
       .then((c) => {
         setFriends(c.members.length);
+        rememberAccount({ friends: c.members.length });
         remember("profile:friends", c.members.length);
       })
       .catch(() => {});
     fetchStreak()
       .then((st) => {
         setStreak(st);
+        if (st) rememberAccount({ streak: st.current });
         remember("profile:streak", st);
       })
       .catch(() => {});
@@ -410,7 +414,7 @@ function ProfileHead({ profile, onRenamed }: { profile: Profile | null; onRename
             />
           </div>
           <div className="name-status" aria-live="polite">
-            {problem && <span className="name-bad">{NAME_PROBLEMS[problem] ?? "Couldn't save. Try again?"}</span>}
+            {problem && <span className="name-bad">{NAME_PROBLEMS[problem] ?? failureText(new Error(problem))}</span>}
             {!problem && status === undefined && <span className="muted">Checking…</span>}
             {!problem && status?.problem === "ok" && <span className="name-ok">@{name} is free.</span>}
             {!problem && status && status.problem !== "ok" && (
@@ -503,7 +507,7 @@ export function ProfilePoll({
       .catch((e) => {
         console.error(e);
         setHidden(false);
-        setFailed("Couldn't delete it. Try again?");
+        setFailed(failureText(e));
       });
   }
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { continueWithGoogle, guestPicks } from "@/lib/auth";
+import { continueWithGoogle, guestPicks, lastAccount } from "@/lib/auth";
 import { useBackClose } from "@/lib/back";
 
 export type SheetPick = { text: string; color: string };
@@ -18,6 +18,8 @@ export function SignInSheet({ pick, onClose }: Props) {
   // Back closes it too (and the phone's back button doesn't leave the screen).
   const close = useBackClose(true, onClose);
   const [votes] = useState(() => guestPicks().length);
+  // This phone was signed in with Google until the sign-in ran out on its own.
+  const [wasIn] = useState(() => Boolean(lastAccount()));
   const googleRef = useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +61,20 @@ export function SignInSheet({ pick, onClose }: Props) {
           </span>
         </div>
 
-        {pick ? (
+        {pick && wasIn ? (
+          <>
+            <h2 id="signin-title" className="sheet-title">
+              Sign in to count your vote
+            </h2>
+            <p className="sheet-text">
+              Your sign-in ended. We kept your pick,{" "}
+              <strong className="sheet-pick" style={{ background: pick.color }}>
+                {pick.text}
+              </strong>
+              , and it&apos;s added the moment you&apos;re back.
+            </p>
+          </>
+        ) : pick ? (
           <>
             <h2 id="signin-title" className="sheet-title">
               Lock in your pick
@@ -110,7 +125,7 @@ export function SignInSheet({ pick, onClose }: Props) {
   );
 }
 
-function GoogleG() {
+export function GoogleG() {
   return (
     <span className="google-g" aria-hidden="true">
       <svg width="18" height="18" viewBox="0 0 48 48">

@@ -113,7 +113,7 @@ http.createServer((req, res) => {
   if (LAT && req.method !== 'OPTIONS' && !req.url.startsWith('/__log')) { const orig = res.end.bind(res); res.end = (...args) => { setTimeout(() => orig(...args), LAT); return res; }; }
   const chunks = [];
   req.on('data', (c) => chunks.push(c));
-  req.on('end', () => {
+  req.on('end', async () => {
     const raw = Buffer.concat(chunks);
     const body = req.url.startsWith('/storage/') ? '' : raw.toString();
     const url = new URL(req.url, 'http://x');
@@ -123,6 +123,8 @@ http.createServer((req, res) => {
     log.push(`${url.pathname} ${body.slice(0, 120)}`);
     if (url.pathname.startsWith('/storage/v1/object/')) {
       const rest = decodeURIComponent(url.pathname.slice('/storage/v1/object/'.length));
+      // Tests: /__fn_state?name=upload&state=slow:6000 holds the photo upload that long.
+      if (req.method === 'POST' && rest.startsWith('snaps/') && /^slow:\d+$/.test(fnState.upload ?? '')) { log.push('SLOW upload'); await new Promise((r) => setTimeout(r, Number(fnState.upload.slice(5)))); }
       if (req.method === 'POST' && rest.startsWith('snaps/')) { let type = req.headers['content-type'], buf = raw;
         const m = /boundary=(.+)$/.exec(type || '');
         if (m) { const parts = raw.toString('latin1').split('--' + m[1]); const part = parts.find((x) => /Content-Type: image/i.test(x)); const head = part.indexOf('\r\n\r\n'); type = /Content-Type: (\S+)/i.exec(part)[1]; buf = Buffer.from(part.slice(head + 4, part.lastIndexOf('\r\n')), 'latin1'); }
@@ -149,7 +151,11 @@ http.createServer((req, res) => {
     if (url.pathname === '/__fn_state') { fnState[url.searchParams.get('name')] = url.searchParams.get('state'); return json(200, fnState); }
     { const fnName = url.pathname.replace('/rest/v1/rpc/', '');
       if (fnState[fnName] === 'missing') { log.push('MISSING ' + fnName); return json(404, { code: 'PGRST202', details: 'Searched for the function public.' + fnName, hint: null, message: `Could not find the function public.${fnName}(max_rows, secret) in the schema cache` }); }
-      if (fnState[fnName] === 'broken') { log.push('BROKEN ' + fnName); return json(500, { code: 'XX000', message: 'something broke' }); } }
+      if (fnState[fnName] === 'broken') { log.push('BROKEN ' + fnName); return json(500, { code: 'XX000', message: 'something broke' }); }
+      if (fnState[fnName] === 'slow_down') { log.push('SLOW_DOWN ' + fnName); return json(400, { code: 'P0001', message: 'docchi:slow_down' }); }
+      if (fnState[fnName] === 'closed') { log.push('CLOSED ' + fnName); return json(400, { code: 'P0002', message: 'poll is closed or missing' }); }
+      // Tests: /__fn_state?name=cast_vote&state=slow:5000 answers after that many milliseconds.
+      if (/^slow:\d+$/.test(fnState[fnName] ?? '')) { const ms = Number(fnState[fnName].slice(5)); log.push('SLOW ' + fnName + ' ' + ms); await new Promise((r) => setTimeout(r, ms)); } }
     switch (url.pathname.replace('/rest/v1/rpc/', '')) {
       case 'live_counts': return json(200, a.ids.slice(0, 12).map((id) => polls.find((p) => p.id === id)).filter(Boolean).map((p) => { const v = view(p); return { id: p.id, vote_count: p.vote_count, view_count: Math.max(p.view_count || 0, p.vote_count), comment_count: p.comment_count || 0, recent_votes: p.recent_votes || 0, options: v.options.map((o) => ({ id: o.id, votes: o.votes })) }; }));
       case 'create_snap': {

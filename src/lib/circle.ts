@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import { failureText } from "./failure";
 
 // Friends. The database still calls them circles: an accepted friendship is
 // stored both ways in circle_members, and "groups" are shown as lists.
@@ -151,7 +152,7 @@ export const CIRCLE_ERRORS: Record<string, string> = {
   self: "That's you!",
   no_user: "Couldn't find that person.",
   blocked: "You can't do that with this person.",
-  request_limit: "That's 50 requests today. Try again tomorrow.",
+  request_limit: "You've sent a lot of requests today (50). You can send more tomorrow.",
   circle_full: "That's the limit of 500 friends.",
   no_request: "That request isn't there anymore.",
   group_name: "List names are 1 to 24 characters.",
@@ -164,7 +165,7 @@ export const CIRCLE_ERRORS: Record<string, string> = {
 };
 
 export const circleErrorText = (e: unknown) =>
-  (e instanceof CircleError && CIRCLE_ERRORS[e.code]) || "That didn't work. Try again?";
+  (e instanceof CircleError && CIRCLE_ERRORS[e.code]) || failureText(e);
 
 export type CirclePick = Person & { optionId: string; isMe: boolean };
 

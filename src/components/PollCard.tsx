@@ -5,7 +5,9 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { SignInRequired } from "@/lib/auth";
 import { audienceLabel } from "@/lib/circle";
-import { castVote } from "@/lib/polls";
+import { castVote, fetchPoll } from "@/lib/polls";
+import { failureCode, isNetworkError } from "@/lib/failure";
+import { queueVote, queuedVote, unqueueVote, VOTE_DROPPED, VOTE_SENT, type VoteDroppedDetail, type VoteSentDetail } from "@/lib/outbox";
 import { asksForTag } from "@/lib/comments";
 import { brainLine, brainReveal, brainWhyTitle, flagBrain, type BrainReveal } from "@/lib/brain";
 import { useCountUp, useLiveCard, useNearScreen } from "@/lib/live";
@@ -128,7 +130,12 @@ export function PollCard({
     const t = window.setTimeout(() => setBurst(false), 1200);
     return () => window.clearTimeout(t);
   }, [burst]);
-  const [error, setError] = useState<string | null>(null);
+  // A vote that failed: no connection is handled by "waiting" below; these are the rest.
+  const [failure, setFailure] = useState<{ kind: "server" | "rate" | "closed"; pick: string } | null>(null);
+  // A pick made without a connection, kept to send later (outbox.ts).
+  const [waiting, setWaiting] = useState<string | null>(null);
+  // Still sending after 3 seconds.
+  const [slow, setSlow] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [commenting, setCommenting] = useState(openComments);
   // Comments opened from the "Who is it?" nudge start with "@" (the friend picker).
@@ -205,14 +212,69 @@ export function PollCard({
     return () => window.clearTimeout(t);
   }, [poll.voteCount]);
 
+  // A pick waiting from an earlier visit, and the waiting pick going out (or the poll closing first).
+  useEffect(() => {
+    // Read after the first paint, so the page matches what the server sent.
+    const t = window.setTimeout(() => !voted && setWaiting(queuedVote(poll.id)), 0);
+    const sent = (e: Event) => {
+      const d = (e as CustomEvent<VoteSentDetail>).detail;
+      if (d.pollId !== poll.id) return;
+      setWaiting(null);
+      ownVoteAt.current = Date.now();
+      setJustVoted(true);
+      onVoted(poll.id, d.result);
+    };
+    const dropped = (e: Event) => {
+      const d = (e as CustomEvent<VoteDroppedDetail>).detail;
+      if (d.pollId !== poll.id) return;
+      setWaiting((w) => {
+        if (w) setFailure({ kind: d.reason === "closed" ? "closed" : "server", pick: w });
+        return null;
+      });
+      if (d.reason === "closed") void showFinal();
+    };
+    window.addEventListener(VOTE_SENT, sent);
+    window.addEventListener(VOTE_DROPPED, dropped);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener(VOTE_SENT, sent);
+      window.removeEventListener(VOTE_DROPPED, dropped);
+    };
+    // Only for this poll; onVoted and showFinal are stable enough for an event listener.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [poll.id, voted]);
+
+  /** The poll closed before the vote landed: show how it ended. */
+  async function showFinal() {
+    const fresh = await fetchPoll(poll.id).catch(() => null);
+    if (fresh) onRefresh(fresh);
+  }
+
   async function vote(optionId: string) {
-    if (lockingId || voted) return;
+    if (lockingId || voted || waiting) return;
     if (!poll.isMine && recordView(poll.id)) countSelf();
     setLockingId(optionId);
-    setError(null);
+    setFailure(null);
+    setSlow(false);
     ownVoteAt.current = Date.now();
+    // Slow connection: a calm line after 3 seconds; after 20 the pick is kept to send later
+    // (if the request does finish after all, the waiting copy is dropped, so it never counts twice).
+    let gaveUp = false;
+    const slowT = window.setTimeout(() => setSlow(true), 3000);
+    const giveUpT = window.setTimeout(() => {
+      gaveUp = true;
+      queueVote(poll.id, optionId);
+      setWaiting(optionId);
+      setLockingId(null);
+      setSlow(false);
+    }, 20000);
     try {
       const result = await castVote(poll.id, optionId);
+      window.clearTimeout(slowT);
+      window.clearTimeout(giveUpT);
+      if (gaveUp) unqueueVote(poll.id);
+      setWaiting(null);
+      setSlow(false);
       ownVoteAt.current = Date.now();
       // A tiny buzz when the vote locks in (Android; iPhone browsers don't vibrate).
       try {
@@ -226,17 +288,27 @@ export function PollCard({
       const answer = poll.options.find((o) => o.id === optionId)?.text ?? "";
       if (signedIn && asksForTag(answer)) setTagNudge(true);
     } catch (e) {
+      window.clearTimeout(slowT);
+      window.clearTimeout(giveUpT);
+      setSlow(false);
       if (e instanceof SignInRequired) onNeedSignIn(poll.id, optionId);
-      else {
+      else if (isNetworkError(e)) {
+        // No connection: keep the pick and send it when the connection is back.
+        queueVote(poll.id, optionId);
+        setWaiting(optionId);
+      } else {
         console.error(e);
-        setError(
-          /slow_down/.test((e as Error)?.message ?? "")
-            ? "Whoa, speedy! Take a short break and try again in a few minutes."
-            : "That vote didn't go through. Try again?",
-        );
+        if (gaveUp) {
+          unqueueVote(poll.id);
+          setWaiting(null);
+        }
+        const msg = (e as { message?: string })?.message ?? "";
+        const closedNow = /closed or missing/i.test(msg) || failureCode(e) === "closed";
+        setFailure({ kind: failureCode(e) === "slow_down" ? "rate" : closedNow ? "closed" : "server", pick: optionId });
+        if (closedNow) void showFinal();
       }
     } finally {
-      setLockingId(null);
+      if (!gaveUp) setLockingId(null);
     }
   }
 
@@ -445,23 +517,35 @@ export function PollCard({
                   <button
                     key={o.id}
                     type="button"
-                    className={`take-btn press${i === 1 ? " take-btn-dark" : ""}`}
+                    className={`take-btn press${i === 1 ? " take-btn-dark" : ""}${waiting === o.id ? " answer-waiting" : ""}`}
                     onClick={() => vote(o.id)}
+                    aria-disabled={waiting ? true : undefined}
                   >
                     {o.text}
+                    {waiting === o.id && (
+                      <span className="answer-pending-row">
+                        <span className="answer-pending">Waiting to send</span>
+                      </span>
+                    )}
                   </button>
                 ) : (
                   <button
                     key={o.id}
                     type="button"
-                    className="answer press"
+                    className={`answer press${waiting === o.id ? " answer-waiting" : ""}`}
                     style={{ animationDelay: `${i * 0.08}s` }}
                     onClick={() => vote(o.id)}
+                    aria-disabled={waiting ? true : undefined}
                   >
                     <span className="answer-letter" style={{ background: colors[i] }}>
                       {"ABCD"[i]}
                     </span>
-                    {o.text}
+                    {waiting === o.id ? <span className="answer-wtext">{o.text}</span> : o.text}
+                    {waiting === o.id && (
+                      <span className="answer-pending-row">
+                        <span className="answer-pending">Waiting to send</span>
+                      </span>
+                    )}
                   </button>
                 ),
               )}
@@ -613,10 +697,39 @@ export function PollCard({
         </>
       )}
 
-      {error && (
-        <p className="poll-error" role="alert">
-          {error}
-        </p>
+      {waiting && !voted && (
+        <div className="state-msg state-wait" role="status">
+          <b>📶 No connection</b>
+          <span>Your pick is saved. It goes in as soon as you&apos;re back online, nothing to tap.</span>
+        </div>
+      )}
+      {slow && lockingId && (
+        <div className="state-msg state-slow" role="status">
+          <b>🐢 Slow connection, still sending</b>
+          <span className="state-bar" aria-hidden="true">
+            <i />
+          </span>
+          <span>Keep scrolling, it finishes on its own.</span>
+        </div>
+      )}
+      {failure && !voted && (
+        <div className={`state-msg ${failure.kind === "server" ? "state-us" : "state-note"}`} role="alert">
+          {failure.kind === "server" ? (
+            <>
+              <b>Eithr hiccuped 😵‍💫</b>
+              <span>That&apos;s on us, not your phone. We&apos;ve been told about it.</span>
+              <span className="state-acts">
+                <button type="button" className="state-btn press" onClick={() => vote(failure.pick)}>
+                  Try again
+                </button>
+              </span>
+            </>
+          ) : failure.kind === "rate" ? (
+            <span>That&apos;s a lot of votes in a row 😅 Take a breather and try again in a few minutes.</span>
+          ) : (
+            <span>This poll just closed. Here&apos;s how it ended 👇</span>
+          )}
+        </div>
       )}
 
       {tagNudge && (

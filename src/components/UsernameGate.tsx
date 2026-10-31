@@ -6,12 +6,13 @@ import { isSignedIn, onUserChange } from "@/lib/auth";
 import { checkUsername, type UsernameProblem } from "@/lib/create";
 import { getMyProfile, getUsernameSuggestions, PROFILE_CHANGED, updateUsername } from "@/lib/profile";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { failureText } from "@/lib/failure";
 
 const PROBLEMS: Record<string, string> = {
   format: "3 to 20 letters, numbers or _",
   reserved: "That one's reserved. How about:",
   blocked: "Let's pick something friendlier. How about:",
-  taken: "Taken! These are free:",
+  taken: "That one's taken. Try one of these:",
 };
 
 const cleanName = (s: string) => s.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
@@ -86,7 +87,7 @@ export function UsernameGate() {
         const r = await checkUsername(name).catch(() => null);
         if (r) setChecked({ name, ...r });
       } else {
-        setError("Couldn't save that. Try again?");
+        setError(failureText(e));
       }
     } finally {
       setSaving(false);

@@ -16,6 +16,7 @@ import {
   type PushSupport,
 } from "@/lib/push";
 import { InstallSheet } from "./InstallSheet";
+import { failureText } from "@/lib/failure";
 
 const KINDS: { id: keyof PushKinds; label: string; hint: string }[] = [
   { id: "votes", label: "Votes on my polls", hint: "At 3, 5, 10, 25, 50…" },
@@ -76,7 +77,7 @@ function usePush() {
       return true;
     } catch (e) {
       console.error(e);
-      setNote("Couldn't turn them on. Try again?");
+      setNote(failureText(e));
       return false;
     } finally {
       setBusy(false);
@@ -230,9 +231,9 @@ export function NotificationSettings() {
     setKinds(next);
     try {
       await setPushKinds(next);
-    } catch {
+    } catch (e) {
       setKinds(kinds);
-      setNote("Couldn't save that. Try again?");
+      setNote(failureText(e));
     }
   }
 

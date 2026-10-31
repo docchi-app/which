@@ -1,5 +1,6 @@
 import { getSupabase } from "./supabase";
 import { averageColor } from "./snap-photo";
+import { failureText } from "./failure";
 
 // Quick snap: a photo poll that disappears after 24 hours. Photos are made on
 // the phone as exact 3:4 images (1080 × 1440, see snap-photo.ts), uploaded to
@@ -58,6 +59,10 @@ export async function postSnap(input: {
   answers: string[];
   audience: SnapAudience;
   live: boolean;
+  /** 0–100 as the photo uploads (only where the browser reports it). */
+  onProgress?: (percent: number) => void;
+  /** Stops the upload (Cancel): throws SnapError("cancelled"). */
+  signal?: AbortSignal;
 }): Promise<string> {
   const supabase = getSupabase();
   if (!supabase) throw new SnapError("demo");
@@ -70,11 +75,13 @@ export async function postSnap(input: {
   // The photo's average colour rides in its name, so the feed can paint it while the photo loads.
   const tint = await averageColor(blob).catch(() => null);
   const path = `${user.id}/${crypto.randomUUID()}${tint ? `-c${tint}` : ""}.${ext}`;
-  const up = await supabase.storage.from("snaps").upload(path, blob, { contentType: blob.type, cacheControl: "86400", upsert: false });
-  if (up.error) {
-    console.error("snap upload:", up.error.message);
+  const upErr = input.onProgress && typeof XMLHttpRequest !== "undefined"
+    ? await uploadWithProgress(path, blob, data.session!.access_token, input.onProgress, input.signal)
+    : (await supabase.storage.from("snaps").upload(path, blob, { contentType: blob.type, cacheControl: "86400", upsert: false })).error?.message ?? null;
+  if (upErr) {
+    console.error("snap upload:", upErr);
     // The bucket comes with the Quick snap migration; without it nothing can upload.
-    throw new SnapError(/bucket not found/i.test(up.error.message) ? "not_set_up" : "upload");
+    throw new SnapError(upErr === "cancelled" ? "cancelled" : /bucket not found/i.test(upErr) ? "not_set_up" : "upload");
   }
 
   const { data: id, error } = await supabase.rpc("create_snap", {
@@ -208,14 +215,47 @@ export const SNAP_ERRORS: Record<string, string> = {
   blocked_words: "Let's keep it friendly: some of those words aren't allowed.",
   too_big: "That photo is too big. Try another one.",
   not_set_up: "Snaps aren't set up yet. (Whoever runs Eithr: run the Quick snap migrations.)",
-  upload: "Couldn't upload the photo. Check your connection and try again.",
+  upload: "The photo didn't upload (weak signal?). Your snap is kept: tap Send again when you have better signal.",
   no_photo: "The photo didn't upload. Try again.",
+  cancelled: "Stopped. Your snap is still here: tap Send when you're ready.",
   demo: "Demo mode: snaps need Supabase.",
 };
 export const snapErrorText = (e: unknown) =>
   e instanceof SnapError && e.code === "snap_limit" && e.limit
     ? `That's ${e.limit} ${e.limit === 1 ? "snap" : "snaps"} today. You can snap again after midnight.`
-    : (e instanceof SnapError && SNAP_ERRORS[e.code]) || "Couldn't post your snap. Try again?";
+    : (e instanceof SnapError && SNAP_ERRORS[e.code]) || failureText(e);
+
+/**
+ * The same upload Supabase's client makes (POST /storage/v1/object/snaps/<path>), sent with XHR so the
+ * screen can show real progress on a slow connection. Returns null, or what went wrong.
+ */
+function uploadWithProgress(path: string, blob: Blob, token: string, onProgress: (percent: number) => void, signal?: AbortSignal): Promise<string | null> {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!base || !anon) return Promise.resolve("not configured");
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${base}/storage/v1/object/snaps/${path.split("/").map(encodeURIComponent).join("/")}`);
+    xhr.setRequestHeader("authorization", `Bearer ${token}`);
+    xhr.setRequestHeader("apikey", anon);
+    xhr.setRequestHeader("content-type", blob.type || "image/jpeg");
+    xhr.setRequestHeader("cache-control", "max-age=86400");
+    xhr.setRequestHeader("x-upsert", "false");
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.min(99, Math.round((100 * e.loaded) / e.total)));
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress(100);
+        resolve(null);
+      } else resolve(`${xhr.status}: ${xhr.responseText.slice(0, 200)}`);
+    };
+    xhr.onerror = () => resolve("network error");
+    xhr.ontimeout = () => resolve("network timeout");
+    xhr.onabort = () => resolve("cancelled");
+    xhr.timeout = 120_000;
+    signal?.addEventListener("abort", () => xhr.abort());
+    xhr.send(blob);
+  });
+}
 
 // The last idea and audience, so the next snap is one tap shorter.
 const PREFS_KEY = "docchi.snapPrefs";

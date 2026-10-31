@@ -23,6 +23,7 @@ import { ANSWER_COLORS } from "./PollCard";
 import { ArrowIcon, PlusIcon } from "./icons";
 import { SignInNote } from "./SignInSheet";
 import { leaveScreen } from "@/lib/back";
+import { failureText } from "@/lib/failure";
 
 const QUESTION_MAX = 140;
 const ANSWER_MAX = 40;
@@ -79,7 +80,7 @@ const ERRORS: Record<string, string> = {
   answer_count: "Add 2 to 4 answers.",
   duplicate_answers: "Two answers are the same. Make each one different.",
   duration: "Pick when the poll closes.",
-  blocked_words: "Let's keep it friendly: some of those words aren't allowed.",
+  blocked_words: "One word in there isn't allowed on Eithr. Change it and post again.",
   empty_circle: "No friends yet (or in those lists). Share your invite link from the Friends tab.",
   special_limit: "One hot take or mystery poll a day. Post a classic, or post one after midnight.",
   teaser_length: "Mystery polls need a teaser of 3 to 60 characters.",
@@ -271,10 +272,10 @@ export function CreatePoll() {
           if (r) setChecked({ name: draft.username, ...r });
           return;
         }
-        setError(e.code === "daily_limit" && status ? limitText(status.pollLimit) : (ERRORS[e.code] ?? "Couldn't post. Try again?"));
+        setError(e.code === "daily_limit" && status ? limitText(status.pollLimit) : (ERRORS[e.code] ?? failureText(e)));
       } else {
         console.error(e);
-        setError("Couldn't post. Try again?");
+        setError(failureText(e));
       }
     }
   }

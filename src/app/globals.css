@@ -4533,3 +4533,27 @@ button.ghost-action { cursor: pointer; }
   .gr-table th:first-child { padding-left: 10px; }
   .gr-table td:last-child, .gr-table th:last-child { padding-right: 10px; }
 }
+
+/* ─── Screen states: waiting, slow, failed (votes) ─────────────────────────── */
+.state-msg { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 2px solid var(--ink); border-radius: 16px; font-size: 14px; line-height: 1.4; }
+.state-msg b { font-family: var(--font-display); font-size: 15px; }
+.state-wait { background: #e3f0ff; }
+.state-slow { background: #fff3d1; }
+.state-us { background: #ffe3da; }
+.state-note { background: var(--cream); }
+.state-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.state-btn { align-self: flex-start; padding: 5px 12px; border: 2px solid var(--ink); border-radius: 12px; background: var(--coral); color: var(--ink); font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+.state-bar { display: block; height: 8px; overflow: hidden; border: 1.5px solid var(--ink); border-radius: 99px; background: var(--white); }
+.state-bar i { display: block; width: 40%; height: 100%; background: repeating-linear-gradient(90deg, var(--sun) 0 10px, #ffe58a 10px 20px); background-size: 40px 100%; animation: state-crawl 1.2s linear infinite; }
+.state-bar.state-real i { width: var(--done, 0%); background: var(--mint); animation: none; transition: width 0.3s ease; }
+@keyframes state-crawl { to { background-position: 40px 0; } }
+@media (prefers-reduced-motion: reduce) { .state-bar i { animation: none; } }
+.answer-waiting { flex-wrap: wrap; border-width: 3px; background: #fff3d1; }
+/* On its own line under the answer rather than spilling out of the card. */
+.answer-wtext { flex: 1 1 0; min-width: 0; }
+.answer-pending-row { display: flex; flex-basis: 100%; justify-content: flex-end; }
+.answer-pending { margin-left: auto; padding: 0 8px; border: 1.5px dashed var(--ink); border-radius: 99px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.poll-snap > .state-msg { margin-right: 16px; margin-left: 16px; }
+.signedout-keep { display: flex; flex-wrap: wrap; gap: 6px; }
+.signedout-keep span { padding: 1px 10px; border: 2px solid var(--ink); border-radius: 99px; background: var(--white); font-size: 13px; font-weight: 800; }
+.snap-cancel { align-self: flex-start; }

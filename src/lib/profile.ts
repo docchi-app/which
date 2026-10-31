@@ -1,3 +1,4 @@
+import { forgetAccount } from "./auth";
 import { forgetThisDevice } from "./push";
 import { getSupabase } from "./supabase";
 
@@ -93,6 +94,7 @@ export async function deleteMyAccount(confirm: string): Promise<void> {
   await forgetThisDevice().catch(() => {});
   const { error } = await supabase.rpc("delete_my_account", { confirm });
   if (error) throw new DeleteAccountError(/docchi:(\w+)/.exec(error.message)?.[1] ?? "failed");
+  forgetAccount();
   await supabase.auth.signOut({ scope: "local" }).catch(() => {});
   try {
     for (const key of Object.keys(localStorage)) if (key.startsWith("docchi.")) localStorage.removeItem(key);

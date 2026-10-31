@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchSchedule, schedulePoll, unschedule, type PollKind, type ScheduleDay, type ScheduleInput } from "@/lib/admin";
 import { useBackClose } from "@/lib/back";
+import { failureText } from "@/lib/failure";
 
 const ERRORS: Record<string, string> = {
   day_taken: "That day already has a Poll of the Day.",
@@ -192,7 +193,7 @@ function ScheduleForm({ initial, onClose, onSaved }: { initial: ScheduleInput; o
       onSaved();
       close();
     } catch (e) {
-      setError(ERRORS[(e as Error).message] ?? "Couldn't save that. Try again?");
+      setError(failureText(e, ERRORS));
       setBusy(false);
     }
   }
