@@ -884,7 +884,7 @@ export type Draft = PollTags & {
   id: string;
   question: string;
   answers: string[];
-  slot: "timely" | "emotional" | "best" | "experiment" | "trend" | "manual";
+  slot: "timely" | "emotional" | "best" | "experiment" | "trend" | "manual" | "brain";
   why: string | null;
   source: string | null;
   postAs: "eithr" | "you";
@@ -905,6 +905,14 @@ export type Draft = PollTags & {
   /** The run that wrote it: the morning set, the 1 pm or 6 pm refresh, or Write drafts now. */
   runSlot: RunSlot | null;
   runModel: string | null;
+  /** Brain breaks: the kind, the right answer's position, the why shown after voting, and whether the second AI agreed. */
+  brainSort: string | null;
+  correct: number | null;
+  explain: string | null;
+  checked: boolean;
+  /** Once posted: how many got it right, and "Wrong answer?" flags. */
+  rightPct: number | null;
+  flags: number;
 };
 export type RunSlot = "morning" | "13" | "18" | "manual";
 export type AgentSettings = {
@@ -918,7 +926,12 @@ export type AgentSettings = {
   refresh6pm: boolean;
   refreshDrafts: number;
   timelyHours: number;
+  /** Null before 20261214000000_brain_breaks.sql. */
+  brainPerWeek: number | null;
+  brainHour: number;
+  brainSortsOff: string[];
 };
+export type BrainOut = { pollId: string; question: string; sort: string; votes: number; rightPct: number | null; flags: number; createdAt: string };
 export type AgentRun = {
   startedAt: string;
   finishedAt: string | null;
@@ -941,6 +954,8 @@ export type DraftsData = {
   tomorrowPosts: number;
   adminUsername: string | null;
   expiredToday: { question: string; expiresAt: string }[];
+  brainDropped: { question: string; sort: string | null; error: string | null }[];
+  brainOut: BrainOut[];
 };
 export type Trend = PollTags & {
   id: number;
@@ -983,6 +998,12 @@ const draftOf = (r: Record<string, unknown>): Draft => ({
   sourceAt: (r.source_at as string | null) ?? null,
   runSlot: (r.run_slot as RunSlot | null) ?? null,
   runModel: (r.run_model as string | null) ?? null,
+  brainSort: (r.brain_sort as string | null) ?? null,
+  correct: num(r.correct),
+  explain: (r.explain as string | null) ?? null,
+  checked: r.checked === true,
+  rightPct: num(r.right_pct),
+  flags: Number(r.flags ?? 0),
 });
 const settingsOf = (s: Record<string, unknown> | null | undefined): AgentSettings => ({
   paused: Boolean(s?.paused),
@@ -995,6 +1016,9 @@ const settingsOf = (s: Record<string, unknown> | null | undefined): AgentSetting
   refresh6pm: s?.refresh_6pm !== false,
   refreshDrafts: Number(s?.refresh_drafts ?? 3),
   timelyHours: Number(s?.timely_hours ?? 12),
+  brainPerWeek: s?.brain_per_week == null ? null : Number(s.brain_per_week),
+  brainHour: Number(s?.brain_hour ?? 13),
+  brainSortsOff: list<string>(s?.brain_sorts_off),
 });
 
 export async function fetchDrafts(): Promise<DraftsData> {
@@ -1023,6 +1047,16 @@ export async function fetchDrafts(): Promise<DraftsData> {
     tomorrowPosts: Number(c.tomorrow_posts ?? 0),
     adminUsername: (c.admin_username as string | null) ?? null,
     expiredToday: list<Record<string, unknown>>(c.expired_today).map((x) => ({ question: String(x.question ?? ""), expiresAt: String(x.expires_at) })),
+    brainDropped: list<Record<string, unknown>>(c.brain_dropped).map((x) => ({ question: String(x.question ?? ""), sort: (x.brain_sort as string | null) ?? null, error: (x.error as string | null) ?? null })),
+    brainOut: list<Record<string, unknown>>(c.brain_out).map((x) => ({
+      pollId: String(x.poll_id),
+      question: String(x.question ?? ""),
+      sort: String(x.sort ?? ""),
+      votes: Number(x.votes ?? 0),
+      rightPct: num(x.right_pct),
+      flags: Number(x.flags ?? 0),
+      createdAt: String(x.created_at),
+    })),
   };
 }
 
@@ -1034,6 +1068,9 @@ export type DraftInput = PollTags & {
   openDays: 1 | 3 | 7;
   pollOfDay: boolean;
   notify: boolean;
+  /** Brain breaks only. */
+  correct?: number | null;
+  explain?: string | null;
 };
 
 export async function saveDraft(id: string, d: DraftInput): Promise<Draft> {
@@ -1050,6 +1087,8 @@ export async function saveDraft(id: string, d: DraftInput): Promise<Draft> {
     open_days: d.openDays,
     poll_of_day: d.pollOfDay,
     notify: d.notify,
+    // Only Brain breaks send these (before their migration there are none, and the old function takes neither).
+    ...(d.correct != null ? { correct: d.correct, answer_why: d.explain ?? "" } : {}),
   });
   return draftOf(r);
 }
@@ -1074,6 +1113,8 @@ export async function saveAgentSettings(s: AgentSettings): Promise<AgentSettings
     refresh_6pm: s.refresh6pm,
     refresh_drafts: s.refreshDrafts,
     timely_hours: s.timelyHours,
+    // Before 20261214000000_brain_breaks.sql the function takes none of these.
+    ...(s.brainPerWeek != null ? { brain_per_week: s.brainPerWeek, brain_hour: s.brainHour, brain_sorts_off: s.brainSortsOff } : {}),
   });
   return settingsOf(r);
 }

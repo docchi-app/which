@@ -5,7 +5,7 @@
 const http = require('http');
 // The content agent (Admin → Drafts, Trending now): drafts, settings, runs, trends, calendar.
 const agent = {
-  settings: { paused: false, drafts_per_day: 8, posts_per_day: 4, post_as: 'eithr', hinglish: 50, topics_off: [], refresh_1pm: true, refresh_6pm: true, refresh_drafts: 3, timely_hours: 12 },
+  settings: { paused: false, drafts_per_day: 8, posts_per_day: 4, post_as: 'eithr', hinglish: 50, topics_off: [], refresh_1pm: true, refresh_6pm: true, refresh_drafts: 3, timely_hours: 12, brain_per_week: 3, brain_hour: 13, brain_sorts_off: [] },
   forceSlot: null, requested: null, runs: [], drafts: [], trends: [], nextTrend: 1, calendar: [
     { id: 1, day: new Date(Date.now() + 330 * 60000 + 8 * 864e5).toISOString().slice(0, 10), label: 'Diwali', added_by: 'seed' },
     { id: 2, day: new Date(Date.now() + 330 * 60000 + 14 * 864e5).toISOString().slice(0, 10), label: "Children's Day", added_by: 'seed' },
@@ -13,9 +13,12 @@ const agent = {
 };
 const istDay = (iso) => new Date(new Date(iso).getTime() + 330 * 60000).toISOString().slice(0, 10);
 const postsOn = (d, not) => agent.drafts.filter((x) => ['scheduled', 'posted'].includes(x.status) && istDay(x.publish_at) === d && x.id !== not).length;
-const draftJson = (x) => { const run = agent.runs.find((r) => r.id === x.run_id); return { ...x, votes: x.status === 'posted' ? 12 : null, spark: x.status === 'posted' ? 61 : null, run_slot: run?.slot ?? null, run_model: run?.model ?? null }; };
+const draftJson = (x) => { const run = agent.runs.find((r) => r.id === x.run_id); const { answer_why, ...rest } = x; return { ...rest, explain: answer_why ?? null, votes: x.status === 'posted' ? 12 : null, spark: x.status === 'posted' ? 61 : null, run_slot: run?.slot ?? null, run_model: run?.model ?? null, right_pct: x.status === 'posted' && x.slot === 'brain' ? 38 : null, flags: x.status === 'posted' && x.slot === 'brain' ? 1 : 0 }; };
 const seedDraft = (o) => ({ id: require('crypto').randomUUID(), run_id: null, created_at: new Date().toISOString(), topic: null, feel: null, timely: false, lang: 'en', slot: 'manual', why: null, source: null, post_as: 'eithr', open_days: 1, poll_of_day: false, notify: false, status: 'new', poll_id: null, decided_at: null, posted_at: null, error: null, ...o });
 const fnState = {};
+// Brain breaks: a Brain break poll (/__brain_poll), whether the next run wants one (/__brain_due), "Wrong answer?" flags.
+const BRAIN_POLL = 'b1000000-0000-4000-8000-000000000001';
+const brain = { due: false, flags: new Set(), answer: 1, why: 'Every month has at least 28 days. Feb just stops there.' };
 const TAG_FRIENDS = ['dev_04', 'rishi_m', 'riya_k'];
 let pushKinds = null;
 const likeTags = {};
@@ -137,6 +140,10 @@ http.createServer((req, res) => {
     if (url.pathname === '/__tag_poll') { if (!polls.some((x) => x.id === 't2000000-0000-4000-8000-000000000001')) polls.unshift(mk('t2000000-0000-4000-8000-000000000001', 'In your college group, kaun sabse pehle plans cancel karta hai?', ['Me!', 'A friend (tag them)', 'All of us 🤷'], [2, 5, 1], { creator: U20, is_system: false })); return json(200, true); }
     // Tests: a friend's comment tagging me on a poll (/__tag_me?poll=…).
     if (url.pathname === '/__tag_me') { const pid = url.searchParams.get('poll'); (cmts[pid] ||= []).push({ id: 'ctag' + Date.now(), text: 'Has to be @mayank 🙃', created_at: new Date().toISOString(), username: 'arjun', avatar_url: null, pick: null, pick_index: null, is_mine: false, is_creator: false, can_delete: false, tags: ['mayank'], tagged_me: true }); return json(200, true); }
+    if (url.pathname === '/__brain_poll') { if (!polls.some((x) => x.id === BRAIN_POLL)) polls.unshift(mk(BRAIN_POLL, 'Kitne months mein 28 days hote hain? 🤔', ['Sirf 1 (Feb)', 'All 12'], [61, 39], { kind: 'brain', is_system: true, creator: 'eithr' })); return json(200, true); }
+    if (url.pathname === '/__brain_answer') { brain.answer = Number(url.searchParams.get('i')); return json(200, brain.answer); }
+    if (url.pathname === '/__brain_due') { brain.due = url.searchParams.get('off') === null; return json(200, brain.due); }
+    if (url.pathname === '/__no_brain_settings') { for (const k of ['brain_per_week', 'brain_hour', 'brain_sorts_off']) delete agent.settings[k]; return json(200, true); }
     if (url.pathname === '/__agent_slot') { agent.forceSlot = url.searchParams.get('slot'); return json(200, agent.forceSlot); }
     if (url.pathname === '/__agent_expire') { let n = 0; for (const d of agent.drafts) if (d.status === 'new' && d.expires_at) { d.expires_at = new Date(Date.now() - 60000).toISOString(); n++; } return json(200, n); }
     if (url.pathname === '/__fn_state') { fnState[url.searchParams.get('name')] = url.searchParams.get('state'); return json(200, fnState); }
@@ -248,7 +255,8 @@ http.createServer((req, res) => {
         return json(200, { run_id: run.id, kind: refresh ? 'refresh' : 'full', slot, drafts_wanted: refresh ? agent.settings.refresh_drafts : agent.settings.drafts_per_day,
           seen_today: [...new Set(agent.trends.map((t) => [...t.title.toLowerCase()].slice(0, 60).join('')))], now: new Date().toISOString(), today: istDay(new Date().toISOString()), settings: agent.settings, scored: 38,
           topics: [{ key: 'food', n: 9, spark: 82 }, { key: 'cricket', n: 7, spark: 71 }], feels: [{ key: 'relatable', n: 8, spark: 80 }], combos: [{ topic: 'food', feel: 'relatable', n: 6, spark: 88 }],
-          langs: [{ key: 'hinglish', n: 14, spark: 71 }], best: ['Maggi at 2 am or chai at 6 am?'], recent: ['Tea or coffee to start the day?'], calendar: agent.calendar.map(({ day, label }) => ({ day, label })), open_slots: [] });
+          langs: [{ key: 'hinglish', n: 14, spark: 71 }], best: ['Maggi at 2 am or chai at 6 am?'], recent: ['Tea or coffee to start the day?'], calendar: agent.calendar.map(({ day, label }) => ({ day, label })), open_slots: [],
+          ...(agent.settings.brain_per_week !== undefined ? { brain: { wanted: brain.due && !refresh ? 1 : 0, hour: agent.settings.brain_hour, sorts: ['myth', 'first', 'bigger', 'gk', 'teaser', 'twister', 'guess', 'odd'].filter((k) => !agent.settings.brain_sorts_off.includes(k)), results: [{ sort: 'gk', question: 'Sabse lamba coastline kiska? 🌊', votes: 40, right_pct: 81 }], recent: ['Sabse lamba coastline kiska? 🌊'] } } : {}) });
       }
       case 'agent_save': {
         if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:bad_secret' });
@@ -257,7 +265,17 @@ http.createServer((req, res) => {
         if (a.error) { Object.assign(run, { status: 'failed', error: a.error, model: a.model ?? null, finished_at: new Date().toISOString() }); log.push('AGENT_SAVE failed ' + a.error); return json(200, { alert: null }); }
         for (const t of a.trends ?? []) agent.trends.push({ id: agent.nextTrend++, run_id: run.id, source: t.source, title: t.title, url: /^https:\/\//.test(t.url ?? '') ? t.url : null, idea_question: t.skip_reason ? null : (t.idea_question ?? null), idea_answers: t.skip_reason ? null : (t.idea_answers ?? null), topic: t.topic ?? null, feel: t.feel ?? null, timely: t.timely ?? true, lang: t.lang ?? null, skip_reason: t.skip_reason ?? null, drafted: false, published_at: t.published_at ?? null, region: t.region ?? null, gloss: t.gloss ?? null });
         let n = 0;
-        for (const d of a.drafts ?? []) { if (!d.question || d.question.length > 140 || (d.answers ?? []).length < 2) continue; agent.drafts.push(seedDraft({ ...d, run_id: run.id, expires_at: d.timely ? new Date(Date.now() + agent.settings.timely_hours * 3600e3).toISOString() : null, source_at: d.source_at ?? null })); n++; }
+        for (const d of a.drafts ?? []) {
+          if (!d.question || d.question.length > 140 || (d.answers ?? []).length < 2) continue;
+          const isBrain = d.slot === 'brain';
+          if (isBrain && (!Number.isInteger(d.correct) || d.correct >= d.answers.length || !d.explain)) { log.push('BRAIN_REJECT ' + d.question); continue; }
+          const dropped = isBrain && d.checked !== true;
+          const { explain, checked, drop_reason, correct, brain_sort, ...rest } = d;
+          agent.drafts.push(seedDraft({ ...rest, run_id: run.id, expires_at: d.timely ? new Date(Date.now() + agent.settings.timely_hours * 3600e3).toISOString() : null, source_at: d.source_at ?? null,
+            ...(isBrain ? { brain_sort, correct, answer_why: explain, checked: !dropped, status: dropped ? 'skipped' : 'new', error: dropped ? (drop_reason || 'The two checks disagreed') : null } : {}) }));
+          if (isBrain) log.push(`BRAIN ${dropped ? 'dropped' : 'kept'}|${brain_sort}|${d.question}|${d.answers.join('/')}|${correct}|${explain}|${d.publish_at}|${d.feel}`);
+          if (!dropped) n++;
+        }
         Object.assign(run, { status: 'done', drafts: n, trends: (a.trends ?? []).length, model: a.model ?? null, finished_at: new Date().toISOString() });
         log.push(`AGENT_SAVE ${n} drafts ${(a.trends ?? []).length} trends ${a.model ?? '-'}`);
         for (const d of a.drafts ?? []) log.push(`DRAFT ${d.slot}|${d.post_as}|${d.lang}|${d.topic}|${d.question}|${d.answers.join('/')}|${d.publish_at}|${d.source ?? ''}|${d.source_at ?? ''}`);
@@ -281,7 +299,9 @@ http.createServer((req, res) => {
         const last = agent.runs[agent.runs.length - 1];
         return json(200, { new: by(['new']), scheduled: by(['scheduled']), posted: by(['posted', 'failed']), settings: agent.settings, last_run: last ?? null,
           requested_at: agent.requested, today_posts: postsOn(today), tomorrow_posts: postsOn(tomorrow), admin_username: 'boss',
-          expired_today: agent.drafts.filter((x) => x.status === 'expired' && x.expires_at).map((x) => ({ question: x.question, expires_at: x.expires_at })) });
+          expired_today: agent.drafts.filter((x) => x.status === 'expired' && x.expires_at).map((x) => ({ question: x.question, expires_at: x.expires_at })),
+          brain_dropped: agent.drafts.filter((x) => x.slot === 'brain' && x.status === 'skipped' && x.error).map((x) => ({ question: x.question, brain_sort: x.brain_sort, error: x.error })),
+          brain_out: polls.some((x) => x.id === BRAIN_POLL) ? [{ poll_id: BRAIN_POLL, question: 'Kitne months mein 28 days hote hain? 🤔', sort: 'twister', votes: 100, right_pct: 39, flags: brain.flags.size, created_at: iso(-3) }] : [] });
       }
       case 'admin_draft_save': {
         const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
@@ -292,6 +312,11 @@ http.createServer((req, res) => {
         const ans = (a.answers ?? []).map((x) => String(x).trim()).filter(Boolean);
         if (ans.length < 2 || ans.length > 4 || ans.some((x) => x.length > 40) || new Set(ans.map((x) => x.toLowerCase())).size !== ans.length) return json(400, { message: 'docchi:answers' });
         if (/badword/i.test(q + ans.join(' '))) return json(400, { message: 'docchi:blocked_words' });
+        if (d.slot === 'brain') {
+          const why = String(a.answer_why ?? '').trim();
+          if (!Number.isInteger(a.correct) || a.correct < 0 || a.correct >= ans.length || why.length < 3 || why.length > 200) return json(400, { message: 'docchi:brain_answer' });
+          d.correct = a.correct; d.answer_why = why; log.push(`BRAIN_SAVE ${a.correct}|${why}`);
+        }
         Object.assign(d, { question: q, answers: ans, topic: a.topic, feel: a.feel, timely: !!a.timely, lang: a.lang, post_as: a.post_as, publish_at: new Date(a.publish_at).toISOString(), open_days: a.open_days,
           poll_of_day: !!a.poll_of_day && a.post_as === 'eithr' && d.status === 'new', notify: !!a.notify && a.post_as === 'eithr' });
         log.push(`DRAFT_SAVE ${q}|${ans.join('/')}|${a.post_as}|${a.lang}|${a.topic}|${a.open_days}|${d.poll_of_day}|${d.notify}|${d.publish_at}`);
@@ -323,7 +348,9 @@ http.createServer((req, res) => {
       }
       case 'admin_agent_settings': {
         const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
-        for (const k of ['paused', 'drafts_per_day', 'posts_per_day', 'post_as', 'hinglish', 'topics_off', 'refresh_1pm', 'refresh_6pm', 'refresh_drafts', 'timely_hours']) if (a[k] !== undefined && a[k] !== null) agent.settings[k] = a[k];
+        if (a.brain_per_week !== undefined && agent.settings.brain_per_week === undefined) return json(404, { code: 'PGRST202', message: 'Could not find the function public.admin_agent_settings(brain_per_week) in the schema cache' });
+        for (const k of ['paused', 'drafts_per_day', 'posts_per_day', 'post_as', 'hinglish', 'topics_off', 'refresh_1pm', 'refresh_6pm', 'refresh_drafts', 'timely_hours', 'brain_per_week', 'brain_hour', 'brain_sorts_off']) if (a[k] !== undefined && a[k] !== null) agent.settings[k] = a[k];
+        if (agent.settings.brain_per_week !== undefined) log.push(`BRAIN_SETTINGS ${agent.settings.brain_per_week}|${agent.settings.brain_hour}|${agent.settings.brain_sorts_off.join(',')}`);
         log.push(`AGENT_SETTINGS ${agent.settings.paused}|${agent.settings.drafts_per_day}|${agent.settings.posts_per_day}|${agent.settings.post_as}|${agent.settings.hinglish}|${agent.settings.topics_off.join(',')}`);
         log.push(`AGENT_REFRESH ${agent.settings.refresh_1pm}|${agent.settings.refresh_6pm}|${agent.settings.refresh_drafts}|${agent.settings.timely_hours}`);
         return json(200, agent.settings);
@@ -458,6 +485,18 @@ http.createServer((req, res) => {
       case 'boom_500': return json(500, { message: 'boom' });
       case 'cast_vote': { votes[a.target_poll] = a.target_option; const p = polls.find((x) => x.id === a.target_poll); p.vote_count++; p.options.find((o) => o.id === a.target_option)._v++; const v = view(p); return json(200, [{ my_option_id: v.my_option_id, vote_count: v.vote_count, question: p.question, options: v.options }]); }
       case 'record_views': return json(200, null);
+      case 'brain_reveal': {
+        const p = polls.find((x) => x.id === a.poll);
+        if (!p || p.kind !== 'brain') return json(200, null);
+        const mine = (whoIs(req) && votes[a.poll]) || (a.pick && p.options.some((o) => o.id === a.pick) ? a.pick : null);
+        log.push('BRAIN_REVEAL ' + (mine ? 'answered' : 'not yet') + (a.pick ? ' pick' : ''));
+        if (!mine) return json(200, null);
+        const right = p.options[brain.answer];
+        const total = p.options.reduce((t, o) => t + o._v, 0);
+        return json(200, { option_id: right.id, why: brain.why, sort: 'twister', right: mine === right.id, right_pct: total ? Math.round((100 * right._v) / total) : null, flagged: brain.flags.has(whoIs(req)) });
+      }
+      case 'brain_flag': { const who = whoIs(req); if (!who) return json(401, { message: 'JWT required' }); if (!votes[a.poll]) return json(400, { message: 'docchi:not_found' }); brain.flags.add(who); log.push('BRAIN_FLAG ' + a.poll); return json(200, null); }
+      case 'my_brain_score': { if (!whoIs(req)) return json(401, { message: 'JWT required' }); return json(200, { right: 4, tried: 6 }); }
       case 'friends_voted': return json(200, a.poll === polls[0].id ? { count: 3, people: [{ username: U20, avatar_url: null }, { username: 'zoya', avatar_url: null }, { username: 'aman', avatar_url: null }] } : { count: 0, people: [] });
       case 'circle_picks': return json(200, [{ username: 'priya', avatar_url: null, option_id: polls[1].options[0].id, is_me: false }]);
       case 'record_open': return json(200, null);

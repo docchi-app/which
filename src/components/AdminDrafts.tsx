@@ -34,6 +34,17 @@ const SLOT_LABEL: Record<Draft["slot"], string> = {
   experiment: "Experiment",
   trend: "From a headline",
   manual: "Draft",
+  brain: "Brain break",
+};
+export const BRAIN_LABEL: Record<string, string> = {
+  myth: "Myth or Fact",
+  first: "Kaun pehle aaya",
+  bigger: "Bada kaun",
+  gk: "GK India",
+  teaser: "Brain teaser",
+  twister: "Twister",
+  guess: "Guess the number",
+  odd: "Odd one out",
 };
 const PROBLEM: Record<string, string> = {
   day_full: "that day already has its most posts (change the time, or raise the limit below)",
@@ -105,7 +116,10 @@ function DraftEditor({ draft, adminUsername, onDone }: { draft: Draft; adminUser
     openDays: draft.openDays,
     pollOfDay: draft.pollOfDay,
     notify: draft.notify,
+    correct: draft.slot === "brain" ? (draft.correct ?? 0) : null,
+    explain: draft.slot === "brain" ? (draft.explain ?? "") : null,
   });
+  const brain = draft.slot === "brain";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const id = `dr-${draft.id.slice(0, 8)}`;
@@ -114,7 +128,16 @@ function DraftEditor({ draft, adminUsername, onDone }: { draft: Draft; adminUser
     setBusy(true);
     setError(null);
     try {
-      await saveDraft(draft.id, { ...d, answers: d.answers.map((a) => a.trim()).filter(Boolean), pollOfDay: eithr && d.pollOfDay, notify: eithr && d.notify });
+      // A Brain break's right answer keeps pointing at the same answer when empty ones drop out.
+      const kept = d.answers.map((a, i) => ({ a: a.trim(), i })).filter((x) => x.a);
+      const correct = brain ? kept.findIndex((x) => x.i === d.correct) : null;
+      await saveDraft(draft.id, {
+        ...d,
+        answers: kept.map((x) => x.a),
+        pollOfDay: eithr && d.pollOfDay,
+        notify: eithr && d.notify,
+        correct: brain ? (correct === -1 ? 99 : correct) : null,
+      });
       onDone(true);
     } catch (e) {
       const code = e instanceof Error ? e.message : "";
@@ -125,6 +148,7 @@ function DraftEditor({ draft, adminUsername, onDone }: { draft: Draft; adminUser
           blocked_words: "That has a blocked word in it.",
           when: "Pick a time within the next 14 days.",
           day_full: "That day already has its most posts.",
+          brain_answer: "Mark the right answer (one that isn't empty) and write the why, 3 to 200 characters.",
         }[code] ?? "Couldn't save. Try again.",
       );
       setBusy(false);
@@ -148,8 +172,30 @@ function DraftEditor({ draft, adminUsername, onDone }: { draft: Draft; adminUser
                 value={a}
                 onChange={(e) => setD({ ...d, answers: d.answers.map((x, j) => (j === i ? e.target.value : x)) })}
               />
+              {brain && (
+                <button
+                  type="button"
+                  className={`ppl-mini press dr-right${d.correct === i ? " dr-right-on" : ""}`}
+                  aria-pressed={d.correct === i}
+                  aria-label={`Answer ${i + 1} is the right answer`}
+                  onClick={() => setD({ ...d, correct: i })}
+                >
+                  ✓
+                </button>
+              )}
               {d.answers.length > 2 && (
-                <button type="button" className="ppl-mini press" aria-label={`Remove answer ${i + 1}`} onClick={() => setD({ ...d, answers: d.answers.filter((_, j) => j !== i) })}>
+                <button
+                  type="button"
+                  className="ppl-mini press"
+                  aria-label={`Remove answer ${i + 1}`}
+                  onClick={() =>
+                    setD({
+                      ...d,
+                      answers: d.answers.filter((_, j) => j !== i),
+                      correct: d.correct == null ? d.correct : d.correct === i ? 0 : d.correct > i ? d.correct - 1 : d.correct,
+                    })
+                  }
+                >
                   ×
                 </button>
               )}
@@ -162,6 +208,13 @@ function DraftEditor({ draft, adminUsername, onDone }: { draft: Draft; adminUser
           </button>
         )}
       </div>
+      {brain && (
+        <label htmlFor={`${id}-why`}>
+          Why (shown after voting)
+          <textarea id={`${id}-why`} className="field-input" rows={2} maxLength={200} value={d.explain ?? ""} onChange={(e) => setD({ ...d, explain: e.target.value })} />
+          <small className="ppl-note">Tap ✓ next to the right answer. If you change the answer, check the fact again.</small>
+        </label>
+      )}
       <fieldset className="dr-seg">
         <legend>Post as</legend>
         <div className="dr-seg-opts">
@@ -276,20 +329,38 @@ function DraftCard({
   return (
     <li className={`dr-card${editing ? " dr-open" : ""}`}>
       <div className="dr-body">
+        {d.slot === "brain" && (
+          <span className="dr-brain">
+            🧠 Brain break{d.brainSort ? <small>{BRAIN_LABEL[d.brainSort] ?? d.brainSort}</small> : null}
+          </span>
+        )}
         <b className="dr-q">{d.question}</b>
         <span className="dr-opts">
-          {d.answers.map((a) => (
-            <span key={a}>{a}</span>
+          {d.answers.map((a, i) => (
+            <span key={a} className={d.slot === "brain" && d.correct === i ? "dr-opt-right" : undefined}>
+              {a}
+              {d.slot === "brain" && d.correct === i && <b aria-label="right answer"> ✓</b>}
+            </span>
           ))}
         </span>
-        <Tags t={d} />
+        {d.slot === "brain" && d.explain && (
+          <span className="dr-explain">
+            <b>Why (shown after voting)</b> {d.explain}
+          </span>
+        )}
+        {d.slot === "brain" && d.checked && (
+          <span className="dr-checked">
+            <b>✓ Double-checked</b> A second AI got the same answer without being told
+          </span>
+        )}
+        {d.slot !== "brain" && <Tags t={d} />}
         <small className="dr-meta">
           <As d={d} /> · {d.status === "posted" && d.postedAt ? `Posted ${when(d.postedAt)}` : when(d.publishAt)} · {SLOT_LABEL[d.slot]}
           {d.pollOfDay ? " · Poll of the Day" : ""}
           {d.postAs === "eithr" && d.notify ? " · push to everyone" : ""}
           {d.openDays > 1 ? ` · ${d.openDays} days` : ""}
         </small>
-        {d.why && <small className="dr-why">{d.why}</small>}
+        {d.why && d.slot !== "brain" && <small className="dr-why">{d.why}</small>}
         {(d.source || (d.expiresAt && d.status === "new") || bySarvam(d.runModel)) && (
           <span className="dr-srcline">
             {d.source && <small className="dr-src">{d.source}</small>}
@@ -419,6 +490,50 @@ function Settings({ s, onSaved }: { s: AgentSettings; onSaved: (s: AgentSettings
         </label>
       </div>
       <p className="ppl-note">Refreshes write only about headlines that are new since earlier that day; nothing new, no drafts and no push. A timely draft not approved in time expires.</p>
+      {v.brainPerWeek !== null && (
+        <>
+          <div className="dr-row dr-row-4">
+            <label htmlFor="dr-bw">
+              🧠 Brain breaks a week
+              <select id="dr-bw" className="field-input" value={v.brainPerWeek} onChange={(e) => setV({ ...v, brainPerWeek: Number(e.target.value) })}>
+                {[0, 1, 2, 3, 4, 5, 6, 7].map((n) => (
+                  <option key={n} value={n}>
+                    {n === 0 ? "Off" : n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor="dr-bh">
+              Brain break time
+              <select id="dr-bh" className="field-input" value={v.brainHour} onChange={(e) => setV({ ...v, brainHour: Number(e.target.value) })}>
+                {Array.from({ length: 15 }, (_, i) => i + 8).map((h) => (
+                  <option key={h} value={h}>
+                    {h === 12 ? "12 pm" : h > 12 ? `${h - 12} pm` : `${h} am`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p className="ppl-note">{brainDays(v.brainPerWeek)} Counted inside the most posts a day. Lunch break works best.</p>
+          <fieldset className="dr-topics">
+            <legend>Brain break kinds (tap to turn one off)</legend>
+            {Object.entries(BRAIN_LABEL).map(([k, label]) => {
+              const off = v.brainSortsOff.includes(k);
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  className={`lk-tag press ${off ? "lk-none" : "lk-t"}`}
+                  aria-pressed={off}
+                  onClick={() => setV({ ...v, brainSortsOff: off ? v.brainSortsOff.filter((t) => t !== k) : [...v.brainSortsOff, k] })}
+                >
+                  {off ? `${label} · off` : label}
+                </button>
+              );
+            })}
+          </fieldset>
+        </>
+      )}
       <fieldset className="dr-topics">
         <legend>Topics it won&apos;t write (politics, religion, deaths, accidents and crime are always off)</legend>
         {Object.entries(TOPIC_LABEL).map(([k, label]) => {
@@ -448,6 +563,21 @@ function Settings({ s, onSaved }: { s: AgentSettings; onSaved: (s: AgentSettings
       </div>
     </section>
   );
+}
+
+/** Which days a number of Brain breaks a week means (the database picks the same). */
+export function brainDays(n: number) {
+  const days: Record<number, string> = {
+    0: "Brain breaks are off.",
+    1: "1 a week: Wednesday.",
+    2: "2 a week: Tuesday and Friday.",
+    3: "3 a week: Monday, Wednesday and Friday.",
+    4: "4 a week: Monday, Wednesday, Friday and Sunday.",
+    5: "5 a week: Monday to Friday.",
+    6: "6 a week: Monday to Saturday.",
+    7: "Every day.",
+  };
+  return days[n] ?? "";
 }
 
 type View = "new" | "scheduled" | "posted";
@@ -572,6 +702,13 @@ export function AdminDrafts() {
         </p>
       )}
 
+      {view === "new" && data.brainDropped.length > 0 && (
+        <p className="dr-gone">
+          🧠 {plural(data.brainDropped.length, "Brain break")} dropped today ({data.brainDropped[0].error ?? "the two checks disagreed"}): &ldquo;{data.brainDropped[0].question}&rdquo;
+          {data.brainDropped.length > 1 ? ` and ${data.brainDropped.length - 1} more` : ""}. A fact the second check disagrees with never reaches you.
+        </p>
+      )}
+
       {view === "new" && data.fresh.length > 1 && (
         <button type="button" className="btn btn-coral dr-all press" disabled={busy} onClick={() => approve(data.fresh.map((d) => d.id))}>
           Approve all {data.fresh.length} as suggested
@@ -643,6 +780,8 @@ export function AdminDrafts() {
                 <span className="dr-result">
                   {d.votes !== null && <span>{plural(d.votes, "vote")}</span>}
                   {d.spark !== null && <span>Spark {d.spark}</span>}
+                  {d.rightPct !== null && <span>{d.rightPct}% right</span>}
+                  {d.flags > 0 && <span className="dr-flag">{d.flags} × &ldquo;Wrong answer?&rdquo;</span>}
                   <Link href={`/p/${d.pollId}`} className="ppl-mini">
                     Open
                   </Link>
@@ -661,6 +800,27 @@ export function AdminDrafts() {
               ? "Nothing scheduled. Approve a draft to schedule it."
               : "Nothing posted from drafts yet."}
         </p>
+      )}
+
+      {data.brainOut.length > 0 && (
+        <section className="ppl-card ppl-pad ppl-stack" aria-labelledby="dr-brain-out">
+          <h2 id="dr-brain-out" className="err-label gr-h">
+            🧠 Brain breaks out
+          </h2>
+          <p className="ppl-note">Aim: 40–70% right. The agent sees these and makes the next ones easier or harder.</p>
+          <ul className="dr-bo">
+            {data.brainOut.map((b) => (
+              <li key={b.pollId}>
+                <Link href={`/p/${b.pollId}`}>{b.question}</Link>
+                <small>
+                  {BRAIN_LABEL[b.sort] ?? b.sort} · {plural(b.votes, "vote")}
+                  {b.rightPct !== null ? ` · ${b.rightPct}% right` : ""}
+                </small>
+                {b.flags > 0 && <span className="dr-flag">{plural(b.flags, "person says", "people say")} the answer is wrong</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <Settings s={data.settings} onSaved={() => reload()} />

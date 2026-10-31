@@ -20,6 +20,7 @@ import { ShareIcon } from "./icons";
 import { ShareSheet } from "./ShareSheet";
 import { audienceLabel, getMyCircle } from "@/lib/circle";
 import { fetchStreak, type Streak } from "@/lib/streak";
+import { myBrainScore } from "@/lib/brain";
 import { SignInNote } from "./SignInSheet";
 import { useBackClose } from "@/lib/back";
 
@@ -42,6 +43,8 @@ export function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(() => recall<Profile>("profile") ?? null);
   const [friends, setFriends] = useState<number | null>(() => recall<number>("profile:friends") ?? null);
   const [streak, setStreak] = useState<Streak | null>(() => recall<Streak>("profile:streak") ?? null);
+  // Brain breaks you got right (only you see it): the teaser for the Brain streak coming later.
+  const [brain, setBrain] = useState<{ right: number; tried: number } | null>(() => recall<{ right: number; tried: number }>("profile:brain") ?? null);
   // Polls voted on as a guest (not counted until they sign in).
   const [guestVotes, setGuestVotes] = useState(0);
   const [tab, setTab] = useState<Tab>("mine");
@@ -92,6 +95,12 @@ export function ProfileScreen() {
       .then((st) => {
         setStreak(st);
         remember("profile:streak", st);
+      })
+      .catch(() => {});
+    myBrainScore()
+      .then((b) => {
+        setBrain(b);
+        if (b) remember("profile:brain", b);
       })
       .catch(() => {});
     fetchActivity()
@@ -200,6 +209,24 @@ export function ProfileScreen() {
               <dd>{streak ? `🔥${streak.current}` : "–"}</dd>
             </div>
           </dl>
+
+          {signedIn && brain && (
+            <div className="brain-teaser" role="note">
+              <span className="brain-teaser-icon" aria-hidden="true">
+                🧠
+              </span>
+              <span>
+                <b>Brain streak: coming soon</b>
+                <small>
+                  {brain.right > 0
+                    ? `You got ${brain.right} Brain ${brain.right === 1 ? "break" : "breaks"} right. Keep going, your streak starts counting soon 👀`
+                    : brain.tried > 0
+                      ? "Not one right yet, arre 😅 The next Brain break is yours. Your streak starts counting soon 👀"
+                      : "Brain breaks drop a few times a week in your feed. Get them right, your streak starts counting soon 👀"}
+                </small>
+              </span>
+            </div>
+          )}
 
           {signedIn && <PropsAboutYou />}
 

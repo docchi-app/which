@@ -779,6 +779,7 @@ export function Feed({ initialPollId }: { initialPollId?: string } = {}) {
     if (p.kind === "snap") return "Quick snap";
     if (p.kind === "hot_take") return "Hot take";
     if (p.kind === "mystery") return "Mystery poll";
+    if (p.kind === "brain") return "Brain break";
     if (tab === "new") return "New";
     const before = polls?.slice(0, i).filter((x) => !isPropsSlot(x) && !x.featuredToday && x.id !== sharedId).length ?? i;
     return `Trending #${before + 1}`;

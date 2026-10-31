@@ -15,6 +15,7 @@ export function shareText(poll: Poll): string {
   if (poll.kind === "mystery") return `Mystery poll: ${poll.teaser} Pick on gut, the question shows after:`;
   if (poll.kind === "hot_take") return `Hot take: "${poll.question}" Agree or disagree?`;
   if (poll.kind === "snap") return `📸 ${poll.question} Vote before it disappears:`;
+  if (poll.kind === "brain") return voted ? `🧠 Dimaag lagao: ${poll.question} Bet you get it wrong 😏` : `🧠 Dimaag lagao: ${poll.question} 10 seconds, go:`;
   return voted ? `I picked my side on "${poll.question}" Which one are you?` : `${poll.question} Pick a side:`;
 }
 
@@ -33,7 +34,7 @@ export function cardInput(poll: Poll): CardInput {
   return {
     id: poll.id,
     // A snap's photo is private, so its card is drawn like a classic poll.
-    kind: poll.kind === "snap" ? "classic" : poll.kind,
+    kind: poll.kind === "snap" || poll.kind === "brain" ? "classic" : poll.kind,
     question: poll.question,
     teaser: poll.teaser,
     circle: poll.visibility === "circle",
