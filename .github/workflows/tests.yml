@@ -65,7 +65,7 @@ jobs:
           EITHR_TEST_DIR: ${{ runner.temp }}/eithr-tests
       - name: Screenshots and logs (when something failed)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: browser-test-output
           path: ${{ runner.temp }}/eithr-tests
