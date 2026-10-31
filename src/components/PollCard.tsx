@@ -176,6 +176,8 @@ export function PollCard({
   // A Brain break's right answer and why, once you've answered (a guest sends the pick they made).
   const [reveal, setReveal] = useState<BrainReveal | null>(null);
   const [flagged, setFlagged] = useState<"no" | "sending" | "yes">("no");
+  // Answered on this card just now: the confetti waits until it's known to be right.
+  const answeredHere = useRef(false);
   useEffect(() => {
     if (!isBrain || !showResults) return;
     let live = true;
@@ -183,6 +185,7 @@ export function PollCard({
       if (!live) return;
       setReveal(r);
       if (r?.flagged) setFlagged("yes");
+      if (r?.right && answeredHere.current) setBurst(true);
     });
     return () => {
       live = false;
@@ -216,7 +219,9 @@ export function PollCard({
         navigator.vibrate?.(10);
       } catch {}
       setJustVoted(true);
-      setBurst(true);
+      // A Brain break celebrates only once it knows you got it right.
+      setBurst(!isBrain);
+      answeredHere.current = true;
       onVoted(poll.id, result);
       const answer = poll.options.find((o) => o.id === optionId)?.text ?? "";
       if (signedIn && asksForTag(answer)) setTagNudge(true);

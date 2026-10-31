@@ -803,6 +803,24 @@ tagged. After a vote on a "tag them" poll ("Who is it? 👀"), the card offers *
 Tag pushes can be turned off in Settings → Notifications → "When a friend tags you". Before the
 migration runs, comments work as before and `@` names are plain text.
 
+### 18. Brain breaks ("Dimaag lagao 👀")
+
+Run `20261214000000_brain_breaks.sql` in the SQL Editor (then the migration check). From then on the
+agent's morning set on **Monday, Wednesday and Friday** includes one Brain break for **1 pm**: a poll
+with a right answer (Myth or Fact, which came first, which is bigger, GK India, brain teaser,
+twister, guess the number, odd one out). A second AI answers each question without being told the
+answer (Sarvam checks OpenAI's and the other way round); only one it agrees with reaches Drafts,
+marked "✓ Double-checked", and the others show as dropped. You see the right answer and the why,
+can change both, and approve it like any draft. An unapproved one expires 5 hours after its time.
+
+On the card nobody sees the answer before voting (it stays in the database until then). After
+voting: right or wrong ("Big brain energy 🧠✨" / "Arre yaar 😅 61% fell for it too"), the why,
+a share line ("Send to someone who'll say ₹10 😏") and **Wrong answer? Tell us**, which shows
+in Drafts → Posted and under 🧠 Brain breaks out. Your own profile shows how many you got right,
+as the teaser for the Brain streak that comes later. How many a week (0 turns them off), the time
+and the kinds are in Admin → Drafts → What the agent writes. All drafts are now written in a
+friendlier voice (a hook, 1–2 emojis, punchy answers).
+
 ### Free tier limits to know about
 
 - **A free project pauses after about a week with no activity.** You can restore it from the
