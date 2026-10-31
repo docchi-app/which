@@ -30,7 +30,7 @@ export default function PrivacyPage() {
         <li><strong>Your friends:</strong> your friends list, your friends-only polls and who picked what on them, and that you voted on a poll they also voted on (never your pick).</li>
         <li><strong>Props are anonymous:</strong> the friend you picked sees only that a friend gave them props for a question, and their own counts. Nobody, including them, is ever shown who picked them. Your counts are visible only to you, unless you share them.</li>
         <li><strong>Eithr&apos;s team:</strong> reports and the content they point to, to keep the app safe.</li>
-        <li><strong>Service providers</strong> that run Eithr for us: Supabase (database, sign-in and snap photos), Vercel (hosting), Resend (sending those emails) and OpenAI (an automatic safety check of snap photos, typed polls and comments, sorting poll questions by topic, and writing poll ideas from news headlines and totals by topic; it isn&apos;t used to train their models). They process data only to provide their service.</li>
+        <li><strong>Service providers</strong> that run Eithr for us: Supabase (database, sign-in and snap photos), Vercel (hosting), Resend (sending those emails) and OpenAI (an automatic safety check of snap photos, typed polls and comments, sorting poll questions by topic, and writing poll ideas from news headlines and totals by topic; it isn&apos;t used to train their models), and Sarvam AI (writing those poll ideas when OpenAI is unavailable, from the same headlines and totals, never anyone&apos;s name or private polls). They process data only to provide their service.</li>
         <li><strong>Authorities</strong>, only when Indian law requires it.</li>
       </ul>
 

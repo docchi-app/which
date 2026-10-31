@@ -106,9 +106,10 @@ export async function sweepTags(): Promise<number> {
   if (!todo?.length) return 0;
   let done = 0;
   let firstError: unknown = null;
-  for (let i = 0; i < todo.length; i += 4) {
+  // Two at a time: a new OpenAI account allows only a few requests a minute.
+  for (let i = 0; i < todo.length; i += 2) {
     await Promise.all(
-      todo.slice(i, i + 4).map(async (p) => {
+      todo.slice(i, i + 2).map(async (p) => {
         let tags: Tags | null = null;
         try {
           tags = await tagPoll(p);
@@ -124,7 +125,15 @@ export async function sweepTags(): Promise<number> {
   }
   if (firstError) {
     console.error("poll tags:", firstError instanceof Error ? firstError.message : firstError);
-    await reportServerError("Background job · poll tags (OpenAI)", firstError, "job");
+    // Too many requests a minute (a new OpenAI account's low limit): the rest wait for the next
+    // run, nothing to fix. Anything else (no credit, a wrong key) is reported.
+    if (!rateLimited(firstError)) await reportServerError("Background job · poll tags (OpenAI)", firstError, "job");
   }
   return done;
 }
+
+/** OpenAI's 429 for requests or tokens a minute, as opposed to its 429 for no credit left. */
+export const rateLimited = (e: unknown) => {
+  const m = e instanceof Error ? e.message : String(e);
+  return / 429: /.test(m) && /rate limit reached/i.test(m) && !/insufficient_quota|no credits/i.test(m);
+};
