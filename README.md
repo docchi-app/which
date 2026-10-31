@@ -952,6 +952,35 @@ weeks are kept, so last week's champ is a lookup.
   reserved usernames (docchi, admin, support…); reports auto-hide content; guest votes only count
   after sign-in. Still to add: CAPTCHA on guest sign-ups and an alert for sudden vote spikes.
 
+### Tests and the automatic checks
+
+- **All the tests live in `tests/`** and run with `tests/run.sh [db|unit|browser|all]` (or
+  `npm test`). No real service or key is used: the database tests run every migration on a
+  throwaway in-memory Postgres (with the clock pinned to 3 pm India time, so "today" and push quiet
+  hours don't depend on when they run; `EITHR_TEST_IST_HOUR` changes it), the browser tests run the
+  app against a mock Supabase and fake OpenAI / Sarvam / Resend, built with planted "canary"
+  secrets that must never reach the browser or the network.
+  - `db`: the database tests, the break-in suite (`tests/db/breakin.mjs`) and a check that
+    `supabase/checks/migration-check.sql` matches the migrations.
+  - `unit`: server code compiled with its network calls stubbed (push, email, the content agent,
+    Brain breaks, the service worker).
+  - `browser`: every screen at phone and laptop sizes, the layout check, the network audit and the
+    secret audit.
+- **On every pull request** GitHub runs all of it (`.github/workflows/tests.yml`): lint, types,
+  `npm audit` of what ships, unit, database and browser. A red check means don't merge.
+- **Dependabot** (`.github/dependabot.yml`) opens update PRs on Mondays, and security fixes as soon
+  as they're published; each runs the tests like any PR.
+- **Every Monday** (`.github/workflows/security-weekly.yml`, also runnable by hand from Actions):
+  the live-site check (`scripts/security/live-check.mjs`: headers, private files not served, admin
+  and API routes refuse anonymous callers, no source maps, no secret-looking value and only the
+  anon key in the browser files, no cross-site access, Mozilla Observatory grade), a full
+  dependency check, and a secret scan of the week's commits (`scripts/security/history-scan.mjs`).
+  If anything fails it opens a "Weekly security check failed" issue.
+- **The weekly security review** is a Claude scheduled task that follows
+  `.claude/agents/security-weekly.md`: it reads the week's merged changes (migrations, server code,
+  headers) with an attacker's eye and opens a "Security review" issue with P0/P1/P2 findings. It
+  only proposes: it can't merge, push to `main`, touch the database or see a secret.
+
 ## Project layout
 
 ```

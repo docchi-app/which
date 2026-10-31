@@ -1,0 +1,72 @@
+# Runs every test suite on each pull request and on main. No real service or secret is used:
+# the database tests run on a throwaway in-memory Postgres, and the browser tests run the app
+# against a mock Supabase and fake OpenAI / Sarvam / Resend, with planted "canary" secrets that
+# must never reach the browser. A red check means: don't merge.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, types, dependencies, unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx eslint src
+      - run: npx next typegen && npx tsc --noEmit
+      # Anything that ships to people's browsers or the server: no known vulnerability allowed.
+      - run: npm audit --omit=dev --audit-level=moderate
+      - run: tests/run.sh unit
+
+  database:
+    name: Database and break-in
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: tests/run.sh db
+
+  browser:
+    name: Browser, secrets and network
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: tests/run.sh browser
+        env:
+          EITHR_TEST_DIR: ${{ runner.temp }}/eithr-tests
+      - name: Screenshots and logs (when something failed)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-output
+          path: ${{ runner.temp }}/eithr-tests
+          retention-days: 7
