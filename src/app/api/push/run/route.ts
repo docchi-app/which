@@ -1,5 +1,6 @@
 import { cronSecret, pushConfigured, rpc, sendAll, tagUrl, type PushPayload } from "@/lib/push-server";
 import { sweepTexts } from "@/lib/text-moderation";
+import { sweepTags } from "@/lib/poll-tags";
 import { sendSummaries } from "@/lib/email-server";
 import { reportServerError } from "@/lib/server-errors";
 
@@ -56,6 +57,16 @@ export async function POST(request: Request) {
   } catch (e) {
     console.error("email summaries:", e instanceof Error ? e.message : e);
     await reportServerError("Background job · email", e, "job");
+  }
+  // Tags for Admin → What people like (up to 20 polls, newest first), when there's time left.
+  if (Date.now() - started < 30_000) {
+    try {
+      const tagged = await sweepTags();
+      if (tagged) total.tagged = tagged;
+    } catch (e) {
+      console.error("poll tags:", e instanceof Error ? e.message : e);
+      await reportServerError("Background job · poll tags", e, "job");
+    }
   }
   // Errors: note this run, clear what's over 30 days, and tell the admin's phone about a new
   // error, a spike or one back after a fix (at most one an hour).

@@ -778,3 +778,101 @@ export async function adminLimits(next?: { polls: number; snaps: number }): Prom
     changes: ((d.changes as { at: string; detail: string }[] | null) ?? []).map((c) => ({ at: c.at, detail: c.detail })),
   };
 }
+
+// ─── What people like ─────────────────────────────────────────────────────
+
+export type LikeRow = { key: string; n: number; spark: number; prev: number | null; prevN: number; votes: number | null };
+export type LikeCell = { topic: string; feel: string; n: number; spark: number };
+export type PollTags = { topic: string | null; feel: string | null; timely: boolean | null; lang: string | null };
+export type LikedPoll = PollTags & {
+  id: string;
+  question: string;
+  kind: string;
+  who: "eithr" | "you" | "people";
+  author: string | null;
+  spark: number;
+  votes: number;
+  shares: number;
+  comments: number;
+  split: string | null;
+};
+export type TaggedPoll = PollTags & { id: string; question: string; kind: string; source: "ai" | "admin" | null; spark: number | null };
+export type Likes = {
+  days: number;
+  polls: number;
+  scored: number;
+  tagged: number;
+  voters: number;
+  untaggedAll: number;
+  lastTagged: string | null;
+  topics: LikeRow[];
+  feels: LikeRow[];
+  grid: LikeCell[];
+  langs: LikeRow[];
+  times: LikeRow[];
+  timing: LikeRow[];
+  who: LikeRow[];
+  best: LikedPoll[];
+  recent: TaggedPoll[];
+};
+
+const likeRows = (v: unknown): LikeRow[] =>
+  list<Record<string, unknown>>(v).map((r) => ({
+    key: String(r.key),
+    n: Number(r.n ?? 0),
+    spark: Number(r.spark ?? 0),
+    prev: num(r.prev),
+    prevN: Number(r.prev_n ?? 0),
+    votes: num(r.votes),
+  }));
+const tagsOf = (r: Record<string, unknown>): PollTags => ({
+  topic: (r.topic as string | null) ?? null,
+  feel: (r.feel as string | null) ?? null,
+  timely: (r.timely as boolean | null) ?? null,
+  lang: (r.lang as string | null) ?? null,
+});
+
+export async function fetchLikes(days: number): Promise<Likes> {
+  const c = await call<Record<string, unknown>>("admin_likes", { days });
+  return {
+    days: Number(c.days ?? days),
+    polls: Number(c.polls ?? 0),
+    scored: Number(c.scored ?? 0),
+    tagged: Number(c.tagged ?? 0),
+    voters: Number(c.voters ?? 0),
+    untaggedAll: Number(c.untagged_all ?? 0),
+    lastTagged: (c.last_tagged as string | null) ?? null,
+    topics: likeRows(c.topics),
+    feels: likeRows(c.feels),
+    grid: list<Record<string, unknown>>(c.grid).map((r) => ({ topic: String(r.topic), feel: String(r.feel), n: Number(r.n ?? 0), spark: Number(r.spark ?? 0) })),
+    langs: likeRows(c.langs),
+    times: likeRows(c.times),
+    timing: likeRows(c.timing),
+    who: likeRows(c.who),
+    best: list<Record<string, unknown>>(c.best).map((r) => ({
+      ...tagsOf(r),
+      id: r.id as string,
+      question: String(r.question ?? ""),
+      kind: String(r.kind ?? ""),
+      who: (r.who as LikedPoll["who"]) ?? "people",
+      author: (r.author as string | null) ?? null,
+      spark: Number(r.spark ?? 0),
+      votes: Number(r.votes ?? 0),
+      shares: Number(r.shares ?? 0),
+      comments: Number(r.comments ?? 0),
+      split: (r.split as string | null) ?? null,
+    })),
+    recent: list<Record<string, unknown>>(c.recent).map((r) => ({
+      ...tagsOf(r),
+      id: r.id as string,
+      question: String(r.question ?? ""),
+      kind: String(r.kind ?? ""),
+      source: (r.source as TaggedPoll["source"]) ?? null,
+      spark: num(r.spark),
+    })),
+  };
+}
+
+export async function setPollTags(poll: string, tags: PollTags): Promise<void> {
+  await call("admin_set_poll_tags", { poll, topic: tags.topic, feel: tags.feel, timely: tags.timely ?? false, lang: tags.lang });
+}

@@ -28,6 +28,7 @@ import { Schedule } from "./AdminSchedule";
 import { AdminErrors } from "./AdminErrors";
 import { AdminContent, AdminFunnel, AdminNotifications, AdminOverview, AdminSources } from "./AdminGrowth";
 import { AdminGuests } from "./AdminGuests";
+import { AdminLikes } from "./AdminLikes";
 import { AdminLimits } from "./AdminLimits";
 import { AdminUsers } from "./AdminUsers";
 import { AdminSnaps } from "./AdminSnaps";
@@ -42,6 +43,7 @@ type Tab =
   | "funnel"
   | "sources"
   | "metrics"
+  | "likes"
   | "content"
   | "notifications"
   | "reports"
@@ -68,6 +70,7 @@ const SECTIONS: { group: string; items: { id: Tab; label: string }[] }[] = [
   {
     group: "Content",
     items: [
+      { id: "likes", label: "What people like" },
       { id: "content", label: "Polls & snaps" },
       { id: "notifications", label: "Notifications" },
     ],
@@ -218,6 +221,7 @@ export function AdminScreen() {
         {tab === "overview" && <AdminOverview onGo={setTab} />}
         {tab === "funnel" && <AdminFunnel />}
         {tab === "sources" && <AdminSources />}
+        {tab === "likes" && <AdminLikes />}
         {tab === "content" && <AdminContent />}
         {tab === "notifications" && <AdminNotifications />}
         {tab === "errors" && <AdminErrors key={errorId ?? "list"} initialId={errorId} onChange={loadBadge} />}

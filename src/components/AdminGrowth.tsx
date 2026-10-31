@@ -31,7 +31,7 @@ const runsExpected = () => {
 };
 
 /** Loads one admin screen's numbers for the chosen range (null while loading). */
-function useLoad<T>(load: (days: number) => Promise<T>, days: number) {
+export function useLoad<T>(load: (days: number) => Promise<T>, days: number) {
   const [data, setData] = useState<{ days: number; value: T } | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -50,7 +50,7 @@ function useLoad<T>(load: (days: number) => Promise<T>, days: number) {
   return { data: data?.days === days ? data.value : null, failed };
 }
 
-function Range({ days, onChange, options = [1, 7, 30] }: { days: number; onChange: (d: number) => void; options?: number[] }) {
+export function Range({ days, onChange, options = [1, 7, 30] }: { days: number; onChange: (d: number) => void; options?: number[] }) {
   return (
     <div className="err-range" role="group" aria-label="Time range">
       {options.map((d) => (
@@ -63,13 +63,13 @@ function Range({ days, onChange, options = [1, 7, 30] }: { days: number; onChang
 }
 
 const Failed = () => <p className="poll-error ppl-pad">Couldn&apos;t load this. Has 20261207000000_growth.sql been run?</p>;
-const Loading = () => (
+export const Loading = () => (
   <p className="admin-empty ppl-pad" aria-busy="true">
     Loading…
   </p>
 );
 
-function Tile({ label, value, sub, tint }: { label: string; value: string | number; sub?: React.ReactNode; tint?: "mint" | "sky" | "sun" }) {
+export function Tile({ label, value, sub, tint }: { label: string; value: string | number; sub?: React.ReactNode; tint?: "mint" | "sky" | "sun" }) {
   return (
     <div className={`ppl-tile${tint ? ` ppl-tile-${tint}` : ""}`}>
       <span>{label}</span>
@@ -80,7 +80,7 @@ function Tile({ label, value, sub, tint }: { label: string; value: string | numb
 }
 
 /** A labelled bar: label, track filled to `share`%, the number. */
-function HBar({ label, share, value, tint }: { label: React.ReactNode; share: number; value: React.ReactNode; tint?: "sky" | "coral" | "lilac" }) {
+export function HBar({ label, share, value, tint }: { label: React.ReactNode; share: number; value: React.ReactNode; tint?: "sky" | "coral" | "lilac" }) {
   return (
     <div className="ppl-hist-row gr-hrow">
       <span>{label}</span>
