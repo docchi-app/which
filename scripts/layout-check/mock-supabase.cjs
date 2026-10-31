@@ -15,6 +15,7 @@ const istDay = (iso) => new Date(new Date(iso).getTime() + 330 * 60000).toISOStr
 const postsOn = (d, not) => agent.drafts.filter((x) => ['scheduled', 'posted'].includes(x.status) && istDay(x.publish_at) === d && x.id !== not).length;
 const draftJson = (x) => ({ ...x, votes: x.status === 'posted' ? 12 : null, spark: x.status === 'posted' ? 61 : null });
 const seedDraft = (o) => ({ id: require('crypto').randomUUID(), run_id: null, created_at: new Date().toISOString(), topic: null, feel: null, timely: false, lang: 'en', slot: 'manual', why: null, source: null, post_as: 'eithr', open_days: 1, poll_of_day: false, notify: false, status: 'new', poll_id: null, decided_at: null, posted_at: null, error: null, ...o });
+const fnState = {};
 const likeTags = {};
 const tagDone = new Set();
 const tagTodo = [
@@ -127,6 +128,12 @@ http.createServer((req, res) => {
     }
     // Tests: other people voting on a poll (live numbers), e.g. /__bump?id=…&n=3
     if (url.pathname === '/__bump') { const p = polls.find((x) => x.id === url.searchParams.get('id')); const n = Number(url.searchParams.get('n') || 1); if (p) { p.vote_count += n; p.options[0]._v += n; p.recent_votes = (p.recent_votes || 0) + n; p.view_count = (p.view_count || 0) + n * 2; } return json(200, !!p); }
+    // Tests: a database function missing (migration not run: PostgREST's 404 PGRST202) or broken (500).
+    // /__fn_state?name=polls_to_tag&state=missing|broken|ok
+    if (url.pathname === '/__fn_state') { fnState[url.searchParams.get('name')] = url.searchParams.get('state'); return json(200, fnState); }
+    { const fnName = url.pathname.replace('/rest/v1/rpc/', '');
+      if (fnState[fnName] === 'missing') { log.push('MISSING ' + fnName); return json(404, { code: 'PGRST202', details: 'Searched for the function public.' + fnName, hint: null, message: `Could not find the function public.${fnName}(max_rows, secret) in the schema cache` }); }
+      if (fnState[fnName] === 'broken') { log.push('BROKEN ' + fnName); return json(500, { code: 'XX000', message: 'something broke' }); } }
     switch (url.pathname.replace('/rest/v1/rpc/', '')) {
       case 'live_counts': return json(200, a.ids.slice(0, 12).map((id) => polls.find((p) => p.id === id)).filter(Boolean).map((p) => { const v = view(p); return { id: p.id, vote_count: p.vote_count, view_count: Math.max(p.view_count || 0, p.vote_count), comment_count: p.comment_count || 0, recent_votes: p.recent_votes || 0, options: v.options.map((o) => ({ id: o.id, votes: o.votes })) }; }));
       case 'create_snap': {
