@@ -160,7 +160,7 @@ function Compare({ title, rows, labels }: { title: string; rows: LikeRow[]; labe
   );
 }
 
-function Tags({ t }: { t: PollTags }) {
+export function Tags({ t }: { t: PollTags }) {
   if (!t.topic) return <span className="lk-tag lk-none">Not tagged yet</span>;
   return (
     <span className="lk-tags">

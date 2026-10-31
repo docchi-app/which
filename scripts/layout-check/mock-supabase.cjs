@@ -3,6 +3,18 @@
 // 60-character answers, single 60-letter words, 24-character snap answers, a
 // 20-character username) in every poll format. Not used by the app itself.
 const http = require('http');
+// The content agent (Admin → Drafts, Trending now): drafts, settings, runs, trends, calendar.
+const agent = {
+  settings: { paused: false, drafts_per_day: 8, posts_per_day: 4, post_as: 'eithr', hinglish: 50, topics_off: [] },
+  requested: null, runs: [], drafts: [], trends: [], nextTrend: 1, calendar: [
+    { id: 1, day: new Date(Date.now() + 330 * 60000 + 8 * 864e5).toISOString().slice(0, 10), label: 'Diwali', added_by: 'seed' },
+    { id: 2, day: new Date(Date.now() + 330 * 60000 + 14 * 864e5).toISOString().slice(0, 10), label: "Children's Day", added_by: 'seed' },
+  ], nextCal: 3,
+};
+const istDay = (iso) => new Date(new Date(iso).getTime() + 330 * 60000).toISOString().slice(0, 10);
+const postsOn = (d, not) => agent.drafts.filter((x) => ['scheduled', 'posted'].includes(x.status) && istDay(x.publish_at) === d && x.id !== not).length;
+const draftJson = (x) => ({ ...x, votes: x.status === 'posted' ? 12 : null, spark: x.status === 'posted' ? 61 : null });
+const seedDraft = (o) => ({ id: require('crypto').randomUUID(), run_id: null, created_at: new Date().toISOString(), topic: null, feel: null, timely: false, lang: 'en', slot: 'manual', why: null, source: null, post_as: 'eithr', open_days: 1, poll_of_day: false, notify: false, status: 'new', poll_id: null, decided_at: null, posted_at: null, error: null, ...o });
 const likeTags = {};
 const tagDone = new Set();
 const tagTodo = [
@@ -206,6 +218,119 @@ http.createServer((req, res) => {
         if (a.snaps !== undefined && a.snaps !== null && a.snaps !== limits.snaps) { limitChanges.unshift({ at: new Date().toISOString(), detail: `Snaps a day: ${limits.snaps} → ${a.snaps}` }); limits.snaps = a.snaps; log.push('LIMITS snaps ' + a.snaps); }
         return json(200, { ...limits, changes: limitChanges }); }
       case 'admin_morning': { const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' }); if (a.on_now !== null && a.on_now !== undefined) { adminMorning = a.on_now; log.push('MORNING_SWITCH ' + a.on_now); } return json(200, adminMorning); }
+      // The content agent: the job's side.
+      case 'agent_start': {
+        if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:bad_secret' });
+        const last = agent.runs[agent.runs.length - 1];
+        if (!agent.requested || (last && last.started_at >= agent.requested) || agent.runs.some((r) => r.status === 'running')) { log.push('AGENT_START none'); return json(200, null); }
+        const run = { id: agent.runs.length + 1, started_at: new Date().toISOString(), status: 'running', drafts: 0, trends: 0, error: null, manual: true, finished_at: null };
+        agent.runs.push(run); log.push('AGENT_START ' + run.id);
+        return json(200, { run_id: run.id, now: new Date().toISOString(), today: istDay(new Date().toISOString()), settings: agent.settings, scored: 38,
+          topics: [{ key: 'food', n: 9, spark: 82 }, { key: 'cricket', n: 7, spark: 71 }], feels: [{ key: 'relatable', n: 8, spark: 80 }], combos: [{ topic: 'food', feel: 'relatable', n: 6, spark: 88 }],
+          langs: [{ key: 'hinglish', n: 14, spark: 71 }], best: ['Maggi at 2 am or chai at 6 am?'], recent: ['Tea or coffee to start the day?'], calendar: agent.calendar.map(({ day, label }) => ({ day, label })), open_slots: [] });
+      }
+      case 'agent_save': {
+        if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:bad_secret' });
+        const run = agent.runs.find((r) => r.id === a.run_id && r.status === 'running');
+        if (!run) return json(400, { message: 'docchi:not_found' });
+        if (a.error) { Object.assign(run, { status: 'failed', error: a.error, finished_at: new Date().toISOString() }); log.push('AGENT_SAVE failed ' + a.error); return json(200, { alert: null }); }
+        for (const t of a.trends ?? []) agent.trends.push({ id: agent.nextTrend++, run_id: run.id, source: t.source, title: t.title, url: /^https:\/\//.test(t.url ?? '') ? t.url : null, idea_question: t.skip_reason ? null : (t.idea_question ?? null), idea_answers: t.skip_reason ? null : (t.idea_answers ?? null), topic: t.topic ?? null, feel: t.feel ?? null, timely: t.timely ?? true, lang: t.lang ?? null, skip_reason: t.skip_reason ?? null, drafted: false });
+        let n = 0;
+        for (const d of a.drafts ?? []) { if (!d.question || d.question.length > 140 || (d.answers ?? []).length < 2) continue; agent.drafts.push(seedDraft({ ...d, run_id: run.id })); n++; }
+        Object.assign(run, { status: 'done', drafts: n, trends: (a.trends ?? []).length, finished_at: new Date().toISOString() });
+        log.push(`AGENT_SAVE ${n} drafts ${(a.trends ?? []).length} trends`);
+        for (const d of a.drafts ?? []) log.push(`DRAFT ${d.slot}|${d.post_as}|${d.lang}|${d.topic}|${d.question}|${d.answers.join('/')}|${d.publish_at}|${d.source ?? ''}`);
+        return json(200, { drafts: n, trends: (a.trends ?? []).length, alert: n ? { title: `✍️ ${n} drafts ready`, body: 'Top pick', url: '/admin#drafts', tag: 'agent-drafts' } : null, targets: [] });
+      }
+      case 'post_due_drafts': {
+        if (a.secret !== 'test-secret-test-secret-123') return json(400, { message: 'docchi:bad_secret' });
+        let n = 0;
+        for (const d of agent.drafts) if (d.status === 'scheduled' && d.publish_at <= new Date().toISOString()) { d.status = 'posted'; d.poll_id = 'f1000000-0000-4000-8000-000000000001'; d.posted_at = new Date().toISOString(); n++; log.push('POSTED ' + d.question); }
+        return json(200, n);
+      }
+      // The content agent: the admin's side.
+      case 'admin_drafts': {
+        const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
+        log.push('ADMIN_DRAFTS');
+        const by = (st) => agent.drafts.filter((x) => st.includes(x.status)).sort((x, y) => x.publish_at.localeCompare(y.publish_at)).map(draftJson);
+        const today = istDay(new Date().toISOString()), tomorrow = istDay(new Date(Date.now() + 864e5).toISOString());
+        const last = agent.runs[agent.runs.length - 1];
+        return json(200, { new: by(['new']), scheduled: by(['scheduled']), posted: by(['posted', 'failed']), settings: agent.settings, last_run: last ?? null,
+          requested_at: agent.requested, today_posts: postsOn(today), tomorrow_posts: postsOn(tomorrow), admin_username: 'boss' });
+      }
+      case 'admin_draft_save': {
+        const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
+        const d = agent.drafts.find((x) => x.id === a.draft && ['new', 'scheduled'].includes(x.status));
+        if (!d) return json(400, { message: 'docchi:not_found' });
+        const q = String(a.question ?? '').trim().replace(/\s+/g, ' ');
+        if (q.length < 3 || q.length > 140) return json(400, { message: 'docchi:question_length' });
+        const ans = (a.answers ?? []).map((x) => String(x).trim()).filter(Boolean);
+        if (ans.length < 2 || ans.length > 4 || ans.some((x) => x.length > 40) || new Set(ans.map((x) => x.toLowerCase())).size !== ans.length) return json(400, { message: 'docchi:answers' });
+        if (/badword/i.test(q + ans.join(' '))) return json(400, { message: 'docchi:blocked_words' });
+        Object.assign(d, { question: q, answers: ans, topic: a.topic, feel: a.feel, timely: !!a.timely, lang: a.lang, post_as: a.post_as, publish_at: new Date(a.publish_at).toISOString(), open_days: a.open_days,
+          poll_of_day: !!a.poll_of_day && a.post_as === 'eithr' && d.status === 'new', notify: !!a.notify && a.post_as === 'eithr' });
+        log.push(`DRAFT_SAVE ${q}|${ans.join('/')}|${a.post_as}|${a.lang}|${a.topic}|${a.open_days}|${d.poll_of_day}|${d.notify}|${d.publish_at}`);
+        return json(200, draftJson(d));
+      }
+      case 'admin_drafts_approve': {
+        const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
+        let approved = 0; const problems = [];
+        for (const d of agent.drafts.filter((x) => (a.ids ?? []).includes(x.id) && x.status === 'new').sort((x, y) => x.publish_at.localeCompare(y.publish_at))) {
+          if (d.publish_at < new Date().toISOString()) d.publish_at = new Date().toISOString();
+          if (!d.poll_of_day && postsOn(istDay(d.publish_at)) >= agent.settings.posts_per_day) { problems.push({ id: d.id, error: 'day_full' }); continue; }
+          if (d.poll_of_day) Object.assign(d, { status: 'posted', poll_id: 'f1000000-0000-4000-8000-000000000004', posted_at: new Date().toISOString() });
+          else d.status = 'scheduled';
+          approved++;
+        }
+        log.push(`APPROVE ${approved} ${problems.map((p) => p.error).join(',')}`.trim());
+        return json(200, { approved, problems });
+      }
+      case 'admin_drafts_skip': {
+        const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
+        let n = 0; for (const d of agent.drafts) if ((a.ids ?? []).includes(d.id) && d.status === 'new') { d.status = 'skipped'; n++; }
+        log.push('SKIP ' + n); return json(200, n);
+      }
+      case 'admin_draft_unschedule': {
+        const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
+        const d = agent.drafts.find((x) => x.id === a.draft && x.status === 'scheduled');
+        if (!d) return json(400, { message: 'docchi:not_found' });
+        d.status = 'new'; log.push('UNSCHEDULE ' + d.question); return json(200, null);
+      }
+      case 'admin_agent_settings': {
+        const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
+        for (const k of ['paused', 'drafts_per_day', 'posts_per_day', 'post_as', 'hinglish', 'topics_off']) if (a[k] !== undefined && a[k] !== null) agent.settings[k] = a[k];
+        log.push(`AGENT_SETTINGS ${agent.settings.paused}|${agent.settings.drafts_per_day}|${agent.settings.posts_per_day}|${agent.settings.post_as}|${agent.settings.hinglish}|${agent.settings.topics_off.join(',')}`);
+        return json(200, agent.settings);
+      }
+      case 'admin_agent_request': {
+        const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
+        agent.requested = new Date().toISOString(); log.push('AGENT_REQUEST'); return json(200, agent.requested);
+      }
+      case 'admin_trends': {
+        const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
+        const run = [...agent.runs].reverse().find((r) => r.status === 'done' && r.trends > 0);
+        log.push('ADMIN_TRENDS');
+        return json(200, { read_at: run?.started_at ?? null, items: run ? agent.trends.filter((t) => t.run_id === run.id).sort((x, y) => Number(!!x.skip_reason) - Number(!!y.skip_reason) || x.id - y.id) : [],
+          calendar: [...agent.calendar].sort((x, y) => x.day.localeCompare(y.day)) });
+      }
+      case 'admin_draft_from_trend': {
+        const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
+        const t = agent.trends.find((x) => x.id === a.trend);
+        if (!t || !t.idea_question || t.skip_reason) return json(400, { message: 'docchi:not_found' });
+        if (t.drafted) return json(400, { message: 'docchi:already_drafted' });
+        const d = seedDraft({ question: t.idea_question, answers: t.idea_answers, topic: t.topic, feel: t.feel, timely: t.timely, lang: t.lang, slot: 'trend', why: 'From Trending now: ' + t.title, source: t.source, publish_at: new Date(Date.now() + 3600e3).toISOString() });
+        agent.drafts.push(d); t.drafted = true; log.push('FROM_TREND ' + t.title); return json(200, d.id);
+      }
+      case 'admin_calendar_add': {
+        const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
+        if (!a.on_day || a.on_day < istDay(new Date().toISOString())) return json(400, { message: 'docchi:bad_day' });
+        const l = String(a.label_text ?? '').trim(); if (l.length < 2 || l.length > 60) return json(400, { message: 'docchi:label_length' });
+        const c = { id: agent.nextCal++, day: a.on_day, label: l, added_by: 'admin' }; agent.calendar.push(c); log.push(`CAL_ADD ${a.on_day} ${l}`); return json(200, c.id);
+      }
+      case 'admin_calendar_remove': {
+        const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
+        agent.calendar = agent.calendar.filter((c) => c.id !== a.entry); log.push('CAL_REMOVE ' + a.entry); return json(200, null);
+      }
       // Admin → What people like (sample numbers; tag changes are kept).
       case 'admin_likes': {
         const who = whoIs(req); if (!who || who === 'notadmin') return json(400, { message: 'docchi:not_admin' });
