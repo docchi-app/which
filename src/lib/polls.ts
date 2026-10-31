@@ -1,4 +1,4 @@
-import { currentOrGuest, rememberGuestPick, SignInRequired } from "./auth";
+import { currentOrGuest, currentUser, lastAccount, rememberGuestPick, SignInRequired } from "./auth";
 import { getSupabase } from "./supabase";
 import type { FeedTab, LiveCounts, Poll, PollKind, PollOption, Visibility, VoteResult } from "./types";
 
@@ -160,6 +160,9 @@ export async function castVote(pollId: string, optionId: string): Promise<VoteRe
   const supabase = getSupabase();
   if (!supabase) return demoVote(pollId, optionId);
 
+  // Someone whose Google sign-in ran out: ask them to sign in again rather than quietly
+  // making them a guest (their vote waits and is cast after Google, see AuthCallback).
+  if (!(await currentUser()) && lastAccount()) throw new SignInRequired();
   // No account yet: vote as a guest. If guests are switched off, ask for Google.
   const user = await currentOrGuest();
   if (!user) throw new SignInRequired();

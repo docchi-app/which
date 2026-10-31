@@ -821,6 +821,21 @@ as the teaser for the Brain streak that comes later. How many a week (0 turns th
 and the kinds are in Admin → Drafts → What the agent writes. All drafts are now written in a
 friendlier voice (a hook, 1–2 emojis, punchy answers).
 
+### 19. Screen states: no connection, slow, signed out (no database step)
+
+- **No connection:** a vote made offline is marked "Waiting to send" and kept on the phone
+  (`src/lib/outbox.ts`); it goes in by itself when the connection is back (or the app is reopened),
+  never twice. If the poll closed meanwhile, the card says so and shows how it ended.
+- **Slow:** after 3 seconds a vote shows "Slow connection, still sending"; after 20 it's kept like an
+  offline vote (and dropped from the queue if the slow request lands after all). A snap upload shows
+  its real percentage with Cancel (the snap stays on screen).
+- **Our problem vs. theirs:** failures say "No connection…" or "Eithr hiccuped. That's on us, not your
+  phone" with Try again (`src/lib/failure.ts`), instead of a generic "Couldn't save".
+- **Signed out on its own:** a phone that was signed in with Google remembers it (and the last streak,
+  friends and polls). If the sign-in ends without "Sign out", the next open shows "You've been signed
+  out" once, and a vote asks for Google (keeping the pick) instead of quietly starting a guest.
+  "Sign out" and deleting the account forget it.
+
 ### Free tier limits to know about
 
 - **A free project pauses after about a week with no activity.** You can restore it from the

@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import { failureText } from "./failure";
 
 export const REPORT_REASONS = [
   { id: "hate", label: "Hate or harassment" },
@@ -37,7 +38,7 @@ export async function sendReport(target: ReportTarget, reason: ReportReason): Pr
   const { data, error } = await supabase.rpc("report", args);
   if (error) {
     const code = /docchi:(\w+)/.exec(error.message)?.[1];
-    throw new Error((code && ERRORS[code]) || "Couldn't send that. Try again?");
+    throw new Error((code && ERRORS[code]) || failureText(error));
   }
   return Boolean((data as { hidden?: boolean } | null)?.hidden);
 }

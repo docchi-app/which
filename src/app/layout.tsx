@@ -5,6 +5,7 @@ import { UsernameGate } from "@/components/UsernameGate";
 import { VisitTracker } from "@/components/VisitTracker";
 import { PushSync } from "@/components/PushSync";
 import { OfflineBar } from "@/components/OfflineBar";
+import { SignedOutSheet } from "@/components/SignedOutSheet";
 import { MoveSheet } from "@/components/MoveSheet";
 import { MovedWelcome } from "@/components/MovedWelcome";
 import { InAppNotify } from "@/components/InAppNotify";
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <PushSync />
         <TipLayer />
         <OfflineBar />
+        <SignedOutSheet />
         <MoveSheet />
         <MovedWelcome />
         <InAppNotify />

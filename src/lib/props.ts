@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import { failureText } from "./failure";
 
 // Props: compliment polls about your friends. Eithr writes the questions,
 // the server picks the 4 friends, and who picked whom never reaches the app.
@@ -112,7 +113,7 @@ export const PROPS_ERRORS: Record<string, string> = {
   not_an_option: "That friend can't be picked right now.",
   demo: "Demo mode: Props need Supabase.",
 };
-export const propsErrorText = (e: unknown) => (e instanceof PropsError && PROPS_ERRORS[e.code]) || "That didn't go through. Try again?";
+export const propsErrorText = (e: unknown) => (e instanceof PropsError && PROPS_ERRORS[e.code]) || failureText(e);
 
 /**
  * A shareable picture of one of my props ("My friends say: Best laugh ×7"),

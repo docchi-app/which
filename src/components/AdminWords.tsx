@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { addWord, fetchWords, removeWord, testWords, type BlockedWord, type WordKind } from "@/lib/admin";
+import { failureText } from "@/lib/failure";
 
 const KINDS: { id: WordKind; label: string; hint: string }[] = [
   { id: "word", label: "Whole word", hint: "Only the word or phrase itself (bc, teri maa ki)" },
@@ -59,7 +60,7 @@ export function AdminWords() {
       await load();
       if (probe.trim()) setHits(await testWords(probe));
     } catch (e) {
-      setError(e instanceof Error && e.message === "word_length" ? "2 to 40 letters." : "Couldn't add it.");
+      setError(e instanceof Error && e.message === "word_length" ? "2 to 40 letters." : failureText(e));
     }
     setBusy(false);
   }
@@ -70,8 +71,8 @@ export function AdminWords() {
       await removeWord(w);
       setWords((list) => list?.filter((x) => x.term !== w) ?? null);
       if (probe.trim()) setHits(await testWords(probe));
-    } catch {
-      setError("Couldn't remove it.");
+    } catch (e) {
+      setError(failureText(e));
     }
   }
 

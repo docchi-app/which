@@ -94,6 +94,7 @@ export async function currentOrGuest(): Promise<User | null> {
 }
 
 export async function signOut(): Promise<void> {
+  forgetAccount();
   forgetGuestPicks();
   forgetViews();
   clearScreenCache();
@@ -179,4 +180,41 @@ export function forgetGuestPicks() {
   } catch {
     // Nothing stored.
   }
+}
+
+// The last Google account signed in on this phone, so a sign-in that ran out on its own (not "Sign
+// out") can be told apart from a new visitor: "You've been signed out" once, and a vote waits for
+// Google instead of quietly starting a guest. Signing out on purpose forgets it.
+
+export type LastAccount = { at: number; streak?: number | null; friends?: number | null; polls?: number | null; told?: boolean };
+const ACCOUNT_KEY = "eithr.lastAccount";
+
+export function lastAccount(): LastAccount | null {
+  try {
+    const a = JSON.parse(localStorage.getItem(ACCOUNT_KEY) ?? "null") as LastAccount | null;
+    return a && typeof a.at === "number" ? a : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Signed in (again): remember it, and any numbers worth showing if the sign-in runs out. */
+export function rememberAccount(extra: Partial<Omit<LastAccount, "at">> = {}) {
+  try {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify({ ...(lastAccount() ?? {}), told: false, ...extra, at: Date.now() }));
+  } catch {}
+}
+
+export function markSignedOutTold() {
+  const a = lastAccount();
+  if (!a) return;
+  try {
+    localStorage.setItem(ACCOUNT_KEY, JSON.stringify({ ...a, told: true }));
+  } catch {}
+}
+
+export function forgetAccount() {
+  try {
+    localStorage.removeItem(ACCOUNT_KEY);
+  } catch {}
 }

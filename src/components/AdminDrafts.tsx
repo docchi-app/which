@@ -23,6 +23,7 @@ import {
 } from "@/lib/admin";
 import { Loading } from "./AdminGrowth";
 import { FEEL_LABEL, LANG_LABEL, TOPIC_LABEL, Tags } from "./AdminLikes";
+import { failureText } from "@/lib/failure";
 
 // Admin → Content → Drafts and Trending now: the content agent's morning drafts (approve, change
 // or skip them; nothing posts without Approve), what it read, and the days coming up.
@@ -149,7 +150,7 @@ function DraftEditor({ draft, adminUsername, onDone }: { draft: Draft; adminUser
           when: "Pick a time within the next 14 days.",
           day_full: "That day already has its most posts.",
           brain_answer: "Mark the right answer (one that isn't empty) and write the why, 3 to 200 characters.",
-        }[code] ?? "Couldn't save. Try again.",
+        }[code] ?? failureText(e),
       );
       setBusy(false);
     }
@@ -409,8 +410,8 @@ function Settings({ s, onSaved }: { s: AgentSettings; onSaved: (s: AgentSettings
       onSaved(next);
       setV(next);
       setMsg("Saved.");
-    } catch {
-      setMsg("Couldn't save. Try again.");
+    } catch (e) {
+      setMsg(failureText(e));
     }
     setBusy(false);
   };
@@ -620,20 +621,20 @@ export function AdminDrafts() {
           .join(" "),
         bad: r.problems.length > 0,
       });
-    } catch {
-      setNote({ text: "Couldn't approve. Try again.", bad: true });
+    } catch (e) {
+      setNote({ text: failureText(e), bad: true });
     }
     setBusy(false);
     reload();
   };
   const skip = async (ids: string[]) => {
     setBusy(true);
-    await skipDrafts(ids).catch(() => setNote({ text: "Couldn't skip. Try again.", bad: true }));
+    await skipDrafts(ids).catch((e) => setNote({ text: failureText(e), bad: true }));
     setBusy(false);
     reload();
   };
   const back = async (id: string) => {
-    await unscheduleDraft(id).catch(() => setNote({ text: "Couldn't move it back. Try again.", bad: true }));
+    await unscheduleDraft(id).catch((e) => setNote({ text: failureText(e), bad: true }));
     reload();
   };
   const run = data.lastRun;
@@ -899,8 +900,8 @@ export function AdminTrends() {
                           try {
                             await draftFromTrend(t.id);
                             setNote("Added to Drafts.");
-                          } catch {
-                            setNote("Couldn't add it. Try again.");
+                          } catch (e) {
+                            setNote(failureText(e));
                           }
                           reload();
                         }}

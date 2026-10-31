@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { flushSync } from "react-dom";
 import { continueWithGoogle, isSignedIn, onUserChange, saveReturnTo } from "@/lib/auth";
 import {
@@ -69,6 +69,10 @@ export function SnapScreen() {
   const questionRef = useRef<HTMLTextAreaElement>(null);
   const answersRef = useRef<HTMLDivElement>(null);
   const sending = useRef(false);
+  // The photo uploading: percent done (null when not uploading), whether it's slow, and Cancel.
+  const [upload, setUpload] = useState<number | null>(null);
+  const [slowUp, setSlowUp] = useState(false);
+  const cancelUp = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -198,8 +202,16 @@ export function SnapScreen() {
     // Sent: back no longer means "retake".
     dropLayer();
     setPhase("checking");
+    setUpload(0);
+    setSlowUp(false);
+    cancelUp.current = new AbortController();
+    const slowT = window.setTimeout(() => setSlowUp(true), 3000);
     try {
-      const id = await postSnap({ photo, question: q, answers: clean, audience: sendTo, live });
+      const id = await postSnap({ photo, question: q, answers: clean, audience: sendTo, live, onProgress: setUpload, signal: cancelUp.current.signal }).finally(() => {
+        window.clearTimeout(slowT);
+        setUpload(null);
+        setSlowUp(false);
+      });
       if (idea) saveSnapPrefs({ idea });
       let status: SnapStatus = await checkSnap(id);
       // The check normally answers at once; give a slow one a little longer.
@@ -511,12 +523,28 @@ export function SnapScreen() {
       <SnapHeader title="Quick snap" />
       {phase === "checking" ? (
         <section className="check-card" role="status">
-          <span className="chip chip-white">🛡️ Safety check</span>
-          <h2 className="poll-question">Checking your photo…</h2>
-          <div className="check-bar" aria-hidden="true">
-            <span />
-          </div>
-          <p className="poll-foot-note">Usually a few seconds.</p>
+          {upload !== null && slowUp ? (
+            <>
+              <span className="chip chip-white">📤 Sending</span>
+              <h2 className="poll-question">Posting your snap · {upload}%</h2>
+              <span className="state-bar state-real" aria-hidden="true" style={{ "--done": `${upload}%` } as CSSProperties}>
+                <i />
+              </span>
+              <p className="poll-foot-note">Slow connection. Keep Eithr open until it&apos;s done.</p>
+              <button type="button" className="btn btn-white press snap-cancel" onClick={() => cancelUp.current?.abort()}>
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="chip chip-white">🛡️ Safety check</span>
+              <h2 className="poll-question">Checking your photo…</h2>
+              <div className="check-bar" aria-hidden="true">
+                <span />
+              </div>
+              <p className="poll-foot-note">Usually a few seconds.</p>
+            </>
+          )}
         </section>
       ) : phase === "review" ? (
         <section className="check-card check-review" role="status">
